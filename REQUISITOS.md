@@ -117,6 +117,12 @@ Constraints the whole design hangs on.
 - Names carry accents and ñ, so collation and search must handle them
 - Phone numbers stored in international format for WhatsApp verification
 
+**Geography filters, it never walls.** Someone in Panamá sees Chiriquí, Darién and Bocas del Toro — and also Medellín, if they want it. The country and province selector narrows what you're looking at; it never decides what you're allowed to see. A platform whose premise is exposing unseen talent cannot start by hiding it from the next province. Default to local, open to everything.
+
+**Fouls are events, exactly like points.** Same list, same undo, same audit trail. That makes discipline a first-class statistic — most-fouled player per team, team fouls per period — without a second system, and it is what lets the match page show figures rather than only a score.
+
+**Advertising never touches the match.** A small sponsored slot belongs on discovery surfaces — the home page, the news list. Never over the scoreboard, never inside a live match, never between a person and the score they opened the link to see. The organizer sold attention to their liga, not to us.
+
 **The score is a list of events, never a number.** Every action is stored as its own fact — *two points, team A, number 7, second period, 14:32* — and the score is what you get by adding them up. Undo then voids the last event and redo reinstates it, both exact and unambiguous. Storing a running total makes undo a guess, and throws away the per-player lines the archive is built on. This one decision gives scoring, correction, player stats and provenance from the same structure.
 
 **Mistakes are normal, not exceptional.** Scoring happens fast, one-handed, while the match continues. Wrong team, wrong player and double taps are guaranteed. Undo is a permanent visible control, never buried in a menu, with the last few actions listed and tappable to correct. A short delay before pushing to the public board means an immediate fix-up never appears on the TV at all.
@@ -153,6 +159,11 @@ Constraints the whole design hangs on.
 - Undo and redo, plus a tappable log of recent actions
 - Free manual entry of a final result
 - Team result plus a small per-player line, one model for all sports
+- Fouls per player and per team, on the same event log
+- Match figures: top scorer and most-fouled player for each team
+- Discovery home: sport filter, then "ahora mismo" / "lo que viene", plus country and province
+- News section, part free and part paid
+- One small sponsored slot on discovery surfaces only
 - Public dashboard: no install, no account to view
 - Venue as a first-class entity with location
 - Organizer-typed rosters, claimable by players

@@ -1,22 +1,24 @@
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom'
+import Inicio from './pantallas/Inicio'
 import Ligas from './pantallas/Ligas'
 import Liga from './pantallas/Liga'
 import NuevaLiga from './pantallas/NuevaLiga'
-import EnVivo from './pantallas/EnVivo'
 import Partido from './pantallas/Partido'
 import Consola from './pantallas/Consola'
 import Jugador from './pantallas/Jugador'
 import Canchas from './pantallas/Canchas'
 import Cancha from './pantallas/Cancha'
 import Saldo from './pantallas/Saldo'
+import Noticias from './pantallas/Noticias'
+import Noticia from './pantallas/Noticia'
 import Codigo from './pantallas/Codigo'
 
 const SIN_TABS = [/^\/partido\/[^/]+$/, /^\/partido\/[^/]+\/consola$/, /^\/b\//]
 
 const iconos = {
+  inicio: 'M4 11.5L12 4l8 7.5M6 10v10h12V10',
   ligas: 'M4 5h16M4 12h16M4 19h10',
-  vivo: 'M12 3a9 9 0 100 18 9 9 0 000-18zm0 5v4l3 2',
-  canchas: 'M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11zm0-8.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z',
+  noticias: 'M4 5h13a1 1 0 011 1v13H6a2 2 0 01-2-2V5zm14 3h2v9a2 2 0 01-2 2M7 9h7M7 13h7',
   saldo: 'M3 8h18v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm0 0l2.4-4h13.2L21 8M7 14h4',
 }
 
@@ -39,25 +41,27 @@ export default function App() {
     <div className="app">
       <div className={`contenido ${conTabs ? '' : 'sin-tab'}`}>
         <Routes>
-          <Route path="/" element={<Ligas />} />
+          <Route path="/" element={<Inicio />} />
+          <Route path="/ligas" element={<Ligas />} />
           <Route path="/nueva" element={<NuevaLiga />} />
           <Route path="/liga/:id" element={<Liga />} />
-          <Route path="/vivo" element={<EnVivo />} />
           <Route path="/partido/:id" element={<Partido />} />
           <Route path="/partido/:id/consola" element={<Consola />} />
           <Route path="/jugador/:id" element={<Jugador />} />
           <Route path="/canchas" element={<Canchas />} />
           <Route path="/cancha/:id" element={<Cancha />} />
           <Route path="/saldo" element={<Saldo />} />
+          <Route path="/noticias" element={<Noticias />} />
+          <Route path="/noticia/:id" element={<Noticia />} />
           <Route path="/b/:codigo" element={<Codigo />} />
         </Routes>
       </div>
 
       {conTabs && (
         <nav className="tabbar">
-          <Tab to="/" id="ligas">Ligas</Tab>
-          <Tab to="/vivo" id="vivo">En vivo</Tab>
-          <Tab to="/canchas" id="canchas">Canchas</Tab>
+          <Tab to="/" id="inicio">Inicio</Tab>
+          <Tab to="/ligas" id="ligas">Mis ligas</Tab>
+          <Tab to="/noticias" id="noticias">Noticias</Tab>
           <Tab to="/saldo" id="saldo">Saldo</Tab>
         </nav>
       )}

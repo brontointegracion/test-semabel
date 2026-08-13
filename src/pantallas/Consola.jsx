@@ -3,8 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { db } from '../db'
 import { usePartido, useCuenta } from '../datos'
 import {
-  PUNTOS_POR_DEPORTE, anotar, deshacer, rehacer, anularEvento,
-  marcadorEquipo, periodoActual, hayQueRehacer,
+  PUNTOS_POR_DEPORTE, LIMITE_FALTAS,
+  anotar, marcarFalta, deshacer, rehacer, anularEvento,
+  marcadorEquipo, faltasEquipo, puntosJugador, faltasJugador,
+  periodoActual, hayQueRehacer,
 } from '../lib/marcador'
 import { Topbar, Escudo } from '../ui'
 
@@ -28,20 +30,28 @@ export default function Consola() {
   const periodos = liga.deporte === 'baloncesto' ? 4 : 2
   const periodo = Math.min(periodoActual(eventos), periodos)
   const valores = PUNTOS_POR_DEPORTE[liga.deporte] || [1]
+  const limite = LIMITE_FALTAS[liga.deporte] || 5
 
   const equipo = ladoActivo === 'local' ? local : visita
   const plantel = jugadores
     .filter((j) => j.equipoId === equipo.id)
     .sort((a, b) => a.dorsal - b.dorsal)
 
-  const sumaDe = (jid) =>
-    eventos.filter((e) => !e.anulado && e.jugadorId === jid).reduce((n, e) => n + e.puntos, 0)
+  const avisar = (texto) => {
+    setUltimoToque(texto)
+    navigator.vibrate?.(12)
+    setTimeout(() => setUltimoToque(null), 1200)
+  }
 
   const puntear = async (jugador, puntos) => {
     await anotar({ partidoId: partido.id, equipoId: equipo.id, jugadorId: jugador.id, puntos, periodo })
-    setUltimoToque(`${jugador.nombre} +${puntos}`)
-    navigator.vibrate?.(12)
-    setTimeout(() => setUltimoToque(null), 1200)
+    avisar(`${jugador.nombre} +${puntos}`)
+  }
+
+  const faltar = async (jugador) => {
+    await marcarFalta({ partidoId: partido.id, equipoId: equipo.id, jugadorId: jugador.id, periodo })
+    const total = faltasJugador(eventos, jugador.id) + 1
+    avisar(total >= limite ? `${jugador.nombre}: ${total}ª falta, queda fuera` : `Falta de ${jugador.nombre} (${total})`)
   }
 
   const comenzar = async () => {
@@ -59,10 +69,10 @@ export default function Consola() {
     nav(`/partido/${partido.id}`, { replace: true })
   }
 
-  const recientes = [...eventos]
-    .filter((e) => e.tipo === 'punto')
+  const recientes = eventos
+    .filter((e) => e.tipo === 'punto' || e.tipo === 'falta')
     .sort((a, b) => b.seq - a.seq)
-    .slice(0, 8)
+    .slice(0, 10)
 
   return (
     <>
@@ -72,7 +82,7 @@ export default function Consola() {
         <div className="cabecera">
           <div>
             <div className="puntos">{gl}</div>
-            <div className="corto">{local.corto}</div>
+            <div className="corto">{local.corto} · {faltasEquipo(eventos, local.id)} faltas</div>
           </div>
           <div style={{ textAlign: 'center', color: 'var(--ink-mute)' }}>
             <div style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.1em' }}>
@@ -84,7 +94,7 @@ export default function Consola() {
           </div>
           <div>
             <div className="puntos">{gv}</div>
-            <div className="corto">{visita.corto}</div>
+            <div className="corto">{visita.corto} · {faltasEquipo(eventos, visita.id)} faltas</div>
           </div>
         </div>
 
@@ -107,22 +117,33 @@ export default function Consola() {
         </div>
 
         <div className="plantel">
-          {plantel.map((j) => (
-            <div key={j.id} className="jugador-fila">
-              <div className="dorsal">{j.dorsal}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="nombre">{j.nombre}</div>
-                <div className="suma">{sumaDe(j.id)} pts</div>
-              </div>
-              <div className="anota">
-                {valores.map((v) => (
-                  <button key={v} onClick={() => puntear(j, v)} aria-label={`${j.nombre} más ${v}`}>
-                    +{v}
+          {plantel.map((j) => {
+            const faltas = faltasJugador(eventos, j.id)
+            const fuera = faltas >= limite
+            return (
+              <div key={j.id} className={`jugador-fila ${fuera ? 'expulsado' : ''}`}>
+                <div className="dorsal">{j.dorsal}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="nombre">{j.nombre}</div>
+                  <div className="suma">
+                    {puntosJugador(eventos, j.id)} pts
+                    {faltas > 0 && <> · <b>{faltas} {faltas === 1 ? 'falta' : 'faltas'}</b></>}
+                    {fuera && ' · fuera'}
+                  </div>
+                </div>
+                <div className="anota">
+                  {valores.map((v) => (
+                    <button key={v} onClick={() => puntear(j, v)} aria-label={`${j.nombre} más ${v}`}>
+                      +{v}
+                    </button>
+                  ))}
+                  <button className="falta" onClick={() => faltar(j)} aria-label={`Falta de ${j.nombre}`}>
+                    F
                   </button>
-                ))}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         <div className="barra-deshacer">
@@ -136,17 +157,17 @@ export default function Consola() {
           </button>
         </div>
 
-        {ultimoToque && <div className="aviso">Anotado: {ultimoToque}</div>}
+        {ultimoToque && <div className="aviso">{ultimoToque}</div>}
 
         <div>
           <h2 className="seccion" style={{ marginTop: 4 }}>Últimas acciones</h2>
           <div className="registro">
             {recientes.map((e) => (
               <div key={e.id} className={`ev ${e.anulado ? 'anulado' : ''}`}>
-                <span className="mas">+{e.puntos}</span>
-                <span className="quien">
-                  {jugadoresPorId[e.jugadorId]?.nombre || 'Sin jugador'}
+                <span className={`mas ${e.tipo === 'falta' ? 'falta' : ''}`}>
+                  {e.tipo === 'falta' ? 'F' : `+${e.puntos}`}
                 </span>
+                <span className="quien">{jugadoresPorId[e.jugadorId]?.nombre || 'Sin jugador'}</span>
                 {e.anulado ? (
                   <span className="pill">anulado</span>
                 ) : (
@@ -154,18 +175,16 @@ export default function Consola() {
                 )}
               </div>
             ))}
-            {!recientes.length && <div className="sub">Todavía no hay anotaciones.</div>}
+            {!recientes.length && <div className="sub">Todavía no hay acciones.</div>}
           </div>
           <p className="sub" style={{ marginTop: 8 }}>
-            Nada se borra. Lo anulado queda registrado con su hora, y así el marcador puede
-            explicarse después.
+            Puntos y faltas son la misma lista de eventos, así que se corrigen igual. Nada se
+            borra: lo anulado queda con su hora.
           </p>
         </div>
 
         {partido.estado === 'vivo' && (
-          <button className="btn fantasma" onClick={finalizar}>
-            Cerrar el partido
-          </button>
+          <button className="btn fantasma" onClick={finalizar}>Cerrar el partido</button>
         )}
       </div>
     </>

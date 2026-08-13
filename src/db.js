@@ -10,9 +10,15 @@ db.version(1).stores({
   equipos: 'id, ligaId',
   jugadores: 'id, ligaId, equipoId',
   partidos: 'id, ligaId, canchaId, estado, codigo, inicio',
-  // El marcador nunca se guarda como número: se guarda como eventos.
   eventos: 'id, partidoId, [partidoId+seq], seq',
   cuenta: 'id',
+})
+
+db.version(2).stores({
+  canchas: 'id, pais, provincia',
+  ligas: 'id, codigo, estado, deporte, pais, provincia',
+  noticias: 'id, publicada',
+  meta: 'id',
 })
 
 export const uid = () => Math.random().toString(36).slice(2, 10)

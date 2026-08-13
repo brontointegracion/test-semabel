@@ -105,6 +105,7 @@ function Tabla({ liga, equipos, partidos, eventosPorPartido }) {
               <th>G</th>
               <th>P</th>
               <th>{liga.deporte === 'baloncesto' ? 'PF' : 'GF'}</th>
+              <th>Fal</th>
               <th>Pts</th>
             </tr>
           </thead>
@@ -122,6 +123,7 @@ function Tabla({ liga, equipos, partidos, eventosPorPartido }) {
                 <td>{f.jg}</td>
                 <td>{f.jp}</td>
                 <td>{f.pf}</td>
+                <td>{f.faltas}</td>
                 <td className="pts">{f.pts}</td>
               </tr>
             ))}
@@ -207,6 +209,25 @@ function Jugadores({ jugadores, equiposPorId, partidos, eventosPorPartido }) {
                 {s.promedio.toFixed(1)}
               </div>
               <div className="sub" style={{ fontSize: '0.68rem' }}>por juego</div>
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      <h2 className="seccion">Más faltas</h2>
+      <div className="lista">
+        {[...stats].sort((a, b) => b.faltas - a.faltas).slice(0, 8).map((s, i) => (
+          <Link key={s.jugador.id} to={`/jugador/${s.jugador.id}`} className="jugador-fila">
+            <span className="pos" style={{ paddingLeft: 4 }}>{i + 1}</span>
+            <Escudo equipo={equiposPorId[s.jugador.equipoId]} size="sm" />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="nombre" style={{ fontWeight: 600 }}>{s.jugador.nombre}</div>
+              <div className="sub" style={{ fontSize: '0.75rem' }}>
+                {equiposPorId[s.jugador.equipoId]?.nombre} · {s.faltasPorJuego.toFixed(1)} por juego
+              </div>
+            </div>
+            <div style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: 'var(--acento-ink)' }}>
+              {s.faltas}
             </div>
           </Link>
         ))}

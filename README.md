@@ -15,11 +15,13 @@ npm run dev      # http://localhost:5173
 
 | Pantalla | Qué demuestra |
 |---|---|
-| **Ligas** | Las ligas del organizador, con el saldo de partidos disponible |
+| **Inicio** | La portada pública: la visión arriba, y filtros de deporte → *ahora mismo* / *lo que viene*, más país y provincia |
+| **Noticias** | Últimas noticias, con una nota de pago que corta a la mitad |
+| **Mis ligas** | Las ligas del organizador, con el saldo de partidos disponible |
 | **Nueva liga** | Condiciones → calendario propuesto → publicar. El generador de verdad, no una maqueta |
 | **Liga** | Página pública: posiciones, calendario y goleadores, todo derivado de eventos |
-| **Marcador** | La pantalla que reemplaza el marcador físico: números enormes, código corto para la tele, pantalla completa |
-| **Consola del árbitro** | Anotar con una mano, deshacer y rehacer siempre visibles, registro de las últimas acciones |
+| **Marcador** | La pantalla que reemplaza el marcador físico: números enormes, código corto para la tele, pantalla completa. Deslizando hacia abajo: mejor anotador y quien más faltas cometió, por equipo |
+| **Consola del árbitro** | Anotar y cargar faltas con una mano, deshacer y rehacer siempre visibles, registro de las últimas acciones |
 | **Jugador** | Perfil acumulado y el momento de reclamarlo, que es donde se pide el consentimiento |
 | **Cancha** | La cancha como entidad propia, con su agenda y sus ligas |
 | **Saldo** | Saldo prepago de partidos, paquetes y medios de pago locales |
@@ -34,6 +36,22 @@ npm run dev      # http://localhost:5173
 - **Cobrar nunca pasa en la cancha.** El saldo se compra sentado; el partido lo consume solo.
 - **Anotar el resultado a mano es gratis.** El saldo compra el vivo, no el derecho a existir.
 - **Español primero.** La interfaz nació en español, no traducida.
+- **La geografía filtra, no encierra.** Desde Panamá se ve Chiriquí, Darién, Bocas — y también
+  Medellín. El filtro acota lo que miras, nunca lo que puedes mirar.
+- **La publicidad no toca el partido.** El espacio patrocinado vive en la portada y en
+  noticias, nunca sobre el marcador.
+
+## El color
+
+Blanco y rojo. Todo el rojo sale de dos variables al inicio de `src/styles.css`:
+
+```css
+--acento:     #D7263D;   /* rellenos, barras, estado en vivo */
+--acento-ink: #A50F26;   /* texto rojo sobre blanco */
+```
+
+Cambiar esas dos líneas cambia la aplicación entera. El rojo del ícono está en
+`tools/make-icons.mjs` (constante `ROJO`); después de tocarlo, `node tools/make-icons.mjs`.
 
 ## Dónde vive todo
 

@@ -8,7 +8,7 @@ export default function Jugador() {
   const d = useJugador(id)
   if (!d) return null
 
-  const { jugador, equipo, liga, equiposPorId, partidosPorId, eventos, puntos, partidosJugados } = d
+  const { jugador, equipo, liga, equiposPorId, partidosPorId, eventos, puntos, faltas, partidosJugados } = d
   const promedio = partidosJugados ? puntos / partidosJugados : 0
 
   const porPartido = {}
@@ -58,6 +58,10 @@ export default function Jugador() {
         <div className="metrica">
           <div className="n">{promedio.toFixed(1)}</div>
           <div className="q">Promedio</div>
+        </div>
+        <div className="metrica">
+          <div className="n" style={{ color: 'var(--acento-ink)' }}>{faltas}</div>
+          <div className="q">Faltas</div>
         </div>
       </div>
 

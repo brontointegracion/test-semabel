@@ -36,7 +36,9 @@ function png(size, paint) {
   ])
 }
 
-// A court-green ground with a white ball outline and two court lines.
+// Rojo de marca con la pelota en blanco. Un solo valor que cambiar: ROJO.
+const ROJO = [215, 38, 61]
+
 const paint = (x, y, size) => {
   const s = size / 512
   const cx = size / 2, cy = size / 2
@@ -45,7 +47,7 @@ const paint = (x, y, size) => {
   const seamV = Math.abs(x - cx) < 11 * s && d < 152 * s
   const seamH = Math.abs(y - cy) < 11 * s && d < 152 * s
   if (ring || seamV || seamH) return [255, 255, 255, 255]
-  return [13, 107, 85, 255]
+  return [...ROJO, 255]
 }
 
 mkdirSync(new URL('../public/', import.meta.url), { recursive: true })
