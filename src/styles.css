@@ -223,6 +223,38 @@ h2.seccion { font-size: 1.02rem; font-weight: 700; letter-spacing: -0.01em; marg
   text-transform: uppercase; color: var(--ink-mute);
 }
 
+/* ---- región: el país al que está restringido el sitio ---- */
+
+.region {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.region-linea { display: flex; align-items: center; gap: 11px; }
+
+.region .bandera {
+  flex: none;
+  width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--acento-wash); color: var(--acento-ink);
+  font-size: 0.8rem;
+}
+
+.region .pais { font-weight: 700; letter-spacing: -0.01em; }
+
+.region .cambiar {
+  flex: none;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--acento-ink);
+  font-weight: 700; font-size: 0.8rem;
+  padding: 7px 12px; border-radius: 999px;
+  cursor: pointer;
+}
+
 /* ---- banner patrocinado ---- */
 
 .banner {

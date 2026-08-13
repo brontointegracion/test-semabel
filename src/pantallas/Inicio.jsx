@@ -1,10 +1,9 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useDescubrir } from '../datos'
+import { useDescubrir, useRegion } from '../datos'
 import { marcadorEquipo } from '../lib/marcador'
+import { PAISES, cambiarPais, cambiarProvincia } from '../lib/region'
 import { Marca, Escudo, Vacio, diaRelativo, hora, transcurrido, fechaCorta, mismoDia } from '../ui'
-
-const PAISES = { PA: 'Panamá', CO: 'Colombia' }
 
 const DEPORTES = [
   ['todos', 'Todos'],
@@ -12,31 +11,41 @@ const DEPORTES = [
   ['futsal', 'Fútbol sala'],
 ]
 
+const COMO = {
+  ip: 'según tu conexión',
+  'zona horaria': 'según la hora de tu teléfono',
+  manual: 'lo elegiste tú',
+  predeterminado: 'por defecto',
+}
+
 export default function Inicio() {
   const d = useDescubrir()
+  const region = useRegion()
   const [deporte, setDeporte] = useState('todos')
   const [cuando, setCuando] = useState('ahora')
-  const [pais, setPais] = useState('todos')
-  const [provincia, setProvincia] = useState('todas')
+  const [abrirPaises, setAbrirPaises] = useState(false)
 
-  const paises = useMemo(
+  const provincias = useMemo(() => {
+    if (!d || !region) return []
+    return [...new Set(d.ligas.filter((l) => l.pais === region.pais).map((l) => l.provincia))].sort()
+  }, [d, region])
+
+  const paisesConLigas = useMemo(
     () => [...new Set((d?.ligas || []).map((l) => l.pais))].sort(),
     [d],
   )
 
-  const provincias = useMemo(() => {
-    if (pais === 'todos') return []
-    return [...new Set((d?.ligas || []).filter((l) => l.pais === pais).map((l) => l.provincia))].sort()
-  }, [d, pais])
+  if (!d || !region) return null
 
-  if (!d) return null
+  const { ligas, ligasPorId, equipos, canchas, vivos, proximos, eventosPorPartido } = d
+  const provincia = region.provincia || 'todas'
 
-  const { ligas, ligasPorId, equipos, canchas, vivos, proximos, eventosPorPartido, totales } = d
+  // El sitio está restringido al país de quien mira: nada de otro país entra aquí.
+  const delPais = ligas.filter((l) => l.pais === region.pais)
 
   const pasaLiga = (liga) => {
-    if (!liga) return false
+    if (!liga || liga.pais !== region.pais) return false
     if (deporte !== 'todos' && liga.deporte !== deporte) return false
-    if (pais !== 'todos' && liga.pais !== pais) return false
     if (provincia !== 'todas' && liga.provincia !== provincia) return false
     return true
   }
@@ -47,7 +56,11 @@ export default function Inicio() {
   const proximosF = proximos.filter(pasa).slice(0, 20)
   const ligasF = ligas.filter(pasaLiga)
 
-  const cambiarPais = (v) => { setPais(v); setProvincia('todas') }
+  const totales = {
+    ligas: delPais.length,
+    canchas: new Set(delPais.flatMap((l) => l.canchaIds)).size,
+    provincias: new Set(delPais.map((l) => l.provincia)).size,
+  }
 
   return (
     <>
@@ -66,14 +79,43 @@ export default function Inicio() {
             <div className="q">Ligas</div>
           </div>
           <div className="cifra">
-            <div className="n">{totales.jugados}</div>
-            <div className="q">Partidos anotados</div>
+            <div className="n">{totales.provincias}</div>
+            <div className="q">Provincias</div>
           </div>
           <div className="cifra">
             <div className="n">{totales.canchas}</div>
             <div className="q">Canchas</div>
           </div>
         </div>
+      </div>
+
+      <div className="region">
+        <div className="region-linea">
+          <span className="bandera" aria-hidden="true">◉</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="pais">{PAISES[region.pais] || region.pais}</div>
+            <div className="sub" style={{ fontSize: '0.74rem' }}>
+              Estás viendo las ligas de tu país, {COMO[region.detectadoPor] || 'detectado'}
+            </div>
+          </div>
+          <button className="cambiar" onClick={() => setAbrirPaises((v) => !v)}>
+            {abrirPaises ? 'Cerrar' : 'Cambiar'}
+          </button>
+        </div>
+
+        {abrirPaises && (
+          <div className="carrete" style={{ marginTop: 10 }}>
+            {paisesConLigas.map((p) => (
+              <button
+                key={p}
+                className={`chip ${region.pais === p ? 'on' : ''}`}
+                onClick={() => { cambiarPais(p); setAbrirPaises(false) }}
+              >
+                {PAISES[p] || p}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="banner">
@@ -85,71 +127,79 @@ export default function Inicio() {
         </div>
       </div>
 
-      <div className="filtros">
-        <div className="carrete">
-          <button className={`chip ${pais === 'todos' ? 'on' : ''}`} onClick={() => cambiarPais('todos')}>
-            Todo el mundo
-          </button>
-          {paises.map((p) => (
-            <button key={p} className={`chip ${pais === p ? 'on' : ''}`} onClick={() => cambiarPais(p)}>
-              {PAISES[p] || p}
-            </button>
-          ))}
-        </div>
-
-        {provincias.length > 1 && (
-          <div className="carrete">
-            <button className={`chip ${provincia === 'todas' ? 'on' : ''}`} onClick={() => setProvincia('todas')}>
-              Todas
-            </button>
-            {provincias.map((p) => (
-              <button key={p} className={`chip ${provincia === p ? 'on' : ''}`} onClick={() => setProvincia(p)}>
-                {p}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <div className="segmento">
-          {DEPORTES.map(([k, etiqueta]) => (
-            <button key={k} className={deporte === k ? 'on' : ''} onClick={() => setDeporte(k)}>
-              {etiqueta}
-            </button>
-          ))}
-        </div>
-
-        <div className="segmento">
-          <button className={cuando === 'ahora' ? 'on' : ''} onClick={() => setCuando('ahora')}>
-            Ahora mismo{vivosF.length ? ` (${vivosF.length})` : ''}
-          </button>
-          <button className={cuando === 'viene' ? 'on' : ''} onClick={() => setCuando('viene')}>
-            Lo que viene
-          </button>
-        </div>
-      </div>
-
-      {cuando === 'ahora' ? (
-        <Ahora partidos={vivosF} equipos={equipos} canchas={canchas} ligas={ligasPorId} eventos={eventosPorPartido} />
+      {!delPais.length ? (
+        <Vacio>
+          Todavía no hay ligas en {PAISES[region.pais] || region.pais}.<br />
+          Si organizas una, puedes ser la primera.
+        </Vacio>
       ) : (
-        <Viene partidos={proximosF} equipos={equipos} canchas={canchas} ligas={ligasPorId} />
-      )}
-
-      <h2 className="seccion">Ligas en esta zona</h2>
-      <div className="lista">
-        {ligasF.map((l) => (
-          <Link key={l.id} to={`/liga/${l.id}`} className="card">
-            <div className="fila-liga">
-              <div className="info">
-                <div className="nombre">{l.nombre}</div>
-                <div className="sub" style={{ marginTop: 2 }}>
-                  {l.provincia}, {PAISES[l.pais] || l.pais} · organiza {l.organizador}
-                </div>
+        <>
+          <div className="filtros">
+            {provincias.length > 1 && (
+              <div className="carrete">
+                <button
+                  className={`chip ${provincia === 'todas' ? 'on' : ''}`}
+                  onClick={() => cambiarProvincia('todas')}
+                >
+                  Todas las provincias
+                </button>
+                {provincias.map((p) => (
+                  <button
+                    key={p}
+                    className={`chip ${provincia === p ? 'on' : ''}`}
+                    onClick={() => cambiarProvincia(p)}
+                  >
+                    {p}
+                  </button>
+                ))}
               </div>
+            )}
+
+            <div className="segmento">
+              {DEPORTES.map(([k, etiqueta]) => (
+                <button key={k} className={deporte === k ? 'on' : ''} onClick={() => setDeporte(k)}>
+                  {etiqueta}
+                </button>
+              ))}
             </div>
-          </Link>
-        ))}
-        {!ligasF.length && <Vacio>Todavía no hay ligas con ese filtro.</Vacio>}
-      </div>
+
+            <div className="segmento">
+              <button className={cuando === 'ahora' ? 'on' : ''} onClick={() => setCuando('ahora')}>
+                Ahora mismo{vivosF.length ? ` (${vivosF.length})` : ''}
+              </button>
+              <button className={cuando === 'viene' ? 'on' : ''} onClick={() => setCuando('viene')}>
+                Lo que viene
+              </button>
+            </div>
+          </div>
+
+          {cuando === 'ahora' ? (
+            <Ahora partidos={vivosF} equipos={equipos} canchas={canchas} ligas={ligasPorId} eventos={eventosPorPartido} />
+          ) : (
+            <Viene partidos={proximosF} equipos={equipos} canchas={canchas} />
+          )}
+
+          <h2 className="seccion">
+            Ligas {provincia === 'todas' ? `en ${PAISES[region.pais] || region.pais}` : `en ${provincia}`}
+          </h2>
+          <div className="lista">
+            {ligasF.map((l) => (
+              <Link key={l.id} to={`/liga/${l.id}`} className="card">
+                <div className="fila-liga">
+                  <div className="info">
+                    <div className="nombre">{l.nombre}</div>
+                    <div className="sub" style={{ marginTop: 2 }}>
+                      {l.provincia} · {l.deporte === 'baloncesto' ? 'Baloncesto' : 'Fútbol sala'} ·
+                      {' '}organiza {l.organizador}
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+            {!ligasF.length && <Vacio>No hay ligas con ese filtro.</Vacio>}
+          </div>
+        </>
+      )}
     </>
   )
 }
@@ -191,7 +241,7 @@ function Ahora({ partidos, equipos, canchas, ligas, eventos }) {
   )
 }
 
-function Viene({ partidos, equipos, canchas, ligas }) {
+function Viene({ partidos, equipos, canchas }) {
   if (!partidos.length) return <Vacio>No hay partidos programados con ese filtro.</Vacio>
 
   let ultimo = null

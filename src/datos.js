@@ -7,6 +7,9 @@ export const useCuenta = () => useLiveQuery(() => db.cuenta.get('yo'), [])
 
 export const useCanchas = () => useLiveQuery(() => db.canchas.toArray(), [], [])
 
+/** País al que está restringido el sitio, y la provincia elegida dentro de él. */
+export const useRegion = () => useLiveQuery(() => db.meta.get('region'), [])
+
 /** Todo lo que necesita la portada. Los datos son pocos: se filtra en memoria. */
 export function useDescubrir() {
   return useLiveQuery(async () => {

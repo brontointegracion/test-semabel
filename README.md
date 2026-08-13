@@ -15,7 +15,7 @@ npm run dev      # http://localhost:5173
 
 | Pantalla | Qué demuestra |
 |---|---|
-| **Inicio** | La portada pública: la visión arriba, y filtros de deporte → *ahora mismo* / *lo que viene*, más país y provincia |
+| **Inicio** | La portada pública: la visión arriba, el país detectado solo, y filtros de provincia → deporte → *ahora mismo* / *lo que viene* |
 | **Noticias** | Últimas noticias, con una nota de pago que corta a la mitad |
 | **Mis ligas** | Las ligas del organizador, con el saldo de partidos disponible |
 | **Nueva liga** | Condiciones → calendario propuesto → publicar. El generador de verdad, no una maqueta |
@@ -36,8 +36,8 @@ npm run dev      # http://localhost:5173
 - **Cobrar nunca pasa en la cancha.** El saldo se compra sentado; el partido lo consume solo.
 - **Anotar el resultado a mano es gratis.** El saldo compra el vivo, no el derecho a existir.
 - **Español primero.** La interfaz nació en español, no traducida.
-- **La geografía filtra, no encierra.** Desde Panamá se ve Chiriquí, Darién, Bocas — y también
-  Medellín. El filtro acota lo que miras, nunca lo que puedes mirar.
+- **El sitio se restringe al país de quien mira.** Se detecta por IP; si eso falla, por la zona
+  horaria del dispositivo. Dentro del país, el filtro es por provincia. `src/lib/region.js`.
 - **La publicidad no toca el partido.** El espacio patrocinado vive en la portada y en
   noticias, nunca sobre el marcador.
 

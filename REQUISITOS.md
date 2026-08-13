@@ -117,7 +117,7 @@ Constraints the whole design hangs on.
 - Names carry accents and ñ, so collation and search must handle them
 - Phone numbers stored in international format for WhatsApp verification
 
-**Geography filters, it never walls.** Someone in Panamá sees Chiriquí, Darién and Bocas del Toro — and also Medellín, if they want it. The country and province selector narrows what you're looking at; it never decides what you're allowed to see. A platform whose premise is exposing unseen talent cannot start by hiding it from the next province. Default to local, open to everything.
+**The site scopes itself to the visitor's country, automatically.** Someone opening it from Panamá gets Panamá: its ligas, its canchas, its news, and a province filter within it — Bocas del Toro, Chiriquí, Darién, and the rest. Other countries are not shown. The country is detected from the visitor's IP address; when that lookup fails — no connection, an ad blocker, a service worker serving the page offline — it falls back to the device's timezone, which is right nearly always and depends on nobody. A manual country switch exists as a correction, because geo-IP misplaces a real share of visitors and without it a wrongly-located person, a traveler, or a Panamanian living abroad would open the site and find it empty.
 
 **Fouls are events, exactly like points.** Same list, same undo, same audit trail. That makes discipline a first-class statistic — most-fouled player per team, team fouls per period — without a second system, and it is what lets the match page show figures rather than only a score.
 
@@ -161,7 +161,8 @@ Constraints the whole design hangs on.
 - Team result plus a small per-player line, one model for all sports
 - Fouls per player and per team, on the same event log
 - Match figures: top scorer and most-fouled player for each team
-- Discovery home: sport filter, then "ahora mismo" / "lo que viene", plus country and province
+- Country detected on arrival; everything scoped to it, with a province filter inside
+- Discovery home: sport filter, then "ahora mismo" / "lo que viene"
 - News section, part free and part paid
 - One small sponsored slot on discovery surfaces only
 - Public dashboard: no install, no account to view
