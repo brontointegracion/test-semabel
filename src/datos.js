@@ -1,0 +1,156 @@
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db } from './db'
+
+const porId = (filas) => Object.fromEntries(filas.map((f) => [f.id, f]))
+
+export const useCuenta = () => useLiveQuery(() => db.cuenta.get('yo'), [])
+
+export const useCanchas = () => useLiveQuery(() => db.canchas.toArray(), [], [])
+
+export function useLigas() {
+  return useLiveQuery(async () => {
+    const ligas = await db.ligas.toArray()
+    const partidos = await db.partidos.toArray()
+    const canchas = porId(await db.canchas.toArray())
+    return ligas.map((liga) => {
+      const suyos = partidos
+        .filter((p) => p.ligaId === liga.id)
+        .sort((a, b) => a.inicio.localeCompare(b.inicio))
+      return {
+        liga,
+        canchas: liga.canchaIds.map((id) => canchas[id]).filter(Boolean),
+        total: suyos.length,
+        jugados: suyos.filter((p) => p.estado === 'final').length,
+        vivo: suyos.find((p) => p.estado === 'vivo') || null,
+        proximo: suyos.find((p) => p.estado === 'programado') || null,
+      }
+    })
+  }, [], [])
+}
+
+export function useLiga(id) {
+  return useLiveQuery(async () => {
+    const liga = await db.ligas.get(id)
+    if (!liga) return null
+    const [equipos, jugadores, partidos, canchas] = await Promise.all([
+      db.equipos.where('ligaId').equals(id).toArray(),
+      db.jugadores.where('ligaId').equals(id).toArray(),
+      db.partidos.where('ligaId').equals(id).toArray(),
+      db.canchas.toArray(),
+    ])
+    const eventos = await db.eventos
+      .where('partidoId')
+      .anyOf(partidos.map((p) => p.id))
+      .toArray()
+
+    const eventosPorPartido = {}
+    for (const e of eventos) (eventosPorPartido[e.partidoId] ||= []).push(e)
+
+    return {
+      liga,
+      equipos,
+      jugadores,
+      partidos: partidos.sort((a, b) => a.inicio.localeCompare(b.inicio)),
+      equiposPorId: porId(equipos),
+      jugadoresPorId: porId(jugadores),
+      canchasPorId: porId(canchas),
+      eventosPorPartido,
+    }
+  }, [id])
+}
+
+export function usePartido(id) {
+  return useLiveQuery(async () => {
+    const partido = await db.partidos.get(id)
+    if (!partido) return null
+    const liga = await db.ligas.get(partido.ligaId)
+    const [equipos, jugadores, eventos, cancha] = await Promise.all([
+      db.equipos.where('ligaId').equals(partido.ligaId).toArray(),
+      db.jugadores.where('ligaId').equals(partido.ligaId).toArray(),
+      db.eventos.where('partidoId').equals(id).toArray(),
+      db.canchas.get(partido.canchaId),
+    ])
+    const equiposPorId = porId(equipos)
+    return {
+      partido,
+      liga,
+      cancha,
+      local: equiposPorId[partido.localId],
+      visita: equiposPorId[partido.visitaId],
+      jugadores,
+      jugadoresPorId: porId(jugadores),
+      eventos: eventos.sort((a, b) => a.seq - b.seq),
+    }
+  }, [id])
+}
+
+export function useJugador(id) {
+  return useLiveQuery(async () => {
+    const jugador = await db.jugadores.get(id)
+    if (!jugador) return null
+    const [equipo, liga, partidos] = await Promise.all([
+      db.equipos.get(jugador.equipoId),
+      db.ligas.get(jugador.ligaId),
+      db.partidos.where('ligaId').equals(jugador.ligaId).toArray(),
+    ])
+    const eventos = await db.eventos
+      .where('partidoId')
+      .anyOf(partidos.map((p) => p.id))
+      .toArray()
+    const equipos = await db.equipos.where('ligaId').equals(jugador.ligaId).toArray()
+
+    const suyos = eventos.filter((e) => e.jugadorId === id && !e.anulado)
+    const finalizados = new Set(
+      partidos.filter((p) => p.estado === 'final').map((p) => p.id),
+    )
+    const contados = suyos.filter((e) => finalizados.has(e.partidoId))
+    const partidosJugados = new Set(contados.map((e) => e.partidoId)).size
+
+    return {
+      jugador,
+      equipo,
+      liga,
+      equiposPorId: porId(equipos),
+      partidosPorId: porId(partidos),
+      eventos: contados,
+      puntos: contados.reduce((n, e) => n + e.puntos, 0),
+      partidosJugados,
+    }
+  }, [id])
+}
+
+export function useCancha(id) {
+  return useLiveQuery(async () => {
+    const cancha = await db.canchas.get(id)
+    if (!cancha) return null
+    const ligas = (await db.ligas.toArray()).filter((l) => l.canchaIds.includes(id))
+    const partidos = (await db.partidos.where('canchaId').equals(id).toArray())
+      .sort((a, b) => a.inicio.localeCompare(b.inicio))
+    const equipos = await db.equipos.toArray()
+    return { cancha, ligas, partidos, equiposPorId: porId(equipos), ligasPorId: porId(ligas) }
+  }, [id])
+}
+
+export function useEnVivo() {
+  return useLiveQuery(async () => {
+    const partidos = await db.partidos.toArray()
+    const ligas = porId(await db.ligas.toArray())
+    const equipos = porId(await db.equipos.toArray())
+    const canchas = porId(await db.canchas.toArray())
+    const vivos = partidos.filter((p) => p.estado === 'vivo')
+    const eventos = await db.eventos
+      .where('partidoId')
+      .anyOf(vivos.map((p) => p.id))
+      .toArray()
+    const eventosPorPartido = {}
+    for (const e of eventos) (eventosPorPartido[e.partidoId] ||= []).push(e)
+
+    const ahora = Date.now()
+    const proximos = partidos
+      .filter((p) => p.estado === 'programado' && new Date(p.inicio).getTime() > ahora)
+      .sort((a, b) => a.inicio.localeCompare(b.inicio))
+      .slice(0, 12)
+
+    return { vivos, proximos, ligas, equipos, canchas, eventosPorPartido }
+  }, [], null)
+}

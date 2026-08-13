@@ -1,0 +1,216 @@
+import { useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import { useLiga } from '../datos'
+import { tablaPosiciones, estadisticaJugadores, marcadorEquipo } from '../lib/marcador'
+import { Topbar, Escudo, Vacio, fechaCorta, hora, mismoDia } from '../ui'
+
+const PESTANAS = [
+  ['tabla', 'Posiciones'],
+  ['calendario', 'Calendario'],
+  ['jugadores', 'Jugadores'],
+]
+
+export default function Liga() {
+  const { id } = useParams()
+  const d = useLiga(id)
+  const [pestana, setPestana] = useState('tabla')
+  const [copiado, setCopiado] = useState(false)
+
+  if (!d) return null
+  const { liga, equipos, jugadores, partidos, equiposPorId, canchasPorId, eventosPorPartido } = d
+
+  const compartir = async () => {
+    const url = `${location.origin}/liga/${liga.id}`
+    try {
+      if (navigator.share) await navigator.share({ title: liga.nombre, url })
+      else await navigator.clipboard.writeText(url)
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 1800)
+    } catch { /* el usuario canceló */ }
+  }
+
+  return (
+    <>
+      <Topbar titulo={liga.nombre} />
+
+      <div className="card" style={{ marginTop: 14 }}>
+        <div className="eyebrow">Página pública de la liga</div>
+        <div className="sub" style={{ marginTop: 6 }}>
+          {liga.deporte === 'baloncesto' ? 'Baloncesto' : 'Fútbol sala'} ·{' '}
+          {liga.canchaIds.map((c) => canchasPorId[c]?.nombre).filter(Boolean).join(' y ')}
+        </div>
+        <div className="btn-fila" style={{ marginTop: 12 }}>
+          <button className="btn" onClick={compartir}>
+            {copiado ? 'Link copiado' : 'Compartir link'}
+          </button>
+        </div>
+        <p className="sub" style={{ marginTop: 10, marginBottom: 0 }}>
+          Quien abra el link ve la tabla, el calendario y el marcador en vivo. No necesita cuenta
+          ni instalar nada.
+        </p>
+      </div>
+
+      <div className="selector" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginTop: 16 }}>
+        {PESTANAS.map(([k, etiqueta]) => (
+          <button
+            key={k}
+            className={pestana === k ? 'activo' : ''}
+            style={pestana === k ? { background: 'var(--accent)' } : undefined}
+            onClick={() => setPestana(k)}
+          >
+            {etiqueta}
+          </button>
+        ))}
+      </div>
+
+      {pestana === 'tabla' && (
+        <Tabla liga={liga} equipos={equipos} partidos={partidos} eventosPorPartido={eventosPorPartido} />
+      )}
+
+      {pestana === 'calendario' && (
+        <Calendario
+          partidos={partidos}
+          equiposPorId={equiposPorId}
+          canchasPorId={canchasPorId}
+          eventosPorPartido={eventosPorPartido}
+        />
+      )}
+
+      {pestana === 'jugadores' && (
+        <Jugadores
+          jugadores={jugadores}
+          equiposPorId={equiposPorId}
+          partidos={partidos}
+          eventosPorPartido={eventosPorPartido}
+        />
+      )}
+    </>
+  )
+}
+
+function Tabla({ liga, equipos, partidos, eventosPorPartido }) {
+  const filas = tablaPosiciones({ equipos, partidos, eventosPorPartido, deporte: liga.deporte })
+  const jugados = partidos.filter((p) => p.estado === 'final').length
+
+  if (!jugados) return <Vacio>Todavía no se ha jugado ningún partido.</Vacio>
+
+  return (
+    <>
+      <div className="tabla-wrap" style={{ marginTop: 14 }}>
+        <table>
+          <thead>
+            <tr>
+              <th>Equipo</th>
+              <th>JJ</th>
+              <th>G</th>
+              <th>P</th>
+              <th>{liga.deporte === 'baloncesto' ? 'PF' : 'GF'}</th>
+              <th>Pts</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map((f, i) => (
+              <tr key={f.equipo.id}>
+                <td>
+                  <div className="equipo-celda">
+                    <span className="pos">{i + 1}</span>
+                    <Escudo equipo={f.equipo} size="sm" />
+                    <span className="nombre">{f.equipo.nombre}</span>
+                  </div>
+                </td>
+                <td>{f.jj}</td>
+                <td>{f.jg}</td>
+                <td>{f.jp}</td>
+                <td>{f.pf}</td>
+                <td className="pts">{f.pts}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="sub" style={{ marginTop: 10 }}>
+        La tabla sale de los eventos de cada partido, no de un marcador escrito a mano.
+      </p>
+    </>
+  )
+}
+
+function Calendario({ partidos, equiposPorId, canchasPorId, eventosPorPartido }) {
+  let ultimoDia = null
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      {partidos.map((p) => {
+        const nuevoDia = !ultimoDia || !mismoDia(ultimoDia, p.inicio)
+        ultimoDia = p.inicio
+        const evs = eventosPorPartido[p.id] || []
+        const gl = marcadorEquipo(evs, p.localId)
+        const gv = marcadorEquipo(evs, p.visitaId)
+        const jugado = p.estado === 'final'
+
+        return (
+          <div key={p.id}>
+            {nuevoDia && <div className="dia-sep">{fechaCorta(p.inicio)}</div>}
+            <Link to={`/partido/${p.id}`} className="partido" style={{ marginBottom: 8 }}>
+              <div className="cuando">
+                {p.estado === 'vivo' ? (
+                  <span className="pill vivo" style={{ fontSize: '0.58rem' }}>VIVO</span>
+                ) : (
+                  <>
+                    <div className="dia">{canchasPorId[p.canchaId]?.barrio || 'Cancha'}</div>
+                    <div className="hora">{hora(p.inicio)}</div>
+                  </>
+                )}
+              </div>
+              <div className="enfrenta">
+                <div className={`lado ${jugado && gl < gv ? 'perdio' : ''}`}>
+                  <Escudo equipo={equiposPorId[p.localId]} size="sm" />
+                  <span className="nombre">{equiposPorId[p.localId]?.nombre}</span>
+                  {(jugado || p.estado === 'vivo') && <span className="goles">{gl}</span>}
+                </div>
+                <div className={`lado ${jugado && gv < gl ? 'perdio' : ''}`}>
+                  <Escudo equipo={equiposPorId[p.visitaId]} size="sm" />
+                  <span className="nombre">{equiposPorId[p.visitaId]?.nombre}</span>
+                  {(jugado || p.estado === 'vivo') && <span className="goles">{gv}</span>}
+                </div>
+              </div>
+            </Link>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function Jugadores({ jugadores, equiposPorId, partidos, eventosPorPartido }) {
+  const stats = estadisticaJugadores({ jugadores, partidos, eventosPorPartido })
+    .filter((s) => s.partidos > 0)
+
+  if (!stats.length) return <Vacio>Las estadísticas aparecen cuando se juegue el primer partido.</Vacio>
+
+  return (
+    <>
+      <h2 className="seccion">Máximos anotadores</h2>
+      <div className="lista">
+        {stats.slice(0, 15).map((s, i) => (
+          <Link key={s.jugador.id} to={`/jugador/${s.jugador.id}`} className="jugador-fila">
+            <span className="pos" style={{ paddingLeft: 4 }}>{i + 1}</span>
+            <Escudo equipo={equiposPorId[s.jugador.equipoId]} size="sm" />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="nombre" style={{ fontWeight: 600 }}>{s.jugador.nombre}</div>
+              <div className="sub" style={{ fontSize: '0.75rem' }}>
+                #{s.jugador.dorsal} · {equiposPorId[s.jugador.equipoId]?.nombre}
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>
+                {s.promedio.toFixed(1)}
+              </div>
+              <div className="sub" style={{ fontSize: '0.68rem' }}>por juego</div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </>
+  )
+}
