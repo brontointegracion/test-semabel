@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { usePartido, useSesion } from '../datos'
-import { marcadorEquipo, faltasEquipo, periodoActual, destacadosDeEquipo } from '../lib/marcador'
+import { usePartido, useSesion, useMiVoto } from '../datos'
+import { db, uid } from '../db'
+import { votosGanador, votosJugadorDelPartido, compartir } from '../lib/votos'
+import { marcadorEquipo, faltasEquipo, periodoActual, destacadosDeEquipo, puntosJugador } from '../lib/marcador'
 import { esDuenoDe } from '../lib/sesion'
 import { PERIODOS, restanteMs, mmss, corriendo, nombrePeriodo } from '../lib/reloj'
 import { Escudo, fechaCorta, hora } from '../ui'
@@ -105,7 +107,7 @@ export default function Partido() {
   // Cómo llegar importa sobre todo ANTES del partido, que es justo cuando
   // todavía no hay nada anotado. Por eso el detalle también se abre sin eventos.
   const hayComoLlegar = tieneUbicacion(cancha) && partido.estado !== 'final'
-  const hayAlgoDebajo = hayDetalle || hayComoLlegar
+  const hayAlgoDebajo = hayDetalle || hayComoLlegar || partido.estado !== 'vivo'
 
   return (
     <div className="board-pagina" ref={contenedor}>
@@ -200,6 +202,9 @@ export default function Partido() {
             </>
           )}
 
+          <Votos partido={partido} liga={liga} local={local} visita={visita}
+                 jugadores={jugadores} eventos={eventos} />
+
           {hayComoLlegar && (
             <>
               <h2 className="seccion">Dónde se juega</h2>
@@ -244,6 +249,136 @@ function ColumnaFiguras({ equipo, eventos, jugadores }) {
         <span className="quien">{masFaltas ? corto(masFaltas.jugador) : '—'}</span>
         <span className="n faltas">{masFaltas ? masFaltas.faltas : ''}</span>
       </div>
+    </div>
+  )
+}
+
+
+/**
+ * Votar es un toque y no pide cuenta. Sirve para dos cosas: le da algo que
+ * hacer a quien mira, y le da al jugador algo que pegar en el grupo de
+ * WhatsApp de su equipo — que no es nuestro, es de ellos, y es donde ya está
+ * toda la gente que va a la cancha.
+ *
+ * Sin servidor, los votos de los demás son simulados pero estables (ver
+ * lib/votos.js). Con backend se cambia el contador y nada más.
+ */
+function Votos({ partido, liga, local, visita, jugadores, eventos }) {
+  const mi = useMiVoto(partido.id)
+  const [aviso, setAviso] = useState(null)
+
+  const votar = async (opcion) => {
+    if (mi) await db.votos.update(mi.id, { opcion })
+    else await db.votos.add({ id: uid(), partidoId: partido.id, opcion, cuando: Date.now() })
+    navigator.vibrate?.(10)
+  }
+
+  const compartirTexto = async (texto) => {
+    const r = await compartir(texto, location.href)
+    if (r) setAviso(r === 'copiado' ? 'Copiado: pégalo en el grupo' : null)
+    setTimeout(() => setAviso(null), 2200)
+  }
+
+  if (partido.estado === 'programado' || partido.estado === 'vivo') {
+    const v = votosGanador({ partido, local, visita, miVoto: mi?.opcion })
+    const cerrado = partido.estado === 'vivo'
+
+    return (
+      <div className="votacion">
+        <h2 className="seccion" style={{ marginTop: 0 }}>
+          {cerrado ? 'Así venía la previa' : '¿Quién gana?'}
+        </h2>
+
+        <div className="barra-voto">
+          <span style={{ width: `${v.pctLocal}%`, background: local?.color }} />
+          <span style={{ width: `${v.pctVisita}%`, background: visita?.color }} />
+        </div>
+        <div className="pies-voto">
+          <span><b>{v.pctLocal}%</b> {local?.corto}</span>
+          <span className="sub">{v.total} votos</span>
+          <span>{visita?.corto} <b>{v.pctVisita}%</b></span>
+        </div>
+
+        {!cerrado && (
+          <div className="btn-fila" style={{ marginTop: 12 }}>
+            {[local, visita].map((eq) => (
+              <button
+                key={eq.id}
+                className={`btn ${mi?.opcion === eq.id ? '' : 'fantasma'}`}
+                onClick={() => votar(eq.id)}
+              >
+                {mi?.opcion === eq.id ? '✓ ' : ''}{eq.corto}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {mi && (
+          <button
+            className="btn sutil"
+            style={{ marginTop: 8 }}
+            onClick={() => compartirTexto(
+              `Voté por ${mi.opcion === local.id ? local.nombre : visita.nombre} en ` +
+              `${local.nombre} vs ${visita.nombre} (${liga.nombre}). ` +
+              `Va ${v.pctLocal}%-${v.pctVisita}%. ¿Tú qué dices?`,
+            )}
+          >
+            Mandar al grupo
+          </button>
+        )}
+        {aviso && <div className="aviso" style={{ marginTop: 8 }}>{aviso}</div>}
+      </div>
+    )
+  }
+
+  // Terminado: jugador del partido, votado por quien lo vio.
+  const v = votosJugadorDelPartido({
+    partido,
+    jugadores,
+    puntosDe: (id) => puntosJugador(eventos, id),
+    miVoto: mi?.opcion,
+  })
+  if (!v.filas.length) return null
+
+  return (
+    <div className="votacion">
+      <h2 className="seccion" style={{ marginTop: 0 }}>Jugador del partido</h2>
+      <p className="sub" style={{ marginTop: -6, marginBottom: 10 }}>
+        Vota quien lo vio. Un toque, sin cuenta.
+      </p>
+
+      <div className="lista">
+        {v.filas.map((f) => (
+          <button
+            key={f.jugador.id}
+            className={`voto-jugador ${mi?.opcion === f.jugador.id ? 'mio' : ''}`}
+            onClick={() => votar(f.jugador.id)}
+          >
+            <span className="relleno" style={{ width: `${f.pct}%` }} />
+            <span className="dorsal">{f.jugador.dorsal}</span>
+            <span className="quien">{f.jugador.nombre}</span>
+            <span className="sub">{f.puntos} pts</span>
+            <span className="pct">{f.pct}%</span>
+          </button>
+        ))}
+      </div>
+
+      {mi && (
+        <button
+          className="btn sutil"
+          style={{ marginTop: 10 }}
+          onClick={() => {
+            const elegido = v.filas.find((f) => f.jugador.id === mi.opcion)
+            compartirTexto(
+              `Mi jugador del partido: ${elegido?.jugador.nombre} (${elegido?.puntos} pts) ` +
+              `en ${local.nombre} vs ${visita.nombre}. Va ${elegido?.pct}% de los votos.`,
+            )
+          }}
+        >
+          Mandar al grupo
+        </button>
+      )}
+      {aviso && <div className="aviso" style={{ marginTop: 8 }}>{aviso}</div>}
     </div>
   )
 }

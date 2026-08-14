@@ -148,6 +148,18 @@ export default function Inicio() {
             <Viene partidos={proximosF} equipos={equipos} canchas={canchas} />
           )}
 
+          <Link to="/figuras" className="card destacado-link">
+            <div className="fila-liga">
+              <div className="info">
+                <div className="nombre">Figuras del barrio</div>
+                <div className="sub" style={{ marginTop: 2 }}>
+                  Los que más anotan, cruzando todas las ligas de la zona.
+                </div>
+              </div>
+              <span className="chev">→</span>
+            </div>
+          </Link>
+
           <h2 className="seccion">
             {provincia === 'todas' ? 'Todas las ligas' : `Ligas en ${provincia}`}
           </h2>

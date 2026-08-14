@@ -2,7 +2,7 @@ import { Link, useParams } from 'react-router-dom'
 import { db } from '../db'
 import { useJugador } from '../datos'
 import { Topbar, Escudo, fechaCorta } from '../ui'
-import { codigoDe, urlPartido } from '../lib/enlaces'
+import { codigoDe, urlPartido, urlEquipo } from '../lib/enlaces'
 import { useMeta } from '../lib/meta'
 
 export default function Jugador() {
@@ -46,7 +46,9 @@ export default function Jugador() {
         <Escudo equipo={equipo} size="lg" />
         <div className="datos">
           <div className="nom">{jugador.nombre}</div>
-          <div className="sub">#{jugador.dorsal} · {equipo?.nombre}</div>
+          <div className="sub">
+            #{jugador.dorsal} · <Link to={urlEquipo(equipo)} style={{ textDecoration: 'underline' }}>{equipo?.nombre}</Link>
+          </div>
           <div style={{ marginTop: 8 }}>
             {jugador.reclamado ? (
               <span className="pill acento">Perfil verificado</span>

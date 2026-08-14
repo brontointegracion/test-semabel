@@ -7,7 +7,7 @@ import { restanteMs } from './lib/reloj-calculo'
 //
 // Sube SEMILLA cuando cambie la forma de los datos: el prototipo se
 // resiembra solo en vez de quedar a medias.
-const SEMILLA = 7
+const SEMILLA = 8
 
 // Códigos cortos: los que se leen en la dirección y se escriben en el televisor.
 // Únicos entre sí para que nunca dos cosas respondan al mismo número.
@@ -184,7 +184,7 @@ export async function sembrarSiHaceFalta() {
     }
     await db.ligas.add(liga)
 
-    const equipos = def.equipos.map((e) => ({ id: uid(), ligaId: liga.id, ...e }))
+    const equipos = def.equipos.map((e) => ({ id: uid(), codigo: codigoUnico(), ligaId: liga.id, ...e }))
     await db.equipos.bulkAdd(equipos)
 
     const jugadores = []

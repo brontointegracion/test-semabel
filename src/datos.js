@@ -13,6 +13,17 @@ export const useRegion = () => useLiveQuery(() => db.meta.get('region'), [])
 /** Quién está mirando: invitado u organizador. */
 export const useSesion = () => useLiveQuery(() => db.meta.get('sesion'), [])
 
+/** Equipos y jugadores que sigue quien mira. */
+export const useSiguiendo = () =>
+  useLiveQuery(() => db.meta.get('siguiendo'), [], { equipos: [], jugadores: [] })
+
+/** Mi voto en un partido, si ya voté. */
+export const useMiVoto = (partidoId) =>
+  useLiveQuery(
+    () => (partidoId ? db.votos.where('partidoId').equals(partidoId).first() : null),
+    [partidoId],
+  )
+
 /** Todo lo que necesita la portada. Los datos son pocos: se filtra en memoria. */
 export function useDescubrir() {
   return useLiveQuery(async () => {
@@ -184,4 +195,137 @@ export function useNoticia(codigo) {
     const liga = noticia.ligaId ? await db.ligas.get(noticia.ligaId) : null
     return { noticia, liga }
   }, [codigo])
+}
+
+
+/** Todo lo de un equipo: plantilla, resultados, próximo partido y forma. */
+export function useEquipo(codigo) {
+  return useLiveQuery(async () => {
+    const equipo = await db.equipos.where('codigo').equals(codigo).first()
+    if (!equipo) return null
+
+    const [liga, jugadores, todos] = await Promise.all([
+      db.ligas.get(equipo.ligaId),
+      db.jugadores.where('equipoId').equals(equipo.id).toArray(),
+      db.partidos.where('ligaId').equals(equipo.ligaId).toArray(),
+    ])
+
+    const suyos = todos
+      .filter((p) => p.localId === equipo.id || p.visitaId === equipo.id)
+      .sort((a, b) => a.inicio.localeCompare(b.inicio))
+
+    const eventos = await db.eventos.where('partidoId').anyOf(suyos.map((p) => p.id)).toArray()
+    const eventosPorPartido = {}
+    for (const e of eventos) (eventosPorPartido[e.partidoId] ||= []).push(e)
+
+    const equipos = await db.equipos.where('ligaId').equals(equipo.ligaId).toArray()
+    const canchas = await db.canchas.toArray()
+
+    return {
+      equipo,
+      liga,
+      jugadores: jugadores.sort((a, b) => a.dorsal - b.dorsal),
+      partidos: suyos,
+      jugados: suyos.filter((p) => p.estado === 'final'),
+      proximo: suyos.find((p) => p.estado === 'programado') || null,
+      vivo: suyos.find((p) => p.estado === 'vivo') || null,
+      equiposPorId: porId(equipos),
+      canchasPorId: porId(canchas),
+      eventosPorPartido,
+      // La liga entera hace falta para saber en qué puesto va.
+      partidosLiga: todos,
+      equiposLiga: equipos,
+      eventosLiga: await (async () => {
+        const evs = await db.eventos.where('partidoId').anyOf(todos.map((p) => p.id)).toArray()
+        const m = {}
+        for (const e of evs) (m[e.partidoId] ||= []).push(e)
+        return m
+      })(),
+    }
+  }, [codigo])
+}
+
+/** Lo que sigue quien mira: próximos partidos y últimos resultados. */
+export function useLoQueSigo() {
+  return useLiveQuery(async () => {
+    const siguiendo = (await db.meta.get('siguiendo')) || { equipos: [], jugadores: [] }
+    const codigos = siguiendo.equipos || []
+    if (!codigos.length) return { equipos: [], proximos: [], recientes: [], jugadores: [] }
+
+    const equipos = await db.equipos.where('codigo').anyOf(codigos).toArray()
+    const ids = new Set(equipos.map((e) => e.id))
+    const ligas = porId(await db.ligas.toArray())
+    const canchas = porId(await db.canchas.toArray())
+    const todosEquipos = porId(await db.equipos.toArray())
+
+    const partidos = (await db.partidos.toArray())
+      .filter((p) => ids.has(p.localId) || ids.has(p.visitaId))
+      .sort((a, b) => a.inicio.localeCompare(b.inicio))
+
+    const eventos = await db.eventos.where('partidoId').anyOf(partidos.map((p) => p.id)).toArray()
+    const eventosPorPartido = {}
+    for (const e of eventos) (eventosPorPartido[e.partidoId] ||= []).push(e)
+
+    const jugadores = (siguiendo.jugadores || []).length
+      ? await db.jugadores.where('codigo').anyOf(siguiendo.jugadores).toArray()
+      : []
+
+    return {
+      equipos,
+      jugadores,
+      ligas,
+      canchas,
+      todosEquipos,
+      eventosPorPartido,
+      vivos: partidos.filter((p) => p.estado === 'vivo'),
+      proximos: partidos.filter((p) => p.estado === 'programado').slice(0, 8),
+      recientes: partidos.filter((p) => p.estado === 'final').slice(-6).reverse(),
+    }
+  }, [], null)
+}
+
+/** Máximos anotadores de la provincia, cruzando todas sus ligas. */
+export function useFiguras() {
+  return useLiveQuery(async () => {
+    const region = await db.meta.get('region')
+    if (!region) return null
+
+    const ligas = (await db.ligas.toArray()).filter(
+      (l) => l.pais === region.pais &&
+        (!region.provincia || region.provincia === 'todas' || l.provincia === region.provincia),
+    )
+    const ligaIds = new Set(ligas.map((l) => l.id))
+
+    const partidos = (await db.partidos.toArray()).filter((p) => ligaIds.has(p.ligaId))
+    const finalizados = new Set(partidos.filter((p) => p.estado === 'final').map((p) => p.id))
+    const eventos = (await db.eventos.where('partidoId').anyOf([...finalizados]).toArray())
+      .filter((e) => !e.anulado)
+
+    const jugadores = porId((await db.jugadores.toArray()).filter((j) => ligaIds.has(j.ligaId)))
+    const equipos = porId(await db.equipos.toArray())
+
+    const acc = {}
+    for (const e of eventos) {
+      const j = jugadores[e.jugadorId]
+      if (!j) continue
+      const a = (acc[j.id] ||= { jugador: j, equipo: equipos[j.equipoId], liga: ligas.find((l) => l.id === j.ligaId), puntos: 0, faltas: 0, partidos: new Set() })
+      if (e.tipo === 'punto') a.puntos += e.puntos
+      if (e.tipo === 'falta') a.faltas++
+      a.partidos.add(e.partidoId)
+    }
+
+    const filas = Object.values(acc).map((a) => ({
+      ...a,
+      partidos: a.partidos.size,
+      promedio: a.partidos.size ? a.puntos / a.partidos.size : 0,
+    }))
+
+    return {
+      region,
+      ligas,
+      anotadores: [...filas].sort((a, b) => b.promedio - a.promedio).slice(0, 20),
+      faltas: [...filas].sort((a, b) => b.faltas - a.faltas).slice(0, 10),
+      totalJugadores: filas.length,
+    }
+  }, [], null)
 }

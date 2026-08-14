@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useLiga } from '../datos'
 import { tablaPosiciones, estadisticaJugadores, marcadorEquipo } from '../lib/marcador'
 import { Topbar, Escudo, Vacio, fechaCorta, hora, mismoDia } from '../ui'
-import { codigoDe, urlLiga, urlPartido, urlJugador } from '../lib/enlaces'
+import { codigoDe, urlLiga, urlPartido, urlJugador, urlEquipo } from '../lib/enlaces'
 import { useMeta } from '../lib/meta'
 
 const PESTANAS = [
@@ -124,11 +124,11 @@ function Tabla({ liga, equipos, partidos, eventosPorPartido }) {
             {filas.map((f, i) => (
               <tr key={f.equipo.id}>
                 <td>
-                  <div className="equipo-celda">
+                  <Link to={urlEquipo(f.equipo)} className="equipo-celda">
                     <span className="pos">{i + 1}</span>
                     <Escudo equipo={f.equipo} size="sm" />
                     <span className="nombre">{f.equipo.nombre}</span>
-                  </div>
+                  </Link>
                 </td>
                 <td>{f.jj}</td>
                 <td>{f.jg}</td>

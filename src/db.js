@@ -28,6 +28,12 @@ db.version(3).stores({
   noticias: 'id, publicada, codigo',
 })
 
+// El equipo pasa a ser una cosa con página propia, y aparecen los votos.
+db.version(4).stores({
+  equipos: 'id, ligaId, codigo',
+  votos: 'id, partidoId',
+})
+
 export const uid = () => Math.random().toString(36).slice(2, 10)
 
 export async function resetear() {

@@ -12,6 +12,9 @@ import Canchas from './pantallas/Canchas'
 import Cancha from './pantallas/Cancha'
 import Saldo from './pantallas/Saldo'
 import Noticias from './pantallas/Noticias'
+import Equipo from './pantallas/Equipo'
+import Siguiendo from './pantallas/Siguiendo'
+import Figuras from './pantallas/Figuras'
 import Noticia from './pantallas/Noticia'
 import Codigo from './pantallas/Codigo'
 
@@ -20,7 +23,7 @@ const SIN_TABS = [/^\/p\/[^/]+$/, /^\/p\/[^/]+\/consola$/, /^\/b\//]
 const iconos = {
   inicio: 'M4 11.5L12 4l8 7.5M6 10v10h12V10',
   ligas: 'M4 5h16M4 12h16M4 19h10',
-  noticias: 'M4 5h13a1 1 0 011 1v13H6a2 2 0 01-2-2V5zm14 3h2v9a2 2 0 01-2 2M7 9h7M7 13h7',
+  siguiendo: 'M12 20.5s-7-4.6-7-9.6a4 4 0 017-2.6 4 4 0 017 2.6c0 5-7 9.6-7 9.6z',
   saldo: 'M3 8h18v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm0 0l2.4-4h13.2L21 8M7 14h4',
 }
 
@@ -56,8 +59,11 @@ export default function App() {
           <Route path="/" element={<Inicio />} />
           <Route path="/l/:slug" element={<Liga />} />
           <Route path="/p/:slug" element={<Partido />} />
+          <Route path="/e/:slug" element={<Equipo />} />
           <Route path="/j/:slug" element={<Jugador />} />
           <Route path="/c/:slug" element={<Cancha />} />
+          <Route path="/siguiendo" element={<Siguiendo />} />
+          <Route path="/figuras" element={<Figuras />} />
           <Route path="/noticias" element={<Noticias />} />
           <Route path="/n/:slug" element={<Noticia />} />
           <Route path="/b/:codigo" element={<Codigo />} />
@@ -77,7 +83,7 @@ export default function App() {
         <nav className="tabbar">
           <Tab to="/" id="inicio">Inicio</Tab>
           {organiza && <Tab to="/ligas" id="ligas">Mis ligas</Tab>}
-          <Tab to="/noticias" id="noticias">Noticias</Tab>
+          <Tab to="/siguiendo" id="siguiendo">Siguiendo</Tab>
           {organiza && <Tab to="/saldo" id="saldo">Saldo</Tab>}
         </nav>
       )}

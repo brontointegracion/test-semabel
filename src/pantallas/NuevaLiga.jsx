@@ -82,7 +82,12 @@ export default function NuevaLiga() {
       organizadorId: sesion?.cuentaId,
     })
 
-    const equipos = equiposDemo.map((e) => ({ ...e, id: uid(), ligaId }))
+    const equipos = equiposDemo.map((e) => ({
+      ...e,
+      id: uid(),
+      codigo: String(1000 + Math.floor(Math.random() * 8999)),
+      ligaId,
+    }))
     await db.equipos.bulkAdd(equipos)
 
     const jugadores = equipos.flatMap((eq, ei) =>

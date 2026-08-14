@@ -155,6 +155,22 @@ Constraints the whole design hangs on.
 
 ---
 
+## 6b. AI-first, and where that actually pays
+
+The product is AI-first by intent. That is worth making specific, because the four candidate uses are not equally strong and one of them is actively dangerous if done carelessly.
+
+**Automatic writing — the strongest fit, and it replaces the editorial section.** Hand-written articles were in the original plan and should be cut: someone has to write them weekly, per liga, per country, in two languages. Generated writing costs nothing and scales to every barrio: match recaps, weekly roundups, records broken, streaks ended, player of the week. The event log already holds every point and foul with a timestamp and an author, which is exactly the raw material.
+
+The hard rule that comes with it: **the model writes the prose, never the facts.** Every number, name and claim must be derivable from stored events, passed in and not recalled. These are real people, many of them minors, and an invented detail about a named teenager is both a harm and a legal exposure — the same consent problem already flagged above, with a generator attached. Anything not in the data does not appear in the text.
+
+**Support — strong fit.** Organizers ask the same twenty questions, in Spanish, at night, and this segment cannot support a staffed desk. An assistant over the product's own documentation handles most of it. It has to be able to say it doesn't know and hand off: a confident wrong answer about a charge costs more than no answer.
+
+**Resilience — narrower than it sounds, but real where it lands.** The useful version is watching the data for things that look wrong: a match with triple the usual points, a player with impossible fouls, a slot double-booked, a schedule that cannot fit its constraints, a capture that never synced. "This does not look like the other four hundred games in this liga" is exactly the judgment a model makes well, and it protects the archive that later revenue depends on. It is a reviewer, not an operations team.
+
+**Assistants inside modules — depends entirely on the module.** Strong for the organizer, whose tasks are genuinely hard: "reprograma el viernes por lluvia" is constraint solving with a conversational front end, and "¿cuánto me cuesta agregar dos equipos?" is a question the pricing model can answer. Weak to harmful for the árbitro: the console is used one-handed, standing, mid-play, sometimes with no signal. Nothing there should wait on a network round trip.
+
+**The line that holds all of this together: no AI in the capture path.** Scoring must stay deterministic, offline and instant. Everywhere else — writing, support, review, planning — is fair game.
+
 ## 7. Scope
 
 ### In v1
@@ -179,6 +195,9 @@ Constraints the whole design hangs on.
 - Venue as a first-class entity with location
 - Organizer-typed rosters, claimable by players
 - Guest and owner roles: console, ligas list, saldo and liga creation are owner-only
+- Team pages, and following a team without an account
+- Cross-liga leaderboards for the province
+- Pre-match vote and player of the match, one tap, no account, shareable
 - Readable addresses, per-page titles and descriptions, `SportsEvent` structured data
 - Open worldwide signup, email + WhatsApp verified
 - Season payment, prepaid scoring saldo, venue subscription, free-tier caps

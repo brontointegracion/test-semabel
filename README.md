@@ -16,6 +16,10 @@ npm run dev      # http://localhost:5173
 | Pantalla | Qué demuestra |
 |---|---|
 | **Inicio** | La portada pública: la visión arriba, el país detectado solo, y filtros de provincia → deporte → *ahora mismo* / *lo que viene* |
+| **Siguiendo** | Los equipos que sigue quien mira: cuándo juegan, dónde, cómo llegar y cómo les fue |
+| **Equipo** | La página del equipo: puesto, forma, plantilla con números, resultados y el botón de seguir |
+| **Figuras** | Máximos anotadores de la provincia, cruzando todas sus ligas |
+| **Votaciones** | Dentro del partido: ¿quién gana? antes, jugador del partido después. Un toque, sin cuenta |
 | **Noticias** | Últimas noticias, con una nota de pago que corta a la mitad |
 | **Mis ligas** | Las ligas del organizador, con el saldo de partidos disponible |
 | **Nueva liga** | Condiciones → calendario propuesto → publicar. El generador de verdad, no una maqueta |
@@ -35,6 +39,7 @@ nombre y termina en un código corto, que es lo que de verdad identifica:
 /p/halcones-vs-titanes-2026-08-14-7531    un partido, con su fecha
 /l/liga-barrial-san-miguelito-4821        una liga
 /j/luis-carrasco-3092                     un jugador
+/e/halcones-1234                          un equipo
 /c/cancha-don-bosco-1177                  una cancha
 /n/el-barrio-que-aprendio-sus-numeros-2044   una noticia
 /b/7531                                   el marcador, para escribir en el televisor
@@ -47,7 +52,7 @@ renombra, los links viejos siguen funcionando. `src/lib/enlaces.js`.
 
 | | Invitado | Dueño de la liga |
 |---|---|---|
-| Portada, ligas, partido, jugador, noticias | sí | sí |
+| Portada, ligas, equipos, partido, jugador, figuras, votar, noticias | sí | sí |
 | Mis ligas, crear liga, saldo, canchas | — | sí |
 | Consola del árbitro | — | solo en sus ligas |
 
@@ -102,6 +107,8 @@ src/
   lib/sesion.js      Quién puede qué
   lib/enlaces.js     Direcciones legibles; el código es lo que identifica
   lib/mapas.js       Waze y Google Maps por coordenadas
+  lib/seguir.js      Seguir equipos y jugadores, sin cuenta
+  lib/votos.js       Votaciones; los votos ajenos son simulados y estables
   lib/meta.js        Título, descripción y datos estructurados por página
   pantallas/         Una pantalla por archivo
 ```

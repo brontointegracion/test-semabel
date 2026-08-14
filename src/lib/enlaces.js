@@ -7,6 +7,7 @@
 //
 //   /p/halcones-vs-titanes-2026-08-14-7531
 //   /l/liga-barrial-san-miguelito-4821
+//   /e/halcones-1234
 //   /j/luis-carrasco-3092
 //   /b/7531                        ← para escribir con el control del televisor
 //
@@ -52,6 +53,9 @@ export const urlPartido = (partido, local, visita) =>
         partido.codigo,
       )
     : '/'
+
+export const urlEquipo = (equipo) =>
+  equipo ? arma('e', equipo.nombre, equipo.codigo) : '/'
 
 export const urlJugador = (jugador) =>
   jugador ? arma('j', jugador.nombre, jugador.codigo) : '/'
