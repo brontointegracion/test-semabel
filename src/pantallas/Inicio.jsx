@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useDescubrir, useRegion } from '../datos'
 import { marcadorEquipo } from '../lib/marcador'
 import { cambiarProvincia } from '../lib/region'
-import { Marca, Escudo, Vacio, diaRelativo, hora, transcurrido, fechaCorta, mismoDia } from '../ui'
+import { Marca, Escudo, Vacio, RelojVivo, diaRelativo, hora, fechaCorta, mismoDia } from '../ui'
 
 const DEPORTES = [
   ['todos', 'Todos'],
@@ -175,7 +175,7 @@ function Ahora({ partidos, equipos, canchas, ligas, eventos }) {
           <Link key={p.id} to={`/partido/${p.id}`} className="card">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
               <span className="pill vivo"><i className="punto" />EN VIVO</span>
-              <span className="sub">{transcurrido(p.inicio)}</span>
+              <RelojVivo partido={p} liga={ligas[p.ligaId]} eventos={evs} />
               <span className="sub" style={{ marginLeft: 'auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {ligas[p.ligaId]?.nombre}
               </span>

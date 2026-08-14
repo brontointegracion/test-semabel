@@ -320,6 +320,26 @@ button.card { cursor: pointer; }
 
 .punto { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: latido 1.4s ease-in-out infinite; }
 
+/* Período y cuenta regresiva, donde haga falta acompañar a "EN VIVO". */
+.reloj-vivo {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink-mute);
+  white-space: nowrap;
+}
+
+.reloj-vivo b {
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.reloj-vivo b.anda { color: var(--acento-ink); }
+
 @keyframes latido { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
 
 @media (prefers-reduced-motion: reduce) {

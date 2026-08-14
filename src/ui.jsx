@@ -1,6 +1,9 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSesion } from './datos'
 import { entrar, salir, esOrganizador } from './lib/sesion'
+import { periodoActual } from './lib/marcador'
+import { PERIODOS, restanteMs, mmss, corriendo, nombrePeriodo } from './lib/reloj-calculo'
 
 export const DIAS_CORTO = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
@@ -23,11 +26,6 @@ export function diaRelativo(iso) {
   if (mismoDia(d, hoy)) return 'Hoy'
   if (mismoDia(d, manana)) return 'Mañana'
   return fechaCorta(iso)
-}
-
-export function transcurrido(desde) {
-  const min = Math.max(0, Math.floor((Date.now() - new Date(desde).getTime()) / 60000))
-  return `${min}′`
 }
 
 export function Escudo({ equipo, size = '' }) {
@@ -79,4 +77,33 @@ export function Chevron() {
 
 export function Vacio({ children }) {
   return <div className="vacio">{children}</div>
+}
+
+/**
+ * Período y cuenta regresiva de un partido en curso.
+ *
+ * Se refresca solo, y únicamente mientras el reloj corre: si está detenido no
+ * hay nada que animar y no tiene sentido despertar la pantalla cada medio
+ * segundo. Al ir dentro de este componente, la lista que lo contiene no se
+ * vuelve a dibujar entera con cada tic.
+ */
+export function RelojVivo({ partido, liga, eventos = [] }) {
+  const [, setTic] = useState(0)
+  const anda = corriendo(partido)
+
+  useEffect(() => {
+    if (!anda) return
+    const t = setInterval(() => setTic((n) => n + 1), 500)
+    return () => clearInterval(t)
+  }, [anda, partido?.relojDesde])
+
+  const periodos = PERIODOS[liga?.deporte] || 2
+  const periodo = Math.min(periodoActual(eventos), periodos)
+
+  return (
+    <span className="reloj-vivo">
+      {periodo}º {nombrePeriodo(liga?.deporte)}
+      <b className={anda ? 'anda' : ''}>{mmss(restanteMs(partido, liga))}</b>
+    </span>
+  )
 }

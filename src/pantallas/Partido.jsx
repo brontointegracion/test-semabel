@@ -23,8 +23,9 @@ export default function Partido() {
   const contenedor = useRef(null)
   const [completa, setCompleta] = useState(false)
 
+  // Medio segundo: con un tic de un segundo exacto, el reloj se ve saltar cifras.
   useEffect(() => {
-    const t = setInterval(() => setTic((n) => n + 1), 1000)
+    const t = setInterval(() => setTic((n) => n + 1), 500)
     return () => clearInterval(t)
   }, [])
 
