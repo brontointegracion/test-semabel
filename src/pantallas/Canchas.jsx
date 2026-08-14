@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom'
 import { useCanchas, useRegion } from '../datos'
-import { PAISES } from '../lib/region'
 import { Marca, Chevron, Vacio } from '../ui'
 
 export default function Canchas() {
@@ -16,7 +15,7 @@ export default function Canchas() {
   return (
     <>
       <Marca />
-      <h2 className="seccion">Canchas en {PAISES[region.pais] || region.pais}</h2>
+      <h2 className="seccion">Canchas</h2>
       <p className="sub" style={{ marginTop: -4, marginBottom: 12 }}>
         La cancha es una entidad propia. A veces el dueño de la cancha es el mismo organizador,
         a veces solo alquila la hora. Los dos casos funcionan.

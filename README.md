@@ -37,13 +37,15 @@ npm run dev      # http://localhost:5173
 - **Anotar el resultado a mano es gratis.** El saldo compra el vivo, no el derecho a existir.
 - **Español primero.** La interfaz nació en español, no traducida.
 - **El sitio se restringe al país de quien mira.** Se detecta por IP; si eso falla, por la zona
-  horaria del dispositivo. Dentro del país, el filtro es por provincia. `src/lib/region.js`.
+  horaria del dispositivo. No se muestra ni se puede cambiar: nadie elige qué país ve. Dentro
+  del país, el filtro es por provincia. `src/lib/region.js`.
 - **La publicidad no toca el partido.** El espacio patrocinado vive en la portada y en
   noticias, nunca sobre el marcador.
 
 ## El color
 
-Blanco y rojo. Todo el rojo sale de dos variables al inicio de `src/styles.css`:
+Blanco y rojo, un solo tema. No hay modo oscuro: la aplicación se ve igual aunque el
+teléfono esté en oscuro. Todo el rojo sale de dos variables al inicio de `src/styles.css`:
 
 ```css
 --acento:     #D7263D;   /* rellenos, barras, estado en vivo */

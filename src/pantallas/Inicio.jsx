@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useDescubrir, useRegion } from '../datos'
 import { marcadorEquipo } from '../lib/marcador'
-import { PAISES, cambiarPais, cambiarProvincia } from '../lib/region'
+import { cambiarProvincia } from '../lib/region'
 import { Marca, Escudo, Vacio, diaRelativo, hora, transcurrido, fechaCorta, mismoDia } from '../ui'
 
 const DEPORTES = [
@@ -11,29 +11,16 @@ const DEPORTES = [
   ['futsal', 'Fútbol sala'],
 ]
 
-const COMO = {
-  ip: 'según tu conexión',
-  'zona horaria': 'según la hora de tu teléfono',
-  manual: 'lo elegiste tú',
-  predeterminado: 'por defecto',
-}
-
 export default function Inicio() {
   const d = useDescubrir()
   const region = useRegion()
   const [deporte, setDeporte] = useState('todos')
   const [cuando, setCuando] = useState('ahora')
-  const [abrirPaises, setAbrirPaises] = useState(false)
 
   const provincias = useMemo(() => {
     if (!d || !region) return []
     return [...new Set(d.ligas.filter((l) => l.pais === region.pais).map((l) => l.provincia))].sort()
   }, [d, region])
-
-  const paisesConLigas = useMemo(
-    () => [...new Set((d?.ligas || []).map((l) => l.pais))].sort(),
-    [d],
-  )
 
   if (!d || !region) return null
 
@@ -89,35 +76,6 @@ export default function Inicio() {
         </div>
       </div>
 
-      <div className="region">
-        <div className="region-linea">
-          <span className="bandera" aria-hidden="true">◉</span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="pais">{PAISES[region.pais] || region.pais}</div>
-            <div className="sub" style={{ fontSize: '0.74rem' }}>
-              Estás viendo las ligas de tu país, {COMO[region.detectadoPor] || 'detectado'}
-            </div>
-          </div>
-          <button className="cambiar" onClick={() => setAbrirPaises((v) => !v)}>
-            {abrirPaises ? 'Cerrar' : 'Cambiar'}
-          </button>
-        </div>
-
-        {abrirPaises && (
-          <div className="carrete" style={{ marginTop: 10 }}>
-            {paisesConLigas.map((p) => (
-              <button
-                key={p}
-                className={`chip ${region.pais === p ? 'on' : ''}`}
-                onClick={() => { cambiarPais(p); setAbrirPaises(false) }}
-              >
-                {PAISES[p] || p}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
       <div className="banner">
         <div className="marca-patro">TU<br />LOGO</div>
         <div className="texto">
@@ -129,7 +87,7 @@ export default function Inicio() {
 
       {!delPais.length ? (
         <Vacio>
-          Todavía no hay ligas en {PAISES[region.pais] || region.pais}.<br />
+          Todavía no hay ligas por aquí.<br />
           Si organizas una, puedes ser la primera.
         </Vacio>
       ) : (
@@ -180,7 +138,7 @@ export default function Inicio() {
           )}
 
           <h2 className="seccion">
-            Ligas {provincia === 'todas' ? `en ${PAISES[region.pais] || region.pais}` : `en ${provincia}`}
+            {provincia === 'todas' ? 'Todas las ligas' : `Ligas en ${provincia}`}
           </h2>
           <div className="lista">
             {ligasF.map((l) => (

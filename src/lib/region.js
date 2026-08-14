@@ -5,16 +5,10 @@ import { db } from '../db'
 // (sin red, bloqueador, service worker sin conexión) se cae a la zona horaria
 // del dispositivo, que acierta casi siempre y no depende de nadie.
 //
-// La detección se guarda una vez. No se vuelve a preguntar en cada carga.
+// El país no se muestra ni se puede cambiar: nadie —invitado, organizador o
+// dueño de cancha— elige qué país ve. La detección se guarda una vez y no se
+// vuelve a preguntar.
 // ---------------------------------------------------------------------------
-
-export const PAISES = {
-  PA: 'Panamá', CO: 'Colombia', MX: 'México', PE: 'Perú', CL: 'Chile',
-  AR: 'Argentina', BR: 'Brasil', CR: 'Costa Rica', GT: 'Guatemala',
-  DO: 'República Dominicana', VE: 'Venezuela', EC: 'Ecuador', BO: 'Bolivia',
-  PY: 'Paraguay', UY: 'Uruguay', HN: 'Honduras', NI: 'Nicaragua',
-  SV: 'El Salvador', CU: 'Cuba', PR: 'Puerto Rico', ES: 'España', US: 'Estados Unidos',
-}
 
 const POR_ZONA = {
   'America/Panama': 'PA',
@@ -83,11 +77,6 @@ export async function resolverRegion() {
   }
   await db.meta.put(region)
   return region
-}
-
-export async function cambiarPais(pais) {
-  const actual = (await db.meta.get('region')) || { id: 'region' }
-  await db.meta.put({ ...actual, id: 'region', pais, provincia: 'todas', detectadoPor: 'manual' })
 }
 
 export async function cambiarProvincia(provincia) {

@@ -1,12 +1,14 @@
 /* ---------------------------------------------------------------------------
    Sebel — sistema visual
-   Blanco y rojo. Mobile first.
+   Blanco y rojo. Mobile first. Un solo tema: no hay modo oscuro.
 
    El rojo vive en --acento y --acento-ink. Cambiar esos dos valores cambia
    toda la aplicación.
 --------------------------------------------------------------------------- */
 
 :root {
+  color-scheme: light;
+
   --paper: #FFFFFF;
   --surface: #FAFAFA;
   --surface-2: #F1F1F3;
@@ -34,48 +36,6 @@
   --font-num: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   --tab-h: 62px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --paper: #0E0E11;
-    --surface: #17171C;
-    --surface-2: #212128;
-    --ink: #F2F2F5;
-    --ink-soft: #BEBEC6;
-    --ink-mute: #85858E;
-    --line: #2D2D35;
-    --line-soft: #212128;
-
-    --acento: #FF4D5E;
-    --acento-ink: #FF8B96;
-    --acento-wash: #2B1317;
-
-    --aviso: #D9A05B;
-    --board-bg: #08080A;
-    --board-ink: #F7F7F8;
-    --board-mute: #7A7A84;
-    --board-line: #1E1E24;
-  }
-}
-
-:root[data-theme="dark"] {
-  --paper: #0E0E11;
-  --surface: #17171C;
-  --surface-2: #212128;
-  --ink: #F2F2F5;
-  --ink-soft: #BEBEC6;
-  --ink-mute: #85858E;
-  --line: #2D2D35;
-  --line-soft: #212128;
-  --acento: #FF4D5E;
-  --acento-ink: #FF8B96;
-  --acento-wash: #2B1317;
-  --aviso: #D9A05B;
-  --board-bg: #08080A;
-  --board-ink: #F7F7F8;
-  --board-mute: #7A7A84;
-  --board-line: #1E1E24;
 }
 
 * { box-sizing: border-box; }
@@ -221,38 +181,6 @@ h2.seccion { font-size: 1.02rem; font-weight: 700; letter-spacing: -0.01em; marg
 .hero .cifra .q {
   font-size: 0.66rem; font-weight: 700; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--ink-mute);
-}
-
-/* ---- región: el país al que está restringido el sitio ---- */
-
-.region {
-  margin-top: 16px;
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  background: var(--surface);
-}
-
-.region-linea { display: flex; align-items: center; gap: 11px; }
-
-.region .bandera {
-  flex: none;
-  width: 30px; height: 30px; border-radius: 50%;
-  display: grid; place-items: center;
-  background: var(--acento-wash); color: var(--acento-ink);
-  font-size: 0.8rem;
-}
-
-.region .pais { font-weight: 700; letter-spacing: -0.01em; }
-
-.region .cambiar {
-  flex: none;
-  border: 1px solid var(--line);
-  background: transparent;
-  color: var(--acento-ink);
-  font-weight: 700; font-size: 0.8rem;
-  padding: 7px 12px; border-radius: 999px;
-  cursor: pointer;
 }
 
 /* ---- banner patrocinado ---- */

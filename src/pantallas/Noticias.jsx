@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom'
 import { useNoticias, useRegion } from '../datos'
-import { PAISES } from '../lib/region'
 import { Marca, Vacio, fechaCorta } from '../ui'
 
 export default function Noticias() {
@@ -17,8 +16,7 @@ export default function Noticias() {
       <Marca />
       <h2 className="seccion">Últimas noticias</h2>
       <p className="sub" style={{ marginTop: -4 }}>
-        Lo que pasa en las canchas de {PAISES[region.pais] || region.pais}, contado por quienes
-        las llenan.
+        Lo que pasa en las canchas, contado por quienes las llenan.
       </p>
 
       <div style={{ marginTop: 8 }}>
