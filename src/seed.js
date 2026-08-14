@@ -7,7 +7,7 @@ import { restanteMs } from './lib/reloj-calculo'
 //
 // Sube SEMILLA cuando cambie la forma de los datos: el prototipo se
 // resiembra solo en vez de quedar a medias.
-const SEMILLA = 9
+const SEMILLA = 10
 
 // Códigos cortos: los que se leen en la dirección y se escriben en el televisor.
 // Únicos entre sí para que nunca dos cosas respondan al mismo número.
@@ -140,7 +140,7 @@ export async function sembrarSiHaceFalta() {
   if (marca?.version === SEMILLA) return
 
   await Promise.all(
-    ['canchas', 'ligas', 'equipos', 'jugadores', 'partidos', 'eventos', 'cuenta', 'noticias']
+    ['canchas', 'ligas', 'equipos', 'jugadores', 'partidos', 'eventos', 'cuenta', 'noticias', 'retos']
       .map((t) => db.table(t).clear()),
   )
 
@@ -226,6 +226,7 @@ export async function sembrarSiHaceFalta() {
   }
 
   await sembrarTorneo(canchas)
+  await sembrarReto()
 
   const ligas = await db.ligas.toArray()
   await db.noticias.bulkAdd(
@@ -528,4 +529,35 @@ async function sembrarTorneo(canchas) {
     })
   }
   await db.eventos.bulkAdd(eventos)
+}
+
+
+/**
+ * Un reto entre dos ligas de la misma categoría.
+ *
+ * Nadie viaja: cada liga juega lo suyo en la misma semana y después se comparan
+ * los números. Sale barato, no necesita permisos ni pasajes, y se puede repetir
+ * todas las semanas — que es la diferencia con un torneo, que pasa una vez al año.
+ */
+async function sembrarReto() {
+  const ligas = await db.ligas.toArray()
+  const a = ligas.find((l) => l.nombre.startsWith('Liga Chiricana'))
+  const b = ligas.find((l) => l.nombre.startsWith('Liga Antioqueña'))
+  if (!a || !b) return
+
+  const desde = new Date(); desde.setDate(desde.getDate() - 10); desde.setHours(0, 0, 0, 0)
+  const hasta = new Date(); hasta.setDate(hasta.getDate() + 4); hasta.setHours(23, 59, 59, 0)
+
+  await db.retos.add({
+    id: uid(),
+    codigo: codigoUnico(),
+    nombre: 'Reto Chiriquí – Antioquia 40+',
+    deporte: 'baloncesto',
+    categoria: '40+',
+    ligaAId: a.id,
+    ligaBId: b.id,
+    desde: desde.toISOString(),
+    hasta: hasta.toISOString(),
+    estado: 'abierto',
+  })
 }

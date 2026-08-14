@@ -21,6 +21,7 @@ npm run dev      # http://localhost:5173
 | **Figuras** | Máximos anotadores de la provincia, cruzando todas sus ligas |
 | **Categoría** | La misma categoría país por país, con el torneo internacional que los cruza |
 | **Torneo** | Copa Amistad Panamá–Colombia 40+: convocatorias con refuerzos, no plantillas de club |
+| **Reto** | Chiriquí contra Antioquia sin viajar: cada liga juega lo suyo y se comparan los promedios |
 | **Votaciones** | Dentro del partido: ¿quién gana? antes, jugador del partido después. Un toque, sin cuenta |
 | **Noticias** | Últimas noticias, con una nota de pago que corta a la mitad |
 | **Mis ligas** | Las ligas del organizador, con el saldo de partidos disponible |
@@ -42,6 +43,7 @@ nombre y termina en un código corto, que es lo que de verdad identifica:
 /l/liga-barrial-san-miguelito-4821        una liga
 /j/luis-carrasco-3092                     un jugador
 /e/halcones-1234                          un equipo
+/r/reto-chiriqui-antioquia-40-2891        un reto entre ligas
 /c/cancha-don-bosco-1177                  una cancha
 /n/el-barrio-que-aprendio-sus-numeros-2044   una noticia
 /b/7531                                   el marcador, para escribir en el televisor

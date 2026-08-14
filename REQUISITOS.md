@@ -206,6 +206,8 @@ The hard rule that comes with it: **the model writes the prose, never the facts.
 - Team pages, and following a team without an account
 - Cross-liga leaderboards for the province
 - Pre-match vote and player of the match, one tap, no account, shareable
+- International tournaments with call-ups, guests marked and attributed to their home club
+- Retos between ligas of the same category, compared on average rather than total
 - Readable addresses, per-page titles and descriptions, `SportsEvent` structured data
 - Open worldwide signup, email + WhatsApp verified
 - Season payment, prepaid scoring saldo, venue subscription, free-tier caps

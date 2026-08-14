@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { useLiga } from '../datos'
+import { useLiga, useRetosDeLiga } from '../datos'
 import { tablaPosiciones, estadisticaJugadores, marcadorEquipo } from '../lib/marcador'
 import { Topbar, Escudo, Vacio, fechaCorta, hora, mismoDia } from '../ui'
-import { codigoDe, urlLiga, urlPartido, urlJugador, urlEquipo } from '../lib/enlaces'
+import { codigoDe, urlLiga, urlPartido, urlJugador, urlEquipo, urlReto } from '../lib/enlaces'
 import { useMeta } from '../lib/meta'
 
 const PESTANAS = [
@@ -15,6 +15,7 @@ const PESTANAS = [
 export default function Liga() {
   const { slug } = useParams()
   const d = useLiga(codigoDe(slug))
+  const retos = useRetosDeLiga(d?.liga?.id)
   const [pestana, setPestana] = useState('tabla')
   const [copiado, setCopiado] = useState(false)
 
@@ -67,6 +68,18 @@ export default function Liga() {
           ni instalar nada.
         </p>
       </div>
+
+      {retos.map((r) => (
+        <Link key={r.id} to={urlReto(r)} className="card destacado-link">
+          <div className="fila-liga">
+            <div className="info">
+              <div className="eyebrow">Reto en curso</div>
+              <div className="nombre" style={{ marginTop: 3 }}>{r.nombre}</div>
+            </div>
+            <span className="chev">→</span>
+          </div>
+        </Link>
+      ))}
 
       <div className="selector" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginTop: 16 }}>
         {PESTANAS.map(([k, etiqueta]) => (

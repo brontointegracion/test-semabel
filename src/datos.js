@@ -393,3 +393,84 @@ export function useOtrasFichas(personaId, fichaId) {
     return fichas.map((f) => ({ ficha: f, liga: ligas[f.ligaId], equipo: equipos[f.equipoId] }))
   }, [personaId, fichaId], [])
 }
+
+
+/**
+ * Un reto: dos ligas de la misma categoría, la misma ventana de fechas, y los
+ * números de cada lado puestos uno al lado del otro. Nadie viaja.
+ */
+export function useReto(codigo) {
+  return useLiveQuery(async () => {
+    const reto = await db.retos.where('codigo').equals(codigo).first()
+    if (!reto) return null
+
+    const [ligaA, ligaB] = await Promise.all([
+      db.ligas.get(reto.ligaAId),
+      db.ligas.get(reto.ligaBId),
+    ])
+    const equipos = porId(await db.equipos.toArray())
+    const jugadores = porId(await db.jugadores.toArray())
+    const desde = new Date(reto.desde).getTime()
+    const hasta = new Date(reto.hasta).getTime()
+
+    const lado = async (liga) => {
+      const suyos = (await db.partidos.where('ligaId').equals(liga.id).toArray()).filter((p) => {
+        const t = new Date(p.inicio).getTime()
+        return p.estado === 'final' && t >= desde && t <= hasta
+      })
+      const eventos = (await db.eventos.where('partidoId').anyOf(suyos.map((p) => p.id)).toArray())
+        .filter((e) => !e.anulado)
+
+      const puntos = eventos.filter((e) => e.tipo === 'punto').reduce((n, e) => n + e.puntos, 0)
+      const faltas = eventos.filter((e) => e.tipo === 'falta').length
+
+      const porJugador = {}
+      for (const e of eventos) {
+        if (e.tipo !== 'punto' || !e.jugadorId) continue
+        porJugador[e.jugadorId] = (porJugador[e.jugadorId] || 0) + e.puntos
+      }
+      const mejor = Object.entries(porJugador).sort((a, b) => b[1] - a[1])[0]
+
+      return {
+        liga,
+        partidos: suyos.sort((a, b) => b.inicio.localeCompare(a.inicio)),
+        jugados: suyos.length,
+        puntos,
+        faltas,
+        promedio: suyos.length ? puntos / suyos.length : 0,
+        mejor: mejor ? { jugador: jugadores[mejor[0]], puntos: mejor[1] } : null,
+      }
+    }
+
+    const a = await lado(ligaA)
+    const b = await lado(ligaB)
+    const dias = Math.ceil((hasta - Date.now()) / 86400000)
+
+    return {
+      reto,
+      a,
+      b,
+      equipos,
+      // Se compara el promedio por partido: si se comparara el total, ganaría
+      // siempre la liga que juega más veces, que no es mérito de nadie.
+      lider: a.promedio === b.promedio ? null : a.promedio > b.promedio ? a : b,
+      diasRestantes: dias > 0 ? dias : 0,
+      abierto: Date.now() <= hasta,
+    }
+  }, [codigo])
+}
+
+/** Retos en los que participa una liga. */
+export const useRetosDeLiga = (ligaId) =>
+  useLiveQuery(async () => {
+    if (!ligaId) return []
+    const todos = await db.retos.toArray()
+    return todos.filter((r) => r.ligaAId === ligaId || r.ligaBId === ligaId)
+  }, [ligaId], [])
+
+/** Retos de una categoría, para la pantalla que cruza países. */
+export const useRetosDeCategoria = (deporte, categoria) =>
+  useLiveQuery(async () => {
+    const todos = await db.retos.toArray()
+    return todos.filter((r) => r.deporte === deporte && r.categoria === categoria)
+  }, [deporte, categoria], [])

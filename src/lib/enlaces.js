@@ -63,6 +63,9 @@ export const urlJugador = (jugador) =>
 export const urlCancha = (cancha) =>
   cancha ? arma('c', cancha.nombre, cancha.codigo) : '/'
 
+export const urlReto = (reto) =>
+  reto ? arma('r', reto.nombre, reto.codigo) : '/'
+
 export const urlNoticia = (noticia) =>
   noticia ? arma('n', noticia.titulo, noticia.codigo) : '/'
 

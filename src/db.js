@@ -41,6 +41,11 @@ db.version(5).stores({
   jugadores: 'id, ligaId, equipoId, codigo, personaId',
 })
 
+// Retos entre ligas: dos ligas de la misma categoría se miden sin viajar.
+db.version(6).stores({
+  retos: 'id, codigo, estado',
+})
+
 export const uid = () => Math.random().toString(36).slice(2, 10)
 
 export async function resetear() {

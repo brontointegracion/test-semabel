@@ -1,7 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
-import { useCategoria } from '../datos'
+import { useCategoria, useRetosDeCategoria } from '../datos'
 import { tablaPosiciones } from '../lib/marcador'
-import { urlLiga, urlEquipo } from '../lib/enlaces'
+import { urlLiga, urlEquipo, urlReto } from '../lib/enlaces'
 import { useMeta } from '../lib/meta'
 import { Topbar, Escudo, Vacio, fechaCorta } from '../ui'
 
@@ -20,6 +20,7 @@ const DEPORTES = { baloncesto: 'Baloncesto', futsal: 'Fútbol sala' }
 export default function Categoria() {
   const { deporte, categoria } = useParams()
   const d = useCategoria(deporte, decodeURIComponent(categoria))
+  const retos = useRetosDeCategoria(deporte, decodeURIComponent(categoria))
 
   useMeta({
     titulo: `${DEPORTES[deporte] || deporte} ${decodeURIComponent(categoria)}: dónde se juega`,
@@ -47,9 +48,18 @@ export default function Categoria() {
         La misma categoría, en cada país. Los de tu edad no juegan solo aquí.
       </p>
 
-      {torneos.length > 0 && (
+      {(torneos.length > 0 || retos.length > 0) && (
         <>
           <h2 className="seccion">Se cruzan aquí</h2>
+          {retos.map((r) => (
+            <Link key={r.id} to={urlReto(r)} className="card">
+              <div className="eyebrow">Reto entre ligas</div>
+              <div style={{ fontWeight: 700, marginTop: 4 }}>{r.nombre}</div>
+              <div className="sub" style={{ marginTop: 2 }}>
+                Cada una juega lo suyo y se comparan los números. Sin viajar.
+              </div>
+            </Link>
+          ))}
           {torneos.map((t) => (
             <Link key={t.id} to={urlLiga(t)} className="card">
               <div className="eyebrow">Torneo internacional</div>
@@ -105,9 +115,9 @@ export default function Categoria() {
 
       <div className="aviso" style={{ marginTop: 20 }}>
         <div>
-          Lo siguiente es el <strong>reto entre ligas</strong>: dos ligas de la misma categoría
-          acuerdan una semana, cada una juega lo suyo, y se comparan los resultados. Sin viajar
-          y sin permisos.
+          Un <strong>reto</strong> se arma en un minuto: dos ligas de la misma categoría eligen
+          una semana, cada una juega lo suyo, y al final se comparan los números. Sin viajar y
+          sin permisos, todas las semanas si quieren.
         </div>
       </div>
     </>
