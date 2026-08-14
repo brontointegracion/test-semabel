@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { db } from '../db'
-import { usePartido, useCuenta } from '../datos'
+import { usePartido, useCuenta, useSesion } from '../datos'
+import { esDuenoDe } from '../lib/sesion'
 import {
   PUNTOS_POR_DEPORTE, LIMITE_FALTAS,
   anotar, marcarFalta, deshacer, rehacer, anularEvento,
@@ -19,11 +20,15 @@ export default function Consola() {
   const nav = useNavigate()
   const d = usePartido(id)
   const cuenta = useCuenta()
+  const sesion = useSesion()
   const [ladoActivo, setLadoActivo] = useState('local')
   const [ultimoToque, setUltimoToque] = useState(null)
 
-  if (!d || !cuenta) return null
+  if (!d || !cuenta || !sesion) return null
   const { partido, liga, local, visita, jugadores, jugadoresPorId, eventos } = d
+
+  // Ser organizador no alcanza: hay que ser el organizador de esta liga.
+  if (!esDuenoDe(sesion, liga)) return <Navigate to={`/partido/${id}`} replace />
 
   const gl = marcadorEquipo(eventos, partido.localId)
   const gv = marcadorEquipo(eventos, partido.visitaId)

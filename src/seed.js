@@ -6,7 +6,7 @@ import { generarCalendario } from './lib/calendario'
 //
 // Sube SEMILLA cuando cambie la forma de los datos: el prototipo se
 // resiembra solo en vez de quedar a medias.
-const SEMILLA = 3
+const SEMILLA = 4
 
 const rng = (s) => () => {
   s |= 0; s = (s + 0x6d2b79f5) | 0
@@ -166,8 +166,9 @@ export async function sembrarSiHaceFalta() {
       hasta: diaISO(hasta),
       estado: 'publicada',
       pagada: true,
-      mia: !!def.mia,
       organizador: def.organizador || 'Miguel Robles',
+      // Quién manda en esta liga. Solo esta persona ve la consola y el saldo.
+      organizadorId: def.mia ? 'yo' : `otro-${def.organizador.split(' ')[0].toLowerCase()}`,
     }
     await db.ligas.add(liga)
 

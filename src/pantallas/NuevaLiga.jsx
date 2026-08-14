@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { db, uid } from '../db'
-import { useCanchas } from '../datos'
+import { useCanchas, useSesion, useCuenta } from '../datos'
 import { generarCalendario, DIAS } from '../lib/calendario'
 import { Topbar, Escudo, fechaCorta, hora, mismoDia } from '../ui'
 
@@ -12,6 +12,8 @@ const enISO = (d) => new Date(d).toISOString().slice(0, 10)
 
 export default function NuevaLiga() {
   const canchas = useCanchas()
+  const sesion = useSesion()
+  const cuenta = useCuenta()
   const nav = useNavigate()
 
   const hoy = new Date()
@@ -69,9 +71,12 @@ export default function NuevaLiga() {
       franjas,
       desde: new Date(`${desde}T00:00:00`).toISOString(),
       hasta: new Date(`${hasta}T23:59:59`).toISOString(),
+      pais: (canchas || []).find((c) => c.id === canchaIds[0])?.pais,
+      provincia: (canchas || []).find((c) => c.id === canchaIds[0])?.provincia,
       estado: 'publicada',
       pagada: true,
-      organizador: 'Miguel Robles',
+      organizador: cuenta?.nombre || 'Organizador',
+      organizadorId: sesion?.cuentaId,
     })
 
     const equipos = equiposDemo.map((e) => ({ ...e, id: uid(), ligaId }))

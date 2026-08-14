@@ -1,4 +1,6 @@
 import { useNavigate } from 'react-router-dom'
+import { useSesion } from './datos'
+import { entrar, salir, esOrganizador } from './lib/sesion'
 
 export const DIAS_CORTO = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
@@ -53,9 +55,16 @@ export function Topbar({ titulo, atras = true, accion = null }) {
 }
 
 export function Marca() {
+  const sesion = useSesion()
+  const dentro = esOrganizador(sesion)
+
   return (
     <div className="topbar">
       <div className="marca">sebel<span>.</span></div>
+      <div style={{ flex: 1 }} />
+      <button className="sesion" onClick={dentro ? salir : entrar}>
+        {dentro ? 'Salir' : 'Soy organizador'}
+      </button>
     </div>
   )
 }

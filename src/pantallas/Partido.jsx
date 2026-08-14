@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { usePartido } from '../datos'
+import { usePartido, useSesion } from '../datos'
 import { marcadorEquipo, faltasEquipo, periodoActual, destacadosDeEquipo } from '../lib/marcador'
+import { esDuenoDe } from '../lib/sesion'
 import { Escudo, fechaCorta, hora } from '../ui'
 
 /**
@@ -16,6 +17,7 @@ export default function Partido() {
   const { id } = useParams()
   const nav = useNavigate()
   const d = usePartido(id)
+  const sesion = useSesion()
   const [, setTic] = useState(0)
   const contenedor = useRef(null)
   const [completa, setCompleta] = useState(false)
@@ -106,7 +108,8 @@ export default function Partido() {
           <button className="btn fantasma" onClick={pantallaCompleta}>
             {completa ? 'Salir de pantalla completa' : 'Pantalla completa'}
           </button>
-          {partido.estado !== 'final' && (
+          {/* Llevar el marcador es cosa del dueño de la liga. Nadie más lo ve. */}
+          {partido.estado !== 'final' && esDuenoDe(sesion, liga) && (
             <Link to={`/partido/${partido.id}/consola`} className="btn">Llevar el marcador</Link>
           )}
         </div>

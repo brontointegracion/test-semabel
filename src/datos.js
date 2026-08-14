@@ -10,6 +10,9 @@ export const useCanchas = () => useLiveQuery(() => db.canchas.toArray(), [], [])
 /** País al que está restringido el sitio, y la provincia elegida dentro de él. */
 export const useRegion = () => useLiveQuery(() => db.meta.get('region'), [])
 
+/** Quién está mirando: invitado u organizador. */
+export const useSesion = () => useLiveQuery(() => db.meta.get('sesion'), [])
+
 /** Todo lo que necesita la portada. Los datos son pocos: se filtra en memoria. */
 export function useDescubrir() {
   return useLiveQuery(async () => {
@@ -47,11 +50,12 @@ export function useDescubrir() {
 
 export function useLigas({ soloMias = false } = {}) {
   return useLiveQuery(async () => {
+    const sesion = await db.meta.get('sesion')
     const ligas = await db.ligas.toArray()
     const partidos = await db.partidos.toArray()
     const canchas = porId(await db.canchas.toArray())
     return ligas
-      .filter((l) => (soloMias ? l.mia : true))
+      .filter((l) => (soloMias ? l.organizadorId === sesion?.cuentaId : true))
       .map((liga) => {
         const suyos = partidos
           .filter((p) => p.ligaId === liga.id)

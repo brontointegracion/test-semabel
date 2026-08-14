@@ -26,6 +26,22 @@ npm run dev      # http://localhost:5173
 | **Cancha** | La cancha como entidad propia, con su agenda y sus ligas |
 | **Saldo** | Saldo prepago de partidos, paquetes y medios de pago locales |
 
+## Quién ve qué
+
+| | Invitado | Dueño de la liga |
+|---|---|---|
+| Portada, ligas, partido, jugador, noticias | sí | sí |
+| Mis ligas, crear liga, saldo, canchas | — | sí |
+| Consola del árbitro | — | solo en sus ligas |
+
+El botón **«Soy organizador»** arriba a la derecha entra como Miguel Robles, que organiza dos
+de las seis ligas de ejemplo. Con **«Salir»** se vuelve a invitado. Abre el marcador de una
+liga ajena estando dentro: el botón de llevar el marcador no aparece, porque ser organizador
+no alcanza — hay que ser el de *esa* liga.
+
+En el producto real, aquí va la sesión de verdad. Lo que no cambia es dónde se pregunta por
+el permiso: `src/lib/sesion.js`.
+
 ## Decisiones del spec que el código sí implementa
 
 - **El marcador es una lista de eventos, nunca un número.** `src/lib/marcador.js`.

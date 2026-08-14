@@ -1,4 +1,6 @@
-import { Routes, Route, NavLink, useLocation } from 'react-router-dom'
+import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
+import { useSesion } from './datos'
+import { esOrganizador } from './lib/sesion'
 import Inicio from './pantallas/Inicio'
 import Ligas from './pantallas/Ligas'
 import Liga from './pantallas/Liga'
@@ -33,36 +35,50 @@ function Tab({ to, id, children }) {
   )
 }
 
+/** Lo que solo existe para quien organiza. Un invitado que llegue aquí vuelve a la portada. */
+function SoloOrganizador({ sesion, children }) {
+  return esOrganizador(sesion) ? children : <Navigate to="/" replace />
+}
+
 export default function App() {
   const { pathname } = useLocation()
+  const sesion = useSesion()
   const conTabs = !SIN_TABS.some((r) => r.test(pathname))
+  const organiza = esOrganizador(sesion)
+
+  if (!sesion) return null
 
   return (
-    <div className="app">
+    <div className={`app ${organiza ? 'con-cuatro' : 'con-dos'}`}>
       <div className={`contenido ${conTabs ? '' : 'sin-tab'}`}>
         <Routes>
+          {/* Público */}
           <Route path="/" element={<Inicio />} />
-          <Route path="/ligas" element={<Ligas />} />
-          <Route path="/nueva" element={<NuevaLiga />} />
           <Route path="/liga/:id" element={<Liga />} />
           <Route path="/partido/:id" element={<Partido />} />
-          <Route path="/partido/:id/consola" element={<Consola />} />
           <Route path="/jugador/:id" element={<Jugador />} />
-          <Route path="/canchas" element={<Canchas />} />
           <Route path="/cancha/:id" element={<Cancha />} />
-          <Route path="/saldo" element={<Saldo />} />
           <Route path="/noticias" element={<Noticias />} />
           <Route path="/noticia/:id" element={<Noticia />} />
           <Route path="/b/:codigo" element={<Codigo />} />
+
+          {/* Solo el organizador */}
+          <Route path="/ligas" element={<SoloOrganizador sesion={sesion}><Ligas /></SoloOrganizador>} />
+          <Route path="/nueva" element={<SoloOrganizador sesion={sesion}><NuevaLiga /></SoloOrganizador>} />
+          <Route path="/saldo" element={<SoloOrganizador sesion={sesion}><Saldo /></SoloOrganizador>} />
+          <Route path="/canchas" element={<SoloOrganizador sesion={sesion}><Canchas /></SoloOrganizador>} />
+          <Route path="/partido/:id/consola" element={<SoloOrganizador sesion={sesion}><Consola /></SoloOrganizador>} />
+
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
 
       {conTabs && (
         <nav className="tabbar">
           <Tab to="/" id="inicio">Inicio</Tab>
-          <Tab to="/ligas" id="ligas">Mis ligas</Tab>
+          {organiza && <Tab to="/ligas" id="ligas">Mis ligas</Tab>}
           <Tab to="/noticias" id="noticias">Noticias</Tab>
-          <Tab to="/saldo" id="saldo">Saldo</Tab>
+          {organiza && <Tab to="/saldo" id="saldo">Saldo</Tab>}
         </nav>
       )}
     </div>

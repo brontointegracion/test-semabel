@@ -119,6 +119,8 @@ Constraints the whole design hangs on.
 
 **The site scopes itself to the visitor's country, automatically.** Someone opening it from Panamá gets Panamá: its ligas, its canchas, its news, and a province filter within it — Bocas del Toro, Chiriquí, Darién, and the rest. Other countries are not shown. The country is detected from the visitor's IP address; when that lookup fails — no connection, an ad blocker, a service worker serving the page offline — it falls back to the device's timezone, which is right nearly always and depends on nobody. The country is never displayed and cannot be changed — not by a guest, not by an organizer, not by a venue owner. Nobody picks which country they see. The consequence, accepted deliberately: a visitor whose IP resolves to a country with no ligas sees an empty site, and someone abroad cannot follow a liga back home.
 
+**What is public, and what belongs to the owner.** Anyone — no account, no install — gets the home page, a liga's page with its table and calendar, a match with its scoreboard and figures, player profiles, and the news. Everything that *changes* something belongs to the person who owns that liga: their list of ligas, creating one, the saldo, and the console that keeps the score. Being an organizer is not enough to score somebody else's match; the check is ownership of that specific liga, never the role alone. A guest who reaches an owner's screen by typing the URL is sent back to the home page.
+
 **Fouls are events, exactly like points.** Same list, same undo, same audit trail. That makes discipline a first-class statistic — most-fouled player per team, team fouls per period — without a second system, and it is what lets the match page show figures rather than only a score.
 
 **Advertising never touches the match.** A small sponsored slot belongs on discovery surfaces — the home page, the news list. Never over the scoreboard, never inside a live match, never between a person and the score they opened the link to see. The organizer sold attention to their liga, not to us.
@@ -168,6 +170,7 @@ Constraints the whole design hangs on.
 - Public dashboard: no install, no account to view
 - Venue as a first-class entity with location
 - Organizer-typed rosters, claimable by players
+- Guest and owner roles: console, ligas list, saldo and liga creation are owner-only
 - Open worldwide signup, email + WhatsApp verified
 - Season payment, prepaid scoring saldo, venue subscription, free-tier caps
 - Spanish and English, local currency display
