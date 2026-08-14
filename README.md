@@ -80,6 +80,9 @@ src/
   datos.js           Hooks de lectura (useLiveQuery): la UI se actualiza sola
   lib/marcador.js    Eventos, deshacer/rehacer, tabla de posiciones, estadística
   lib/calendario.js  Round-robin + reparto en franjas libres
+  lib/reloj-calculo.js  La cuenta regresiva, sin base de datos: se puede probar
+  lib/reloj.js       Arrancar, detener, ajustar y cerrar el período
+  lib/sesion.js      Quién puede qué
   pantallas/         Una pantalla por archivo
 ```
 
@@ -106,7 +109,15 @@ npm run build && npm run preview
 
 ```bash
 node tools/probar-calendario.mjs
+node tools/probar-reloj.mjs
 ```
+
+El primero verifica, de 4 a 12 equipos, que el calendario sea todos contra todos sin repetir
+pareja, que ninguna franja se use dos veces, que ningún equipo juegue dos veces el mismo día
+y que respete franjas ya ocupadas por otra liga.
+
+El segundo verifica la cuenta regresiva: que detenido no corra, que corriendo baje segundo a
+segundo, que llegue a cero sin pasarse y que 59.4s se vea como `01:00` y no como `00:59`.
 
 Verifica, de 4 a 12 equipos: todos contra todos sin repetir pareja, ninguna franja usada
 dos veces, ningún equipo dos veces el mismo día, y que respeta franjas ya ocupadas por

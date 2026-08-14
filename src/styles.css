@@ -456,7 +456,25 @@ td.pts { font-weight: 800; color: var(--acento-ink); }
 
 .board .medio .periodo { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
 
-.board .medio .reloj { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--board-ink); }
+.board .medio .reloj {
+  font-size: clamp(1.5rem, 6vw, 2.6rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--board-ink);
+}
+
+/* Detenido se ve distinto: en la cancha se discute si el reloj corre o no. */
+.board .medio .reloj.detenido { color: var(--board-mute); }
+
+.board .medio .estado-reloj {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--acento);
+  margin-top: 2px;
+}
 
 .board .pie {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
@@ -598,6 +616,56 @@ td.pts { font-weight: 800; color: var(--acento-ink); }
 .consola .cabecera .puntos { font-size: 2.6rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; text-align: center; }
 
 .consola .cabecera .corto { font-size: 0.72rem; font-weight: 700; color: var(--ink-mute); text-align: center; letter-spacing: 0.06em; }
+
+.periodo-etiqueta {
+  font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--ink-mute);
+}
+
+.reloj-consola {
+  font-size: 1.7rem; font-weight: 800;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+  color: var(--ink-mute);
+  line-height: 1.1;
+}
+
+.reloj-consola.anda { color: var(--acento-ink); }
+
+/* Arrancar y parar es lo que más se toca en un partido de baloncesto:
+   botón grande, y los ajustes finos al lado, más chicos. */
+.reloj-panel { display: flex; flex-direction: column; gap: 8px; }
+
+.reloj-panel .fila { display: flex; gap: 8px; }
+
+.btn-reloj {
+  flex: 1;
+  padding: 16px 12px;
+  border-radius: var(--r-md);
+  border: none;
+  background: var(--acento);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.btn-reloj.parar { background: var(--ink); }
+
+.btn-reloj:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.reloj-panel .ajuste {
+  flex: none;
+  min-width: 62px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
 
 .selector { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 

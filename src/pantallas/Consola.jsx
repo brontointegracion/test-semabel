@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { db } from '../db'
 import { usePartido, useCuenta, useSesion } from '../datos'
@@ -9,6 +9,10 @@ import {
   marcadorEquipo, faltasEquipo, puntosJugador, faltasJugador,
   periodoActual, hayQueRehacer,
 } from '../lib/marcador'
+import {
+  PERIODOS, restanteMs, mmss, corriendo, nombrePeriodo,
+  arrancarReloj, detenerReloj, siguientePeriodo, ajustarReloj, duracionMs,
+} from '../lib/reloj'
 import { Topbar, Escudo } from '../ui'
 
 /**
@@ -23,6 +27,21 @@ export default function Consola() {
   const sesion = useSesion()
   const [ladoActivo, setLadoActivo] = useState('local')
   const [ultimoToque, setUltimoToque] = useState(null)
+  const [tic, setTic] = useState(0)
+
+  useEffect(() => {
+    const t = setInterval(() => setTic((n) => n + 1), 500)
+    return () => clearInterval(t)
+  }, [])
+
+  // Al llegar a cero el reloj se detiene solo y queda guardado así.
+  // Depende del tic porque el cero llega por el paso del tiempo, no por un cambio en la base.
+  useEffect(() => {
+    if (!d) return
+    if (corriendo(d.partido) && restanteMs(d.partido, d.liga) === 0) {
+      detenerReloj(d.partido, d.liga)
+    }
+  }, [d, tic])
 
   if (!d || !cuenta || !sesion) return null
   const { partido, liga, local, visita, jugadores, jugadoresPorId, eventos } = d
@@ -32,8 +51,11 @@ export default function Consola() {
 
   const gl = marcadorEquipo(eventos, partido.localId)
   const gv = marcadorEquipo(eventos, partido.visitaId)
-  const periodos = liga.deporte === 'baloncesto' ? 4 : 2
+  const periodos = PERIODOS[liga.deporte] || 2
   const periodo = Math.min(periodoActual(eventos), periodos)
+  const falta = restanteMs(partido, liga)
+  const anda = corriendo(partido)
+  const ultimoPeriodo = periodo >= periodos
   const valores = PUNTOS_POR_DEPORTE[liga.deporte] || [1]
   const limite = LIMITE_FALTAS[liga.deporte] || 5
 
@@ -59,8 +81,15 @@ export default function Consola() {
     avisar(total >= limite ? `${jugador.nombre}: ${total}ª falta, queda fuera` : `Falta de ${jugador.nombre} (${total})`)
   }
 
+  // El reloj queda cargado pero detenido: arranca cuando el árbitro lo diga.
   const comenzar = async () => {
-    await db.partidos.update(partido.id, { estado: 'vivo', inicio: new Date().toISOString() })
+    await db.partidos.update(partido.id, {
+      estado: 'vivo',
+      inicio: new Date().toISOString(),
+      relojEstado: 'detenido',
+      relojRestante: duracionMs(liga),
+      relojDesde: null,
+    })
   }
 
   const finalizar = async () => {
@@ -89,13 +118,11 @@ export default function Consola() {
             <div className="puntos">{gl}</div>
             <div className="corto">{local.corto} · {faltasEquipo(eventos, local.id)} faltas</div>
           </div>
-          <div style={{ textAlign: 'center', color: 'var(--ink-mute)' }}>
-            <div style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.1em' }}>
-              {liga.deporte === 'baloncesto' ? `${periodo}º CUARTO` : `${periodo}º TIEMPO`}
+          <div style={{ textAlign: 'center' }}>
+            <div className="periodo-etiqueta">
+              {periodo}º {nombrePeriodo(liga.deporte)}
             </div>
-            {partido.estado === 'vivo' && (
-              <span className="pill vivo" style={{ marginTop: 6 }}><i className="punto" />VIVO</span>
-            )}
+            <div className={`reloj-consola ${anda ? 'anda' : ''}`}>{mmss(falta)}</div>
           </div>
           <div>
             <div className="puntos">{gv}</div>
@@ -105,6 +132,40 @@ export default function Consola() {
 
         {partido.estado === 'programado' && (
           <button className="btn" onClick={comenzar}>Comenzar el partido</button>
+        )}
+
+        {partido.estado === 'vivo' && (
+          <div className="reloj-panel">
+            <div className="fila">
+              <button
+                className={`btn-reloj ${anda ? 'parar' : ''}`}
+                onClick={() => (anda ? detenerReloj(partido, liga) : arrancarReloj(partido, liga))}
+                disabled={!anda && falta === 0}
+              >
+                {anda ? '❚❚  Detener' : '▶  Arrancar'}
+              </button>
+              <button className="ajuste" onClick={() => ajustarReloj(partido, liga, -10)}>−10s</button>
+              <button className="ajuste" onClick={() => ajustarReloj(partido, liga, 10)}>+10s</button>
+            </div>
+
+            {!ultimoPeriodo && (
+              <button
+                className={falta === 0 ? 'btn' : 'btn fantasma'}
+                onClick={() => siguientePeriodo(partido, liga, periodo)}
+              >
+                {falta === 0
+                  ? `Empezar el ${periodo + 1}º ${nombrePeriodo(liga.deporte)}`
+                  : `Terminar el ${periodo}º ${nombrePeriodo(liga.deporte)} antes de tiempo`}
+              </button>
+            )}
+
+            {ultimoPeriodo && falta === 0 && (
+              <div className="aviso">
+                Se acabó el {periodo}º {nombrePeriodo(liga.deporte)}. Cierra el partido cuando
+                el marcador esté bien.
+              </div>
+            )}
+          </div>
         )}
 
         <div className="selector">

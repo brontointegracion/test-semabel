@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import { usePartido, useSesion } from '../datos'
 import { marcadorEquipo, faltasEquipo, periodoActual, destacadosDeEquipo } from '../lib/marcador'
 import { esDuenoDe } from '../lib/sesion'
+import { PERIODOS, restanteMs, mmss, corriendo, nombrePeriodo } from '../lib/reloj'
 import { Escudo, fechaCorta, hora } from '../ui'
 
 /**
@@ -48,10 +49,9 @@ export default function Partido() {
   const gl = marcadorEquipo(eventos, partido.localId)
   const gv = marcadorEquipo(eventos, partido.visitaId)
   const vivo = partido.estado === 'vivo'
-  const periodos = liga.deporte === 'baloncesto' ? 4 : 2
+  const periodos = PERIODOS[liga.deporte] || 2
   const periodo = Math.min(periodoActual(eventos), periodos)
-
-  const minutos = vivo ? Math.floor((Date.now() - new Date(partido.inicio).getTime()) / 60000) : null
+  const falta = restanteMs(partido, liga)
 
   const ultimo = eventos.filter((e) => !e.anulado).sort((a, b) => b.seq - a.seq)[0]
   const desdeUltimo = ultimo?.creadoEn ? Math.floor((Date.now() - ultimo.creadoEn) / 60000) : null
@@ -86,10 +86,17 @@ export default function Partido() {
               {partido.estado === 'final'
                 ? 'Final'
                 : vivo
-                  ? `${periodo}º ${liga.deporte === 'baloncesto' ? 'cuarto' : 'tiempo'}`
+                  ? `${periodo}º ${nombrePeriodo(liga.deporte)}`
                   : 'Por jugar'}
             </div>
-            {vivo && <div className="reloj">{minutos}′</div>}
+            {vivo && (
+              <>
+                <div className={`reloj ${corriendo(partido) ? '' : 'detenido'}`}>{mmss(falta)}</div>
+                {!corriendo(partido) && (
+                  <div className="estado-reloj">{falta === 0 ? 'fin del período' : 'detenido'}</div>
+                )}
+              </>
+            )}
             {partido.estado === 'programado' && (
               <div className="reloj" style={{ fontSize: '1rem' }}>{hora(partido.inicio)}</div>
             )}

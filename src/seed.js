@@ -6,7 +6,7 @@ import { generarCalendario } from './lib/calendario'
 //
 // Sube SEMILLA cuando cambie la forma de los datos: el prototipo se
 // resiembra solo en vez de quedar a medias.
-const SEMILLA = 4
+const SEMILLA = 5
 
 const rng = (s) => () => {
   s |= 0; s = (s + 0x6d2b79f5) | 0
@@ -162,6 +162,7 @@ export async function sembrarSiHaceFalta() {
       provincia: suyas[0].provincia,
       diasSemana: def.dias,
       franjas: def.franjas,
+      minutosPorPeriodo: def.deporte === 'baloncesto' ? 10 : 20,
       desde: diaISO(desde),
       hasta: diaISO(hasta),
       estado: 'publicada',
@@ -276,6 +277,16 @@ async function simular({ liga, jugadores, partidos }) {
       }
     }
 
+    // Períodos ya cerrados: sin estos eventos el marcador no sabe en cuál va.
+    const cerrados = enVivo ? periodosJugados - 1 : periodos
+    for (let p = 1; p <= cerrados; p++) {
+      eventos.push({
+        id: uid(), partidoId: partido.id, seq: ++seq, tipo: 'periodo',
+        periodo: p, anulado: false,
+        creadoEn: new Date(partido.inicio).getTime() + seq * 20000,
+      })
+    }
+
     // Una corrección de verdad, para que el registro no se vea de laboratorio.
     if (al() < 0.6) {
       const delPartido = eventos.filter((e) => e.partidoId === partido.id)
@@ -288,13 +299,23 @@ async function simular({ liga, jugadores, partidos }) {
     }
 
     if (enVivo) {
+      // Con el reloj corriendo: quedan 3:30 del período en curso.
       cambios.push({
         ...partido,
         estado: 'vivo',
         inicio: new Date(ahora - 41 * 60 * 1000).toISOString(),
+        relojEstado: 'corriendo',
+        relojRestante: 3.5 * 60 * 1000,
+        relojDesde: ahora,
       })
     } else {
-      cambios.push({ ...partido, estado: 'final' })
+      cambios.push({
+        ...partido,
+        estado: 'final',
+        relojEstado: 'detenido',
+        relojRestante: 0,
+        relojDesde: null,
+      })
     }
   })
 

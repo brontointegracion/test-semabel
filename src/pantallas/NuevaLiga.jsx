@@ -69,6 +69,7 @@ export default function NuevaLiga() {
       canchaIds,
       diasSemana: dias,
       franjas,
+      minutosPorPeriodo: deporte === 'baloncesto' ? 10 : 20,
       desde: new Date(`${desde}T00:00:00`).toISOString(),
       hasta: new Date(`${hasta}T23:59:59`).toISOString(),
       pais: (canchas || []).find((c) => c.id === canchaIds[0])?.pais,
