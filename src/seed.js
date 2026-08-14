@@ -1,5 +1,6 @@
 import { db, uid } from './db'
 import { generarCalendario } from './lib/calendario'
+import { restanteMs } from './lib/reloj-calculo'
 
 // Datos de ejemplo. Todo se genera relativo a hoy para que el prototipo
 // siempre esté "en temporada", con un partido en vivo que abrir.
@@ -226,6 +227,62 @@ export async function sembrarSiHaceFalta() {
   )
 
   await db.meta.put({ id: 'semilla', version: SEMILLA, sembradoEn: new Date().toISOString() })
+}
+
+/**
+ * Solo para el prototipo: el partido de ejemplo tiene que estar siempre en juego.
+ *
+ * El reloj de la semilla empieza a correr cuando se crean los datos, así que a
+ * los pocos minutos llegaba a cero y el "partido en vivo" quedaba congelado.
+ * Esto lo vuelve a poner en marcha cuando se acaba, avanzando de período como
+ * lo haría un partido de verdad.
+ *
+ * Si alguien lo detuvo a mano desde la consola y todavía queda tiempo, se
+ * respeta: eso es una decisión del árbitro, no un reloj agotado.
+ */
+let mantenimientoPausado = false
+
+/** Mientras el árbitro tiene la consola abierta, el reloj es suyo y nadie más lo toca. */
+export const pausarMantenimiento = (v) => { mantenimientoPausado = v }
+
+export async function mantenerPartidoEnVivo() {
+  if (mantenimientoPausado) return
+  const vivos = await db.partidos.where('estado').equals('vivo').toArray()
+
+  for (const partido of vivos) {
+    const liga = await db.ligas.get(partido.ligaId)
+    if (restanteMs(partido, liga) > 0) continue
+
+    const periodos = liga?.deporte === 'baloncesto' ? 4 : 2
+    const cerrados = (await db.eventos.where('partidoId').equals(partido.id).toArray())
+      .filter((e) => !e.anulado && e.tipo === 'periodo').length
+
+    const previos = await db.eventos.where('partidoId').equals(partido.id).toArray()
+
+    if (cerrados + 1 < periodos) {
+      // Se acabó el período: se cierra y empieza el siguiente.
+      const seq = previos.reduce((m, e) => Math.max(m, e.seq), 0) + 1
+      await db.eventos.add({
+        id: uid(),
+        partidoId: partido.id,
+        seq,
+        tipo: 'periodo',
+        periodo: cerrados + 1,
+        anulado: false,
+        creadoEn: Date.now(),
+      })
+    } else {
+      // Era el último: vuelve al primer período. Se borran solo las marcas de
+      // período, nunca los puntos ni las faltas — el marcador no se pierde.
+      await db.eventos.bulkDelete(previos.filter((e) => e.tipo === 'periodo').map((e) => e.id))
+    }
+
+    await db.partidos.update(partido.id, {
+      relojEstado: 'corriendo',
+      relojRestante: (3 + Math.random() * 4) * 60 * 1000,
+      relojDesde: Date.now(),
+    })
+  }
 }
 
 /** Juega los partidos que ya pasaron generando eventos reales: puntos y faltas. */

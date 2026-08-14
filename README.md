@@ -89,7 +89,15 @@ src/
 ## Datos
 
 Se siembran solos la primera vez, relativos a hoy, así que siempre hay temporada en curso
-y un partido en vivo que abrir. Para empezar de cero:
+y un partido en vivo que abrir.
+
+Ese partido se mantiene en juego mientras la app esté abierta: cuando el reloj llega a cero
+empieza el período siguiente, y al terminar el último vuelve al primero. Es andamiaje del
+prototipo (`mantenerPartidoEnVivo` en `src/seed.js`) — sin él, el reloj de la semilla se
+agotaba a los pocos minutos y el partido quedaba congelado en 00:00. Con la consola del
+árbitro abierta se desactiva: ahí el reloj es suyo.
+
+Para empezar de cero:
 
 ```js
 // en la consola del navegador

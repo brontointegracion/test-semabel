@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { db } from '../db'
+import { pausarMantenimiento } from '../seed'
 import { usePartido, useCuenta, useSesion } from '../datos'
 import { esDuenoDe } from '../lib/sesion'
 import {
@@ -32,6 +33,12 @@ export default function Consola() {
   useEffect(() => {
     const t = setInterval(() => setTic((n) => n + 1), 500)
     return () => clearInterval(t)
+  }, [])
+
+  // Con la consola abierta manda el árbitro: el prototipo deja de mover el reloj.
+  useEffect(() => {
+    pausarMantenimiento(true)
+    return () => pausarMantenimiento(false)
   }, [])
 
   // Al llegar a cero el reloj se detiene solo y queda guardado así.
