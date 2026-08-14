@@ -7,7 +7,7 @@ import { restanteMs } from './lib/reloj-calculo'
 //
 // Sube SEMILLA cuando cambie la forma de los datos: el prototipo se
 // resiembra solo en vez de quedar a medias.
-const SEMILLA = 5
+const SEMILLA = 6
 
 const rng = (s) => () => {
   s |= 0; s = (s + 0x6d2b79f5) | 0
@@ -245,45 +245,31 @@ let mantenimientoPausado = false
 /** Mientras el árbitro tiene la consola abierta, el reloj es suyo y nadie más lo toca. */
 export const pausarMantenimiento = (v) => { mantenimientoPausado = v }
 
+/**
+ * El partido de ejemplo empieza su período con el tiempo completo y corre hacia
+ * abajo. Nunca se muestra en pausa: un partido en juego tiene el reloj andando.
+ *
+ * Se vuelve a cargar al abrir la app y cada vez que llega a cero, para que la
+ * demostración no dependa de cuándo se sembraron los datos.
+ */
 export async function mantenerPartidoEnVivo() {
   if (mantenimientoPausado) return
-  const vivos = await db.partidos.where('estado').equals('vivo').toArray()
 
+  const vivos = await db.partidos.where('estado').equals('vivo').toArray()
   for (const partido of vivos) {
     const liga = await db.ligas.get(partido.ligaId)
-    if (restanteMs(partido, liga) > 0) continue
-
-    const periodos = liga?.deporte === 'baloncesto' ? 4 : 2
-    const cerrados = (await db.eventos.where('partidoId').equals(partido.id).toArray())
-      .filter((e) => !e.anulado && e.tipo === 'periodo').length
-
-    const previos = await db.eventos.where('partidoId').equals(partido.id).toArray()
-
-    if (cerrados + 1 < periodos) {
-      // Se acabó el período: se cierra y empieza el siguiente.
-      const seq = previos.reduce((m, e) => Math.max(m, e.seq), 0) + 1
-      await db.eventos.add({
-        id: uid(),
-        partidoId: partido.id,
-        seq,
-        tipo: 'periodo',
-        periodo: cerrados + 1,
-        anulado: false,
-        creadoEn: Date.now(),
-      })
-    } else {
-      // Era el último: vuelve al primer período. Se borran solo las marcas de
-      // período, nunca los puntos ni las faltas — el marcador no se pierde.
-      await db.eventos.bulkDelete(previos.filter((e) => e.tipo === 'periodo').map((e) => e.id))
-    }
+    if (restanteMs(partido, liga) > 0 && partido.relojEstado === 'corriendo') continue
 
     await db.partidos.update(partido.id, {
       relojEstado: 'corriendo',
-      relojRestante: (3 + Math.random() * 4) * 60 * 1000,
+      relojRestante: minutosDe(liga) * 60 * 1000,
       relojDesde: Date.now(),
     })
   }
 }
+
+const minutosDe = (liga) =>
+  liga?.minutosPorPeriodo ?? (liga?.deporte === 'baloncesto' ? 10 : 20)
 
 /** Juega los partidos que ya pasaron generando eventos reales: puntos y faltas. */
 async function simular({ liga, jugadores, partidos }) {
@@ -299,7 +285,9 @@ async function simular({ liga, jugadores, partidos }) {
   jugados.forEach((partido, idx) => {
     const enVivo = idx === enVivoIdx
     const periodos = baloncesto ? 4 : 2
-    const periodosJugados = enVivo ? periodos - 1 : periodos
+    // En el partido en vivo solo se anota lo de los períodos ya terminados: el
+    // que está en juego arranca con su tiempo completo y todavía sin puntos.
+    const periodosJugados = enVivo ? Math.max(1, periodos - 2) : periodos
     let seq = 0
 
     for (const equipoId of [partido.localId, partido.visitaId]) {
@@ -335,7 +323,7 @@ async function simular({ liga, jugadores, partidos }) {
     }
 
     // Períodos ya cerrados: sin estos eventos el marcador no sabe en cuál va.
-    const cerrados = enVivo ? periodosJugados - 1 : periodos
+    const cerrados = enVivo ? periodosJugados : periodos
     for (let p = 1; p <= cerrados; p++) {
       eventos.push({
         id: uid(), partidoId: partido.id, seq: ++seq, tipo: 'periodo',
@@ -356,13 +344,13 @@ async function simular({ liga, jugadores, partidos }) {
     }
 
     if (enVivo) {
-      // Con el reloj corriendo: quedan 3:30 del período en curso.
+      // El período en curso empieza con su tiempo completo, y el reloj andando.
       cambios.push({
         ...partido,
         estado: 'vivo',
         inicio: new Date(ahora - 41 * 60 * 1000).toISOString(),
         relojEstado: 'corriendo',
-        relojRestante: 3.5 * 60 * 1000,
+        relojRestante: minutosDe(liga) * 60 * 1000,
         relojDesde: ahora,
       })
     } else {

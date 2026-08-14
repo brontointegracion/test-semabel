@@ -91,11 +91,14 @@ src/
 Se siembran solos la primera vez, relativos a hoy, así que siempre hay temporada en curso
 y un partido en vivo que abrir.
 
-Ese partido se mantiene en juego mientras la app esté abierta: cuando el reloj llega a cero
-empieza el período siguiente, y al terminar el último vuelve al primero. Es andamiaje del
-prototipo (`mantenerPartidoEnVivo` en `src/seed.js`) — sin él, el reloj de la semilla se
-agotaba a los pocos minutos y el partido quedaba congelado en 00:00. Con la consola del
-árbitro abierta se desactiva: ahí el reloj es suyo.
+Ese partido está siempre en juego, nunca en pausa: el período en curso arranca con su tiempo
+completo —10:00 en baloncesto— y el reloj corre hacia abajo. Los puntos que trae son los de
+los períodos ya terminados; el que está jugándose empieza en cero, como corresponde a un
+reloj sin usar.
+
+Se recarga al abrir la app y cada vez que llega a cero (`mantenerPartidoEnVivo` en
+`src/seed.js`), para que la demostración no dependa de cuándo se sembraron los datos. Con la
+consola del árbitro abierta se desactiva: ahí el reloj es suyo.
 
 Para empezar de cero:
 
