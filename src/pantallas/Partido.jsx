@@ -5,7 +5,8 @@ import { marcadorEquipo, faltasEquipo, periodoActual, destacadosDeEquipo } from 
 import { esDuenoDe } from '../lib/sesion'
 import { PERIODOS, restanteMs, mmss, corriendo, nombrePeriodo } from '../lib/reloj'
 import { Escudo, fechaCorta, hora } from '../ui'
-import { codigoDe, urlPartido, urlJugador } from '../lib/enlaces'
+import { codigoDe, urlPartido, urlJugador, urlCancha } from '../lib/enlaces'
+import { urlWaze, urlGoogleMaps, tieneUbicacion } from '../lib/mapas'
 import { useMeta, useDatosEstructurados, partidoComoEvento } from '../lib/meta'
 
 /**
@@ -101,6 +102,10 @@ export default function Partido() {
   }
 
   const hayDetalle = eventos.some((e) => !e.anulado)
+  // Cómo llegar importa sobre todo ANTES del partido, que es justo cuando
+  // todavía no hay nada anotado. Por eso el detalle también se abre sin eventos.
+  const hayComoLlegar = tieneUbicacion(cancha) && partido.estado !== 'final'
+  const hayAlgoDebajo = hayDetalle || hayComoLlegar
 
   return (
     <div className="board-pagina" ref={contenedor}>
@@ -169,11 +174,13 @@ export default function Partido() {
           )}
         </div>
 
-        {hayDetalle && !completa && <div className="bajar">Desliza para el detalle ↓</div>}
+        {hayAlgoDebajo && !completa && <div className="bajar">Desliza para el detalle ↓</div>}
       </div>
 
-      {hayDetalle && (
+      {hayAlgoDebajo && (
         <div className="detalle">
+          {hayDetalle && (
+            <>
           <h2 className="seccion" style={{ marginTop: 0 }}>Figuras del partido</h2>
           <div className="destacados">
             {[local, visita].map((eq) => (
@@ -190,6 +197,26 @@ export default function Partido() {
             Todo esto sale de los mismos eventos que arman el marcador. Si el árbitro anula una
             falta, estas tarjetas cambian solas.
           </p>
+            </>
+          )}
+
+          {hayComoLlegar && (
+            <>
+              <h2 className="seccion">Dónde se juega</h2>
+              <div className="card">
+                <Link to={urlCancha(cancha)} style={{ fontWeight: 700 }}>{cancha.nombre}</Link>
+                <div className="sub">{cancha.barrio}, {cancha.provincia}</div>
+                <div className="mapas">
+                  <a className="btn" href={urlWaze(cancha)} target="_blank" rel="noopener noreferrer">
+                    Abrir en Waze
+                  </a>
+                  <a className="btn fantasma" href={urlGoogleMaps(cancha)} target="_blank" rel="noopener noreferrer">
+                    Google Maps
+                  </a>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>

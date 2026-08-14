@@ -199,6 +199,12 @@ h2.seccion { font-size: 1.02rem; font-weight: 700; letter-spacing: -0.01em; marg
   text-transform: uppercase; color: var(--ink-mute);
 }
 
+/* ---- cómo llegar ---- */
+
+.mapas { display: flex; gap: 8px; margin-top: 12px; }
+
+.mapas .btn { flex: 1; text-decoration: none; }
+
 /* ---- banner patrocinado ---- */
 
 .banner {

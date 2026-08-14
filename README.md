@@ -23,7 +23,7 @@ npm run dev      # http://localhost:5173
 | **Marcador** | La pantalla que reemplaza el marcador físico: números enormes, código corto para la tele, pantalla completa. Deslizando hacia abajo: mejor anotador y quien más faltas cometió, por equipo |
 | **Consola del árbitro** | Anotar y cargar faltas con una mano, deshacer y rehacer siempre visibles, registro de las últimas acciones |
 | **Jugador** | Perfil acumulado y el momento de reclamarlo, que es donde se pide el consentimiento |
-| **Cancha** | La cancha como entidad propia, con su agenda y sus ligas |
+| **Cancha** | La cancha como entidad propia, con su agenda, sus ligas y cómo llegar |
 | **Saldo** | Saldo prepago de partidos, paquetes y medios de pago locales |
 
 ## Las direcciones

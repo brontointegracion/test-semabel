@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useDescubrir, useRegion } from '../datos'
 import { marcadorEquipo } from '../lib/marcador'
-import { cambiarProvincia } from '../lib/region'
+import { cambiarProvincia, cambiarDeporte } from '../lib/region'
 import { Marca, Escudo, Vacio, RelojVivo, diaRelativo, hora, fechaCorta, mismoDia } from '../ui'
 import { urlLiga, urlPartido } from '../lib/enlaces'
 import { useMeta } from '../lib/meta'
@@ -16,7 +16,6 @@ const DEPORTES = [
 export default function Inicio() {
   const d = useDescubrir()
   const region = useRegion()
-  const [deporte, setDeporte] = useState('todos')
   const [cuando, setCuando] = useState('ahora')
 
   const provincias = useMemo(() => {
@@ -34,7 +33,10 @@ export default function Inicio() {
   if (!d || !region) return null
 
   const { ligas, ligasPorId, equipos, canchas, vivos, proximos, eventosPorPartido } = d
+  // Provincia y deporte se recuerdan: quien viene por el baloncesto de Chiriquí
+  // vuelve al baloncesto de Chiriquí sin tener que elegirlo otra vez.
   const provincia = region.provincia || 'todas'
+  const deporte = region.deporte || 'todos'
 
   // El sitio está restringido al país de quien mira: nada de otro país entra aquí.
   const delPais = ligas.filter((l) => l.pais === region.pais)
@@ -124,7 +126,7 @@ export default function Inicio() {
 
             <div className="segmento">
               {DEPORTES.map(([k, etiqueta]) => (
-                <button key={k} className={deporte === k ? 'on' : ''} onClick={() => setDeporte(k)}>
+                <button key={k} className={deporte === k ? 'on' : ''} onClick={() => cambiarDeporte(k)}>
                   {etiqueta}
                 </button>
               ))}

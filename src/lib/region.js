@@ -83,3 +83,12 @@ export async function cambiarProvincia(provincia) {
   const actual = (await db.meta.get('region')) || { id: 'region', pais: 'PA' }
   await db.meta.put({ ...actual, id: 'region', provincia })
 }
+
+/**
+ * El deporte se recuerda igual que la provincia. Quien viene por el baloncesto
+ * vuelve al baloncesto: no tiene que volver a elegirlo cada vez que abre.
+ */
+export async function cambiarDeporte(deporte) {
+  const actual = (await db.meta.get('region')) || { id: 'region', pais: 'PA' }
+  await db.meta.put({ ...actual, id: 'region', deporte })
+}

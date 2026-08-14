@@ -3,6 +3,31 @@ import { useCancha } from '../datos'
 import { Topbar, Escudo, fechaCorta, hora, mismoDia } from '../ui'
 import { codigoDe, urlLiga, urlPartido } from '../lib/enlaces'
 import { useMeta } from '../lib/meta'
+import { urlWaze, urlGoogleMaps, tieneUbicacion } from '../lib/mapas'
+
+/**
+ * Muchas canchas de barrio no tienen número de calle ni salen por su nombre en
+ * un buscador, así que se navega por coordenadas. Y llegar es justo el paso que
+ * decide si alguien va: de eso vive el local.
+ */
+function ComoLlegar({ cancha }) {
+  return (
+    <div className="card" style={{ marginTop: 10 }}>
+      <div className="eyebrow">Cómo llegar</div>
+      <div className="sub" style={{ marginTop: 6 }}>
+        {cancha.barrio}, {cancha.provincia}
+      </div>
+      <div className="mapas">
+        <a className="btn" href={urlWaze(cancha)} target="_blank" rel="noopener noreferrer">
+          Abrir en Waze
+        </a>
+        <a className="btn fantasma" href={urlGoogleMaps(cancha)} target="_blank" rel="noopener noreferrer">
+          Google Maps
+        </a>
+      </div>
+    </div>
+  )
+}
 
 export default function Cancha() {
   const { slug } = useParams()
@@ -41,6 +66,8 @@ export default function Cancha() {
           las ligas que juegan aquí.
         </p>
       </div>
+
+      {tieneUbicacion(cancha) && <ComoLlegar cancha={cancha} />}
 
       <h2 className="seccion">Ligas que juegan aquí</h2>
       <div className="lista">
