@@ -1,10 +1,11 @@
 import { Link, useParams } from 'react-router-dom'
 import { useCancha } from '../datos'
 import { Topbar, Escudo, fechaCorta, hora, mismoDia } from '../ui'
+import { codigoDe, urlLiga, urlPartido } from '../lib/enlaces'
 
 export default function Cancha() {
-  const { id } = useParams()
-  const d = useCancha(id)
+  const { slug } = useParams()
+  const d = useCancha(codigoDe(slug))
   if (!d) return null
 
   const { cancha, ligas, partidos, equiposPorId, ligasPorId } = d
@@ -35,7 +36,7 @@ export default function Cancha() {
       <h2 className="seccion">Ligas que juegan aquí</h2>
       <div className="lista">
         {ligas.map((l) => (
-          <Link key={l.id} to={`/liga/${l.id}`} className="card">
+          <Link key={l.id} to={urlLiga(l)} className="card">
             <div className="fila-liga">
               <div className="info">
                 <div className="nombre">{l.nombre}</div>
@@ -59,7 +60,7 @@ export default function Cancha() {
         return (
           <div key={p.id}>
             {nuevoDia && <div className="dia-sep">{fechaCorta(p.inicio)}</div>}
-            <Link to={`/partido/${p.id}`} className="partido" style={{ marginBottom: 8 }}>
+            <Link to={urlPartido(p, equiposPorId[p.localId], equiposPorId[p.visitaId])} className="partido" style={{ marginBottom: 8 }}>
               <div className="cuando">
                 <div className="hora">{hora(p.inicio)}</div>
                 <div className="dia">ocupada</div>

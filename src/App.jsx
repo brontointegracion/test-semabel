@@ -15,7 +15,7 @@ import Noticias from './pantallas/Noticias'
 import Noticia from './pantallas/Noticia'
 import Codigo from './pantallas/Codigo'
 
-const SIN_TABS = [/^\/partido\/[^/]+$/, /^\/partido\/[^/]+\/consola$/, /^\/b\//]
+const SIN_TABS = [/^\/p\/[^/]+$/, /^\/p\/[^/]+\/consola$/, /^\/b\//]
 
 const iconos = {
   inicio: 'M4 11.5L12 4l8 7.5M6 10v10h12V10',
@@ -54,12 +54,12 @@ export default function App() {
         <Routes>
           {/* Público */}
           <Route path="/" element={<Inicio />} />
-          <Route path="/liga/:id" element={<Liga />} />
-          <Route path="/partido/:id" element={<Partido />} />
-          <Route path="/jugador/:id" element={<Jugador />} />
-          <Route path="/cancha/:id" element={<Cancha />} />
+          <Route path="/l/:slug" element={<Liga />} />
+          <Route path="/p/:slug" element={<Partido />} />
+          <Route path="/j/:slug" element={<Jugador />} />
+          <Route path="/c/:slug" element={<Cancha />} />
           <Route path="/noticias" element={<Noticias />} />
-          <Route path="/noticia/:id" element={<Noticia />} />
+          <Route path="/n/:slug" element={<Noticia />} />
           <Route path="/b/:codigo" element={<Codigo />} />
 
           {/* Solo el organizador */}
@@ -67,7 +67,7 @@ export default function App() {
           <Route path="/nueva" element={<SoloOrganizador sesion={sesion}><NuevaLiga /></SoloOrganizador>} />
           <Route path="/saldo" element={<SoloOrganizador sesion={sesion}><Saldo /></SoloOrganizador>} />
           <Route path="/canchas" element={<SoloOrganizador sesion={sesion}><Canchas /></SoloOrganizador>} />
-          <Route path="/partido/:id/consola" element={<SoloOrganizador sesion={sesion}><Consola /></SoloOrganizador>} />
+          <Route path="/p/:slug/consola" element={<SoloOrganizador sesion={sesion}><Consola /></SoloOrganizador>} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

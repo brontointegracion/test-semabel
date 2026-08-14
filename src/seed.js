@@ -7,7 +7,17 @@ import { restanteMs } from './lib/reloj-calculo'
 //
 // Sube SEMILLA cuando cambie la forma de los datos: el prototipo se
 // resiembra solo en vez de quedar a medias.
-const SEMILLA = 6
+const SEMILLA = 7
+
+// Códigos cortos: los que se leen en la dirección y se escriben en el televisor.
+// Únicos entre sí para que nunca dos cosas respondan al mismo número.
+const usados = new Set()
+const codigoUnico = () => {
+  let c
+  do { c = String(1000 + Math.floor(Math.random() * 8999)) } while (usados.has(c))
+  usados.add(c)
+  return c
+}
 
 const rng = (s) => () => {
   s |= 0; s = (s + 0x6d2b79f5) | 0
@@ -139,7 +149,7 @@ export async function sembrarSiHaceFalta() {
   const desde = new Date(hoy); desde.setDate(hoy.getDate() - 12)
   const hasta = new Date(hoy); hasta.setDate(hoy.getDate() + 45)
 
-  const canchas = CANCHAS.map((c) => ({ id: uid(), ...c }))
+  const canchas = CANCHAS.map((c) => ({ id: uid(), codigo: codigoUnico(), ...c }))
   await db.canchas.bulkAdd(canchas)
   const porClave = Object.fromEntries(canchas.map((c) => [c.clave, c]))
 
@@ -157,7 +167,7 @@ export async function sembrarSiHaceFalta() {
       id: uid(),
       nombre: def.nombre,
       deporte: def.deporte,
-      codigo: String(1000 + Math.floor(Math.random() * 8999)),
+      codigo: codigoUnico(),
       canchaIds: suyas.map((c) => c.id),
       pais: suyas[0].pais,
       provincia: suyas[0].provincia,
@@ -185,7 +195,7 @@ export async function sembrarSiHaceFalta() {
         do { d = 1 + Math.floor(Math.random() * 30) } while (dorsales.has(d))
         dorsales.add(d)
         jugadores.push({
-          id: uid(), ligaId: liga.id, equipoId: eq.id,
+          id: uid(), codigo: codigoUnico(), ligaId: liga.id, equipoId: eq.id,
           nombre: tomarNombre(), dorsal: d, reclamado: false,
         })
       }
@@ -203,7 +213,7 @@ export async function sembrarSiHaceFalta() {
 
     const filas = partidos.map((p) => ({
       id: uid(), ligaId: liga.id,
-      codigo: String(1000 + Math.floor(Math.random() * 8999)),
+      codigo: codigoUnico(),
       estado: 'programado', ...p,
     }))
     await db.partidos.bulkAdd(filas)
@@ -217,6 +227,7 @@ export async function sembrarSiHaceFalta() {
       const cuando = new Date(); cuando.setDate(cuando.getDate() - n.hace)
       return {
         id: uid(),
+        codigo: codigoUnico(),
         ...n,
         ligaId: ligas[i % ligas.length].id,
         pais: ligas[i % ligas.length].pais,

@@ -15,15 +15,16 @@ import {
   arrancarReloj, detenerReloj, siguientePeriodo, ajustarReloj, duracionMs,
 } from '../lib/reloj'
 import { Topbar, Escudo } from '../ui'
+import { codigoDe, urlPartido } from '../lib/enlaces'
 
 /**
  * La consola del árbitro. Se usa de pie, con una mano, mientras el partido sigue.
  * Por eso deshacer es un botón siempre visible y no una opción escondida.
  */
 export default function Consola() {
-  const { id } = useParams()
+  const { slug } = useParams()
   const nav = useNavigate()
-  const d = usePartido(id)
+  const d = usePartido(codigoDe(slug))
   const cuenta = useCuenta()
   const sesion = useSesion()
   const [ladoActivo, setLadoActivo] = useState('local')
@@ -54,7 +55,7 @@ export default function Consola() {
   const { partido, liga, local, visita, jugadores, jugadoresPorId, eventos } = d
 
   // Ser organizador no alcanza: hay que ser el organizador de esta liga.
-  if (!esDuenoDe(sesion, liga)) return <Navigate to={`/partido/${id}`} replace />
+  if (!esDuenoDe(sesion, liga)) return <Navigate to={urlPartido(partido, local, visita)} replace />
 
   const gl = marcadorEquipo(eventos, partido.localId)
   const gv = marcadorEquipo(eventos, partido.visitaId)
@@ -107,7 +108,7 @@ export default function Consola() {
     if (!ok) return
     await db.partidos.update(partido.id, { estado: 'final' })
     await db.cuenta.update('yo', { saldo: Math.max(0, cuenta.saldo - 1) })
-    nav(`/partido/${partido.id}`, { replace: true })
+    nav(urlPartido(partido, local, visita), { replace: true })
   }
 
   const recientes = eventos

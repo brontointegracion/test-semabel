@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useCanchas, useRegion } from '../datos'
 import { Marca, Chevron, Vacio } from '../ui'
+import { urlCancha } from '../lib/enlaces'
 
 export default function Canchas() {
   const canchas = useCanchas()
@@ -26,7 +27,7 @@ export default function Canchas() {
           <div className="dia-sep">{provincia}</div>
           <div className="lista">
             {lista.map((c) => (
-              <Link key={c.id} to={`/cancha/${c.id}`} className="card">
+              <Link key={c.id} to={urlCancha(c)} className="card">
                 <div className="fila-liga">
                   <div className="info">
                     <div className="nombre">{c.nombre}</div>

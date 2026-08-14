@@ -4,6 +4,7 @@ import { useDescubrir, useRegion } from '../datos'
 import { marcadorEquipo } from '../lib/marcador'
 import { cambiarProvincia } from '../lib/region'
 import { Marca, Escudo, Vacio, RelojVivo, diaRelativo, hora, fechaCorta, mismoDia } from '../ui'
+import { urlLiga, urlPartido } from '../lib/enlaces'
 
 const DEPORTES = [
   ['todos', 'Todos'],
@@ -142,7 +143,7 @@ export default function Inicio() {
           </h2>
           <div className="lista">
             {ligasF.map((l) => (
-              <Link key={l.id} to={`/liga/${l.id}`} className="card">
+              <Link key={l.id} to={urlLiga(l)} className="card">
                 <div className="fila-liga">
                   <div className="info">
                     <div className="nombre">{l.nombre}</div>
@@ -172,7 +173,7 @@ function Ahora({ partidos, equipos, canchas, ligas, eventos }) {
       {partidos.map((p) => {
         const evs = eventos[p.id] || []
         return (
-          <Link key={p.id} to={`/partido/${p.id}`} className="card">
+          <Link key={p.id} to={urlPartido(p, equipos[p.localId], equipos[p.visitaId])} className="card">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
               <span className="pill vivo"><i className="punto" />EN VIVO</span>
               <RelojVivo partido={p} liga={ligas[p.ligaId]} eventos={evs} />
@@ -211,7 +212,7 @@ function Viene({ partidos, equipos, canchas }) {
         return (
           <div key={p.id}>
             {nuevo && <div className="dia-sep">{diaRelativo(p.inicio)} · {fechaCorta(p.inicio)}</div>}
-            <Link to={`/partido/${p.id}`} className="partido" style={{ marginBottom: 8 }}>
+            <Link to={urlPartido(p, equipos[p.localId], equipos[p.visitaId])} className="partido" style={{ marginBottom: 8 }}>
               <div className="cuando">
                 <div className="hora">{hora(p.inicio)}</div>
                 <div className="dia">{canchas[p.canchaId]?.barrio}</div>

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useNoticias, useRegion } from '../datos'
 import { Marca, Vacio, fechaCorta } from '../ui'
+import { urlNoticia } from '../lib/enlaces'
 
 export default function Noticias() {
   const noticias = useNoticias()
@@ -21,7 +22,7 @@ export default function Noticias() {
 
       <div style={{ marginTop: 8 }}>
         {delPais.map((n, i) => (
-          <Link key={n.id} to={`/noticia/${n.id}`} className={`noticia ${i === 0 ? 'principal' : ''}`}>
+          <Link key={n.id} to={urlNoticia(n)} className={`noticia ${i === 0 ? 'principal' : ''}`}>
             <div className="meta">
               <span className="pill acento">{n.etiqueta}</span>
               <span className="sub" style={{ fontSize: '0.78rem' }}>{fechaCorta(n.publicada)}</span>

@@ -21,6 +21,13 @@ db.version(2).stores({
   meta: 'id',
 })
 
+// Cada cosa que tiene dirección propia se busca por su código corto, no por el id.
+db.version(3).stores({
+  canchas: 'id, pais, provincia, codigo',
+  jugadores: 'id, ligaId, equipoId, codigo',
+  noticias: 'id, publicada, codigo',
+})
+
 export const uid = () => Math.random().toString(36).slice(2, 10)
 
 export async function resetear() {

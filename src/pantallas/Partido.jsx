@@ -5,6 +5,7 @@ import { marcadorEquipo, faltasEquipo, periodoActual, destacadosDeEquipo } from 
 import { esDuenoDe } from '../lib/sesion'
 import { PERIODOS, restanteMs, mmss, corriendo, nombrePeriodo } from '../lib/reloj'
 import { Escudo, fechaCorta, hora } from '../ui'
+import { codigoDe, urlPartido, urlJugador } from '../lib/enlaces'
 
 /**
  * El marcador. No es un tablero de resultados que además muestra el puntaje:
@@ -15,9 +16,9 @@ import { Escudo, fechaCorta, hora } from '../ui'
  * quien mira de lejos ve solo los números grandes.
  */
 export default function Partido() {
-  const { id } = useParams()
+  const { slug } = useParams()
   const nav = useNavigate()
-  const d = usePartido(id)
+  const d = usePartido(codigoDe(slug))
   const sesion = useSesion()
   const [, setTic] = useState(0)
   const contenedor = useRef(null)
@@ -134,7 +135,7 @@ export default function Partido() {
           </button>
           {/* Llevar el marcador es cosa del dueño de la liga. Nadie más lo ve. */}
           {partido.estado !== 'final' && esDuenoDe(sesion, liga) && (
-            <Link to={`/partido/${partido.id}/consola`} className="btn">Llevar el marcador</Link>
+            <Link to={`${urlPartido(partido, local, visita)}/consola`} className="btn">Llevar el marcador</Link>
           )}
         </div>
 
@@ -216,7 +217,7 @@ function TarjetaEquipo({ equipo, eventos, jugadores, puntos }) {
         <span className="q">Mejor</span>
         {mejor ? (
           <>
-            <Link to={`/jugador/${mejor.jugador.id}`} className="quien">
+            <Link to={urlJugador(mejor.jugador)} className="quien">
               #{mejor.jugador.dorsal} {mejor.jugador.nombre}
             </Link>
             <span className="n">{mejor.puntos}</span>
@@ -230,7 +231,7 @@ function TarjetaEquipo({ equipo, eventos, jugadores, puntos }) {
         <span className="q">Más faltas</span>
         {masFaltas ? (
           <>
-            <Link to={`/jugador/${masFaltas.jugador.id}`} className="quien">
+            <Link to={urlJugador(masFaltas.jugador)} className="quien">
               #{masFaltas.jugador.dorsal} {masFaltas.jugador.nombre}
             </Link>
             <span className="n faltas">{masFaltas.faltas}</span>

@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useLigas, useCuenta } from '../datos'
 import { Marca, Chevron, Vacio, diaRelativo, hora } from '../ui'
+import { urlLiga } from '../lib/enlaces'
 
 export default function Ligas() {
   const ligas = useLigas({ soloMias: true })
@@ -18,7 +19,7 @@ export default function Ligas() {
 
       <div className="lista">
         {(ligas || []).map(({ liga, canchas, total, jugados, vivo, proximo }) => (
-          <Link key={liga.id} to={`/liga/${liga.id}`} className="card">
+          <Link key={liga.id} to={urlLiga(liga)} className="card">
             <div className="fila-liga">
               <div className="info">
                 <div className="nombre">{liga.nombre}</div>

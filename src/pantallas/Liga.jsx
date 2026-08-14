@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useLiga } from '../datos'
 import { tablaPosiciones, estadisticaJugadores, marcadorEquipo } from '../lib/marcador'
 import { Topbar, Escudo, Vacio, fechaCorta, hora, mismoDia } from '../ui'
+import { codigoDe, urlLiga, urlPartido, urlJugador } from '../lib/enlaces'
 
 const PESTANAS = [
   ['tabla', 'Posiciones'],
@@ -11,8 +12,8 @@ const PESTANAS = [
 ]
 
 export default function Liga() {
-  const { id } = useParams()
-  const d = useLiga(id)
+  const { slug } = useParams()
+  const d = useLiga(codigoDe(slug))
   const [pestana, setPestana] = useState('tabla')
   const [copiado, setCopiado] = useState(false)
 
@@ -20,7 +21,7 @@ export default function Liga() {
   const { liga, equipos, jugadores, partidos, equiposPorId, canchasPorId, eventosPorPartido } = d
 
   const compartir = async () => {
-    const url = `${location.origin}/liga/${liga.id}`
+    const url = `${location.origin}${urlLiga(liga)}`
     try {
       if (navigator.share) await navigator.share({ title: liga.nombre, url })
       else await navigator.clipboard.writeText(url)
@@ -153,7 +154,7 @@ function Calendario({ partidos, equiposPorId, canchasPorId, eventosPorPartido })
         return (
           <div key={p.id}>
             {nuevoDia && <div className="dia-sep">{fechaCorta(p.inicio)}</div>}
-            <Link to={`/partido/${p.id}`} className="partido" style={{ marginBottom: 8 }}>
+            <Link to={urlPartido(p, equiposPorId[p.localId], equiposPorId[p.visitaId])} className="partido" style={{ marginBottom: 8 }}>
               <div className="cuando">
                 {p.estado === 'vivo' ? (
                   <span className="pill vivo" style={{ fontSize: '0.58rem' }}>VIVO</span>
@@ -195,7 +196,7 @@ function Jugadores({ jugadores, equiposPorId, partidos, eventosPorPartido }) {
       <h2 className="seccion">Máximos anotadores</h2>
       <div className="lista">
         {stats.slice(0, 15).map((s, i) => (
-          <Link key={s.jugador.id} to={`/jugador/${s.jugador.id}`} className="jugador-fila">
+          <Link key={s.jugador.id} to={urlJugador(s.jugador)} className="jugador-fila">
             <span className="pos" style={{ paddingLeft: 4 }}>{i + 1}</span>
             <Escudo equipo={equiposPorId[s.jugador.equipoId]} size="sm" />
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -217,7 +218,7 @@ function Jugadores({ jugadores, equiposPorId, partidos, eventosPorPartido }) {
       <h2 className="seccion">Más faltas</h2>
       <div className="lista">
         {[...stats].sort((a, b) => b.faltas - a.faltas).slice(0, 8).map((s, i) => (
-          <Link key={s.jugador.id} to={`/jugador/${s.jugador.id}`} className="jugador-fila">
+          <Link key={s.jugador.id} to={urlJugador(s.jugador)} className="jugador-fila">
             <span className="pos" style={{ paddingLeft: 4 }}>{i + 1}</span>
             <Escudo equipo={equiposPorId[s.jugador.equipoId]} size="sm" />
             <div style={{ flex: 1, minWidth: 0 }}>

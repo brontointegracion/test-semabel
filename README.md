@@ -26,6 +26,23 @@ npm run dev      # http://localhost:5173
 | **Cancha** | La cancha como entidad propia, con su agenda y sus ligas |
 | **Saldo** | Saldo prepago de partidos, paquetes y medios de pago locales |
 
+## Las direcciones
+
+Un link se comparte por WhatsApp, se lee antes de tocarlo y a veces se dicta. Por eso lleva
+nombre y termina en un código corto, que es lo que de verdad identifica:
+
+```
+/p/halcones-vs-titanes-del-norte-7531     un partido
+/l/liga-barrial-san-miguelito-4821        una liga
+/j/luis-carrasco-3092                     un jugador
+/c/cancha-don-bosco-1177                  una cancha
+/n/el-barrio-que-aprendio-sus-numeros-2044   una noticia
+/b/7531                                   el marcador, para escribir en el televisor
+```
+
+El nombre es solo para quien lee: la búsqueda va siempre por el código. Si un equipo se
+renombra, los links viejos siguen funcionando. `src/lib/enlaces.js`.
+
 ## Quién ve qué
 
 | | Invitado | Dueño de la liga |
@@ -121,6 +138,7 @@ npm run build && npm run preview
 ```bash
 node tools/probar-calendario.mjs
 node tools/probar-reloj.mjs
+node tools/probar-enlaces.mjs
 ```
 
 El primero verifica, de 4 a 12 equipos, que el calendario sea todos contra todos sin repetir

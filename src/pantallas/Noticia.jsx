@@ -1,10 +1,11 @@
 import { Link, useParams } from 'react-router-dom'
 import { useNoticia } from '../datos'
 import { Topbar, fechaCorta } from '../ui'
+import { codigoDe, urlLiga } from '../lib/enlaces'
 
 export default function Noticia() {
-  const { id } = useParams()
-  const d = useNoticia(id)
+  const { slug } = useParams()
+  const d = useNoticia(codigoDe(slug))
   if (!d) return null
 
   const { noticia, liga } = d
@@ -47,7 +48,7 @@ export default function Noticia() {
         )}
 
         {liga && (
-          <Link to={`/liga/${liga.id}`} className="card" style={{ marginTop: 22 }}>
+          <Link to={urlLiga(liga)} className="card" style={{ marginTop: 22 }}>
             <div className="eyebrow">Liga mencionada</div>
             <div style={{ fontWeight: 700, marginTop: 4 }}>{liga.nombre}</div>
             <div className="sub">{liga.provincia} · organiza {liga.organizador}</div>

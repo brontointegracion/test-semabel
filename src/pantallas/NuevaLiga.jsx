@@ -4,6 +4,7 @@ import { db, uid } from '../db'
 import { useCanchas, useSesion, useCuenta } from '../datos'
 import { generarCalendario, DIAS } from '../lib/calendario'
 import { Topbar, Escudo, fechaCorta, hora, mismoDia } from '../ui'
+import { urlLiga } from '../lib/enlaces'
 
 const COLORES = ['#C9452B', '#2A5C86', '#D89B1C', '#1E7F8C', '#6B4E9B', '#0D6B55', '#8C3B63', '#3F6B22']
 const FRANJAS = ['18:00', '19:00', '20:00', '21:00']
@@ -61,11 +62,12 @@ export default function NuevaLiga() {
   const publicar = async () => {
     setGuardando(true)
     const ligaId = uid()
+    const codigoLiga = String(1000 + Math.floor(Math.random() * 8999))
     await db.ligas.add({
       id: ligaId,
       nombre: nombre.trim(),
       deporte,
-      codigo: String(1000 + Math.floor(Math.random() * 8999)),
+      codigo: codigoLiga,
       canchaIds,
       diasSemana: dias,
       franjas,
@@ -86,6 +88,7 @@ export default function NuevaLiga() {
     const jugadores = equipos.flatMap((eq, ei) =>
       Array.from({ length: 6 }, (_, i) => ({
         id: uid(),
+        codigo: String(1000 + Math.floor(Math.random() * 8999)),
         ligaId,
         equipoId: eq.id,
         nombre: `Jugador ${ei + 1}-${i + 1}`,
@@ -109,7 +112,7 @@ export default function NuevaLiga() {
       })),
     )
 
-    nav(`/liga/${ligaId}`, { replace: true })
+    nav(urlLiga({ nombre: nombre.trim(), codigo: codigoLiga }), { replace: true })
   }
 
   if (paso === 2) {

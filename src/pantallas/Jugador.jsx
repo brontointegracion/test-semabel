@@ -2,10 +2,11 @@ import { Link, useParams } from 'react-router-dom'
 import { db } from '../db'
 import { useJugador } from '../datos'
 import { Topbar, Escudo, fechaCorta } from '../ui'
+import { codigoDe, urlPartido } from '../lib/enlaces'
 
 export default function Jugador() {
-  const { id } = useParams()
-  const d = useJugador(id)
+  const { slug } = useParams()
+  const d = useJugador(codigoDe(slug))
   if (!d) return null
 
   const { jugador, equipo, liga, equiposPorId, partidosPorId, eventos, puntos, faltas, partidosJugados } = d
@@ -24,7 +25,7 @@ export default function Jugador() {
       'Aquí es donde se pide el consentimiento: antes de esto solo eres un nombre en una ' +
       'planilla; después, tu récord te pertenece y te sigue de liga en liga.',
     )
-    if (ok) await db.jugadores.update(id, { reclamado: true })
+    if (ok) await db.jugadores.update(jugador.id, { reclamado: true })
   }
 
   return (
@@ -83,7 +84,7 @@ export default function Jugador() {
         {historial.map(({ partido, pts }) => {
           const rival = partido.localId === equipo.id ? partido.visitaId : partido.localId
           return (
-            <Link key={partido.id} to={`/partido/${partido.id}`} className="jugador-fila">
+            <Link key={partido.id} to={urlPartido(partido, equiposPorId[partido.localId], equiposPorId[partido.visitaId])} className="jugador-fila">
               <Escudo equipo={equiposPorId[rival]} size="sm" />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="nombre" style={{ fontWeight: 600 }}>

@@ -72,14 +72,14 @@ export function useLigas({ soloMias = false } = {}) {
   }, [soloMias], [])
 }
 
-export function useLiga(id) {
+export function useLiga(codigo) {
   return useLiveQuery(async () => {
-    const liga = await db.ligas.get(id)
+    const liga = await db.ligas.where('codigo').equals(codigo).first()
     if (!liga) return null
     const [equipos, jugadores, partidos, canchas] = await Promise.all([
-      db.equipos.where('ligaId').equals(id).toArray(),
-      db.jugadores.where('ligaId').equals(id).toArray(),
-      db.partidos.where('ligaId').equals(id).toArray(),
+      db.equipos.where('ligaId').equals(liga.id).toArray(),
+      db.jugadores.where('ligaId').equals(liga.id).toArray(),
+      db.partidos.where('ligaId').equals(liga.id).toArray(),
       db.canchas.toArray(),
     ])
     const eventos = await db.eventos.where('partidoId').anyOf(partidos.map((p) => p.id)).toArray()
@@ -96,18 +96,18 @@ export function useLiga(id) {
       canchasPorId: porId(canchas),
       eventosPorPartido,
     }
-  }, [id])
+  }, [codigo])
 }
 
-export function usePartido(id) {
+export function usePartido(codigo) {
   return useLiveQuery(async () => {
-    const partido = await db.partidos.get(id)
+    const partido = await db.partidos.where('codigo').equals(codigo).first()
     if (!partido) return null
     const liga = await db.ligas.get(partido.ligaId)
     const [equipos, jugadores, eventos, cancha] = await Promise.all([
       db.equipos.where('ligaId').equals(partido.ligaId).toArray(),
       db.jugadores.where('ligaId').equals(partido.ligaId).toArray(),
-      db.eventos.where('partidoId').equals(id).toArray(),
+      db.eventos.where('partidoId').equals(partido.id).toArray(),
       db.canchas.get(partido.canchaId),
     ])
     const equiposPorId = porId(equipos)
@@ -121,12 +121,12 @@ export function usePartido(id) {
       jugadoresPorId: porId(jugadores),
       eventos: eventos.sort((a, b) => a.seq - b.seq),
     }
-  }, [id])
+  }, [codigo])
 }
 
-export function useJugador(id) {
+export function useJugador(codigo) {
   return useLiveQuery(async () => {
-    const jugador = await db.jugadores.get(id)
+    const jugador = await db.jugadores.where('codigo').equals(codigo).first()
     if (!jugador) return null
     const [equipo, liga, partidos] = await Promise.all([
       db.equipos.get(jugador.equipoId),
@@ -138,7 +138,7 @@ export function useJugador(id) {
 
     const finalizados = new Set(partidos.filter((p) => p.estado === 'final').map((p) => p.id))
     const suyos = eventos.filter(
-      (e) => e.jugadorId === id && !e.anulado && finalizados.has(e.partidoId),
+      (e) => e.jugadorId === jugador.id && !e.anulado && finalizados.has(e.partidoId),
     )
 
     return {
@@ -152,19 +152,19 @@ export function useJugador(id) {
       faltas: suyos.filter((e) => e.tipo === 'falta').length,
       partidosJugados: new Set(suyos.map((e) => e.partidoId)).size,
     }
-  }, [id])
+  }, [codigo])
 }
 
-export function useCancha(id) {
+export function useCancha(codigo) {
   return useLiveQuery(async () => {
-    const cancha = await db.canchas.get(id)
+    const cancha = await db.canchas.where('codigo').equals(codigo).first()
     if (!cancha) return null
-    const ligas = (await db.ligas.toArray()).filter((l) => l.canchaIds.includes(id))
-    const partidos = (await db.partidos.where('canchaId').equals(id).toArray())
+    const ligas = (await db.ligas.toArray()).filter((l) => l.canchaIds.includes(cancha.id))
+    const partidos = (await db.partidos.where('canchaId').equals(cancha.id).toArray())
       .sort((a, b) => a.inicio.localeCompare(b.inicio))
     const equipos = await db.equipos.toArray()
     return { cancha, ligas, partidos, equiposPorId: porId(equipos), ligasPorId: porId(ligas) }
-  }, [id])
+  }, [codigo])
 }
 
 export function useNoticias() {
@@ -177,11 +177,11 @@ export function useNoticias() {
   }, [], [])
 }
 
-export function useNoticia(id) {
+export function useNoticia(codigo) {
   return useLiveQuery(async () => {
-    const noticia = await db.noticias.get(id)
+    const noticia = await db.noticias.where('codigo').equals(codigo).first()
     if (!noticia) return null
     const liga = noticia.ligaId ? await db.ligas.get(noticia.ligaId) : null
     return { noticia, liga }
-  }, [id])
+  }, [codigo])
 }
