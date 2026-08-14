@@ -50,6 +50,13 @@ export default function Liga() {
           {liga.deporte === 'baloncesto' ? 'Baloncesto' : 'Fútbol sala'} ·{' '}
           {liga.canchaIds.map((c) => canchasPorId[c]?.nombre).filter(Boolean).join(' y ')}
         </div>
+        <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+          {liga.categoria && liga.categoria !== 'Libre' && (
+            <span className="pill acento">Categoría {liga.categoria}</span>
+          )}
+          {liga.internacional && <span className="pill acento">Internacional</span>}
+          {liga.esTorneo && <span className="pill">Torneo</span>}
+        </div>
         <div className="btn-fila" style={{ marginTop: 12 }}>
           <button className="btn" onClick={compartir}>
             {copiado ? 'Link copiado' : 'Compartir link'}

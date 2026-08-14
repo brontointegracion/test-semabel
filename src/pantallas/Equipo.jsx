@@ -152,7 +152,13 @@ export default function Equipo() {
         </>
       )}
 
-      <h2 className="seccion">Plantilla</h2>
+      <h2 className="seccion">{liga?.esTorneo ? 'Convocatoria' : 'Plantilla'}</h2>
+      {liga?.esTorneo && (
+        <p className="sub" style={{ marginTop: -6, marginBottom: 10 }}>
+          Para un torneo no viaja el equipo: viajan los que pueden. El resto se completa con
+          refuerzos de otros equipos, y por eso esta lista es propia del torneo.
+        </p>
+      )}
       <div className="lista">
         {jugadores.map((j) => {
           const s = stats.find((x) => x.jugador.id === j.id)
@@ -162,7 +168,9 @@ export default function Equipo() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="nombre" style={{ fontWeight: 600 }}>{j.nombre}</div>
                 <div className="sub" style={{ fontSize: '0.74rem' }}>
+                  {j.refuerzo && <span className="pill acento" style={{ marginRight: 6 }}>Refuerzo</span>}
                   {s?.partidos ? `${s.promedio.toFixed(1)} pts por juego · ${s.faltas} faltas` : 'Sin partidos'}
+                  {j.deEquipo && <> · de {j.deEquipo}</>}
                 </div>
               </div>
               {s?.partidos > 0 && (

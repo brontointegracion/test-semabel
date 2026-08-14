@@ -7,7 +7,7 @@ import { restanteMs } from './lib/reloj-calculo'
 //
 // Sube SEMILLA cuando cambie la forma de los datos: el prototipo se
 // resiembra solo en vez de quedar a medias.
-const SEMILLA = 8
+const SEMILLA = 9
 
 // Códigos cortos: los que se leen en la dirección y se escriben en el televisor.
 // Únicos entre sí para que nunca dos cosas respondan al mismo número.
@@ -57,7 +57,7 @@ const LIGAS = [
     equipos: nombresEquipo(['Barraza FC', 'Santa Ana', 'Marañón', 'Boca La Caja']),
   },
   {
-    nombre: 'Liga Chiricana de Baloncesto', deporte: 'baloncesto', organizador: 'Ana Quiel',
+    nombre: 'Liga Chiricana de Baloncesto 40+', deporte: 'baloncesto', categoria: '40+', organizador: 'Ana Quiel',
     canchas: ['david'], dias: [4, 6], franjas: ['19:00'],
     equipos: nombresEquipo(['Toros de David', 'Cafeteros de Boquete', 'Bravos de Dolega', 'Puma Chiricano']),
   },
@@ -72,7 +72,7 @@ const LIGAS = [
     equipos: nombresEquipo(['La Palma', 'Yaviza', 'Metetí', 'Sambú']),
   },
   {
-    nombre: 'Liga Antioqueña de Barrio', deporte: 'baloncesto', organizador: 'Sara Betancur',
+    nombre: 'Liga Antioqueña 40+', deporte: 'baloncesto', categoria: '40+', organizador: 'Sara Betancur',
     canchas: ['envigado'], dias: [3, 6], franjas: ['19:00'],
     equipos: nombresEquipo(['Envigado', 'Poblado', 'Belén', 'Robledo']),
   },
@@ -167,6 +167,7 @@ export async function sembrarSiHaceFalta() {
       id: uid(),
       nombre: def.nombre,
       deporte: def.deporte,
+      categoria: def.categoria || 'Libre',
       codigo: codigoUnico(),
       canchaIds: suyas.map((c) => c.id),
       pais: suyas[0].pais,
@@ -196,6 +197,9 @@ export async function sembrarSiHaceFalta() {
         dorsales.add(d)
         jugadores.push({
           id: uid(), codigo: codigoUnico(), ligaId: liga.id, equipoId: eq.id,
+          // personaId es el señor; la ficha es dónde está inscrito. Uno puede
+          // tener varias fichas: su liga, y un torneo al que lo convocaron.
+          personaId: uid(),
           nombre: tomarNombre(), dorsal: d, reclamado: false,
         })
       }
@@ -220,6 +224,8 @@ export async function sembrarSiHaceFalta() {
 
     await simular({ liga, jugadores, partidos: filas })
   }
+
+  await sembrarTorneo(canchas)
 
   const ligas = await db.ligas.toArray()
   await db.noticias.bulkAdd(
@@ -377,4 +383,149 @@ async function simular({ liga, jugadores, partidos }) {
 
   if (eventos.length) await db.eventos.bulkAdd(eventos)
   if (cambios.length) await db.partidos.bulkPut(cambios)
+}
+
+
+/**
+ * Un torneo internacional, que es donde esto se pone interesante.
+ *
+ * Cuando un equipo viaja, no viaja el equipo: viajan los que pueden. El resto
+ * de la plantilla se completa con refuerzos de otros equipos de la misma zona.
+ * Así funciona de verdad, y por eso la convocatoria de un torneo no puede ser
+ * "la plantilla del club" — es una lista propia, hecha para ese torneo.
+ *
+ * Por dentro el torneo es una liga con dos banderas: esTorneo e internacional.
+ * Así el calendario, el marcador, la tabla y la consola siguen sirviendo sin
+ * tocar nada.
+ */
+async function sembrarTorneo(canchas) {
+  const ligas = await db.ligas.toArray()
+  const chiri = ligas.find((l) => l.nombre.startsWith('Liga Chiricana'))
+  const anti = ligas.find((l) => l.nombre.startsWith('Liga Antioqueña'))
+  const sanmi = ligas.find((l) => l.nombre.startsWith('Liga Barrial'))
+  const sede = canchas.find((c) => c.clave === 'envigado')
+  if (!chiri || !anti || !sanmi || !sede) return
+
+  const torneo = {
+    id: uid(),
+    codigo: codigoUnico(),
+    nombre: 'Copa Amistad Panamá–Colombia 40+',
+    deporte: 'baloncesto',
+    categoria: '40+',
+    esTorneo: true,
+    internacional: true,
+    paises: ['PA', 'CO'],
+    pais: sede.pais,
+    provincia: sede.provincia,
+    canchaIds: [sede.id],
+    diasSemana: [6],
+    franjas: ['17:00'],
+    minutosPorPeriodo: 10,
+    desde: new Date().toISOString(),
+    hasta: new Date().toISOString(),
+    estado: 'publicada',
+    pagada: true,
+    organizador: 'Sara Betancur',
+    organizadorId: 'otro-sara',
+  }
+  await db.ligas.add(torneo)
+
+  const equipos = await db.equipos.toArray()
+  const nombreDe = (id) => equipos.find((e) => e.id === id)?.nombre
+
+  /** Convoca: unos cuantos de casa y unos refuerzos de otra liga de su país. */
+  async function convocar({ nombre, corto, color, ligaBase, ligaRefuerzo, deCasa, refuerzos }) {
+    const equipo = { id: uid(), codigo: codigoUnico(), ligaId: torneo.id, nombre, corto, color }
+    await db.equipos.add(equipo)
+
+    const base = await db.jugadores.where('ligaId').equals(ligaBase.id).toArray()
+    const otros = await db.jugadores.where('ligaId').equals(ligaRefuerzo.id).toArray()
+
+    const convocados = [
+      ...base.slice(0, deCasa).map((j) => ({ j, refuerzo: false })),
+      ...otros.slice(0, refuerzos).map((j) => ({ j, refuerzo: true })),
+    ]
+
+    const fichas = convocados.map(({ j, refuerzo }, i) => ({
+      id: uid(),
+      codigo: codigoUnico(),
+      ligaId: torneo.id,
+      equipoId: equipo.id,
+      // La misma persona que ya juega en su liga: su récord no empieza de cero.
+      personaId: j.personaId,
+      nombre: j.nombre,
+      dorsal: 4 + i,
+      reclamado: false,
+      refuerzo,
+      deEquipo: nombreDe(j.equipoId),
+      deLiga: refuerzo ? ligaRefuerzo.nombre : ligaBase.nombre,
+    }))
+    await db.jugadores.bulkAdd(fichas)
+    return { equipo, fichas }
+  }
+
+  // Panamá viaja: cinco de la Chiricana y tres refuerzos de San Miguelito,
+  // porque no todos los de casa pudieron hacer el viaje.
+  const pa = await convocar({
+    nombre: 'Selección Chiriquí 40+', corto: 'CHI', color: '#C9452B',
+    ligaBase: chiri, ligaRefuerzo: sanmi, deCasa: 5, refuerzos: 3,
+  })
+  const co = await convocar({
+    nombre: 'Selección Antioquia 40+', corto: 'ANT', color: '#2A5C86',
+    ligaBase: anti, ligaRefuerzo: anti, deCasa: 6, refuerzos: 2,
+  })
+
+  const hoy = new Date()
+  const ayer = new Date(hoy); ayer.setDate(hoy.getDate() - 2); ayer.setHours(17, 0, 0, 0)
+  const proximo = new Date(hoy); proximo.setDate(hoy.getDate() + 5); proximo.setHours(17, 0, 0, 0)
+
+  const jugado = {
+    id: uid(), codigo: codigoUnico(), ligaId: torneo.id,
+    localId: co.equipo.id, visitaId: pa.equipo.id, canchaId: sede.id,
+    inicio: ayer.toISOString(), estado: 'final',
+    relojEstado: 'detenido', relojRestante: 0, relojDesde: null,
+  }
+  const porJugar = {
+    id: uid(), codigo: codigoUnico(), ligaId: torneo.id,
+    localId: pa.equipo.id, visitaId: co.equipo.id, canchaId: sede.id,
+    inicio: proximo.toISOString(), estado: 'programado',
+  }
+  await db.partidos.bulkAdd([jugado, porJugar])
+
+  const al = rng(torneo.nombre.length * 613)
+  const eventos = []
+  let seq = 0
+  for (const lado of [co, pa]) {
+    for (let p = 1; p <= 4; p++) {
+      const cuantas = 5 + Math.floor(al() * 4)
+      for (let k = 0; k < cuantas; k++) {
+        const f = lado.fichas[Math.floor(al() * lado.fichas.length)]
+        const r = al()
+        eventos.push({
+          id: uid(), partidoId: jugado.id, seq: ++seq, tipo: 'punto',
+          equipoId: lado.equipo.id, jugadorId: f.id,
+          puntos: r < 0.14 ? 3 : r < 0.8 ? 2 : 1,
+          periodo: p, anulado: false,
+          creadoEn: ayer.getTime() + seq * 20000,
+        })
+      }
+      const faltas = 2 + Math.floor(al() * 3)
+      for (let k = 0; k < faltas; k++) {
+        const f = lado.fichas[Math.floor(al() * lado.fichas.length)]
+        eventos.push({
+          id: uid(), partidoId: jugado.id, seq: ++seq, tipo: 'falta',
+          equipoId: lado.equipo.id, jugadorId: f.id, puntos: 0,
+          periodo: p, anulado: false,
+          creadoEn: ayer.getTime() + seq * 20000,
+        })
+      }
+    }
+  }
+  for (let p = 1; p <= 4; p++) {
+    eventos.push({
+      id: uid(), partidoId: jugado.id, seq: ++seq, tipo: 'periodo',
+      periodo: p, anulado: false, creadoEn: ayer.getTime() + seq * 20000,
+    })
+  }
+  await db.eventos.bulkAdd(eventos)
 }

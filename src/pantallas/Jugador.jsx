@@ -1,13 +1,14 @@
 import { Link, useParams } from 'react-router-dom'
 import { db } from '../db'
-import { useJugador } from '../datos'
+import { useJugador, useOtrasFichas } from '../datos'
 import { Topbar, Escudo, fechaCorta } from '../ui'
-import { codigoDe, urlPartido, urlEquipo } from '../lib/enlaces'
+import { codigoDe, urlPartido, urlEquipo, urlJugador } from '../lib/enlaces'
 import { useMeta } from '../lib/meta'
 
 export default function Jugador() {
   const { slug } = useParams()
   const d = useJugador(codigoDe(slug))
+  const otras = useOtrasFichas(d?.jugador?.personaId, d?.jugador?.id)
   useMeta({
     titulo: d && `${d.jugador.nombre} (${d.equipo?.nombre}): estadísticas`,
     descripcion: d && (
@@ -89,6 +90,30 @@ export default function Jugador() {
             Reclamar mi perfil
           </button>
         </div>
+      )}
+
+      {otras.length > 0 && (
+        <>
+          <h2 className="seccion">También jugó</h2>
+          <div className="lista">
+            {otras.map(({ ficha, liga: l, equipo: eq }) => (
+              <Link key={ficha.id} to={urlJugador(ficha)} className="jugador-fila">
+                <Escudo equipo={eq} size="sm" />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="nombre" style={{ fontWeight: 600 }}>{eq?.nombre}</div>
+                  <div className="sub" style={{ fontSize: '0.74rem' }}>
+                    {ficha.refuerzo && <span className="pill acento" style={{ marginRight: 6 }}>Refuerzo</span>}
+                    {l?.nombre}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+          <p className="sub" style={{ marginTop: 8 }}>
+            Es la misma persona. Su récord no empieza de cero cada vez que lo convocan a otro
+            lado.
+          </p>
+        </>
       )}
 
       <h2 className="seccion">Partido a partido</h2>

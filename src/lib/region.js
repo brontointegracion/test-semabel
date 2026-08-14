@@ -84,6 +84,12 @@ export async function cambiarProvincia(provincia) {
   await db.meta.put({ ...actual, id: 'region', provincia })
 }
 
+/** La categoría —40+, 45+— también se recuerda: es quién eres, no un filtro pasajero. */
+export async function cambiarCategoria(categoria) {
+  const actual = (await db.meta.get('region')) || { id: 'region', pais: 'PA' }
+  await db.meta.put({ ...actual, id: 'region', categoria })
+}
+
 /**
  * El deporte se recuerda igual que la provincia. Quien viene por el baloncesto
  * vuelve al baloncesto: no tiene que volver a elegirlo cada vez que abre.

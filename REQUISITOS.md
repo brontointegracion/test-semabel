@@ -117,6 +117,14 @@ Constraints the whole design hangs on.
 - Names carry accents and ñ, so collation and search must handle them
 - Phone numbers stored in international format for WhatsApp verification
 
+**A squad is not a roster.** When a team travels to a tournament, the team does not travel — the ones who can travel do, and the rest of the bench is filled with guests from other clubs nearby. Both sides do it. So a tournament call-up is its own list, made for that tournament, with guests marked as guests and their home club shown. Modelling it as "the club's roster" would be a lie about how amateur sport actually works, and it would attribute a guest's points to a team he does not play for.
+
+**A person is not a registration.** The same man can be registered in his own liga and called up to a tournament. Those are two registrations, one person. His record follows the person, so being called up somewhere else does not restart his career at zero — which is the entire promise the product makes to a player.
+
+**Categories are identity, not a filter.** 40+, 45+, 50+ are who someone is, so the category is remembered like the province and the sport. It is also the unit that travels: a veterans' category exists in every country, and the people in it already know each other across borders.
+
+**The border opens only where two communities chose to connect.** Browsing stays strictly national — nobody wanders into another country's ligas. But a shared object, an international tournament or a challenge between ligas, is visible from every country taking part, because both sides deliberately joined it. The default is closed; the exception is consent.
+
 **The site scopes itself to the visitor's country, automatically.** Someone opening it from Panamá gets Panamá: its ligas, its canchas, its news, and a province filter within it — Bocas del Toro, Chiriquí, Darién, and the rest. Other countries are not shown. The country is detected from the visitor's IP address; when that lookup fails — no connection, an ad blocker, a service worker serving the page offline — it falls back to the device's timezone, which is right nearly always and depends on nobody. The country is never displayed and cannot be changed — not by a guest, not by an organizer, not by a venue owner. Nobody picks which country they see. The consequence, accepted deliberately: a visitor whose IP resolves to a country with no ligas sees an empty site, and someone abroad cannot follow a liga back home.
 
 **Getting there is part of the product.** The whole revenue thesis is attendance, and the last step before someone attends is finding the cancha. Many street courts have no street number and don't come up by name in a search, so navigation goes by coordinates, not by address: one tap to Waze, one to Google Maps, on the venue page and on any match that hasn't been played yet. It has to be there *before* the game, which is exactly when the match page has no score to show.

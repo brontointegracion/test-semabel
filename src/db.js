@@ -34,6 +34,13 @@ db.version(4).stores({
   votos: 'id, partidoId',
 })
 
+// Categorías (40+, 45+…), torneos internacionales, y la persona detrás de la
+// ficha: el mismo señor puede estar inscrito en su liga y convocado a un torneo.
+db.version(5).stores({
+  ligas: 'id, codigo, estado, deporte, pais, provincia, categoria, internacional',
+  jugadores: 'id, ligaId, equipoId, codigo, personaId',
+})
+
 export const uid = () => Math.random().toString(36).slice(2, 10)
 
 export async function resetear() {

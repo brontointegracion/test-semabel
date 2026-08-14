@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useDescubrir, useRegion, useFiguras } from '../datos'
+import { useDescubrir, useRegion, useFiguras, visibleEn } from '../datos'
 import { marcadorEquipo } from '../lib/marcador'
-import { cambiarProvincia, cambiarDeporte } from '../lib/region'
+import { cambiarProvincia, cambiarDeporte, cambiarCategoria } from '../lib/region'
 import { Marca, Escudo, Vacio, RelojVivo, diaRelativo, hora, fechaCorta, mismoDia } from '../ui'
 import { urlLiga, urlPartido, urlEquipo, urlJugador } from '../lib/enlaces'
 import { useMeta } from '../lib/meta'
@@ -20,6 +20,13 @@ export default function Inicio() {
   const [busca, setBusca] = useState('')
   const [verTodas, setVerTodas] = useState(false)
   const figuras = useFiguras()
+
+  const categorias = useMemo(
+    () => [...new Set((d?.ligas || []).filter((l) => !l.esTorneo).map((l) => l.categoria || 'Libre'))]
+      .filter((c) => c !== 'Libre')
+      .sort(),
+    [d],
+  )
 
   const provincias = useMemo(() => {
     if (!d || !region) return []
@@ -45,10 +52,15 @@ export default function Inicio() {
   // El sitio está restringido al país de quien mira: nada de otro país entra aquí.
   const delPais = ligas.filter((l) => l.pais === region.pais)
 
+  const categoria = region.categoria || 'todas'
+
   const pasaLiga = (liga) => {
-    if (!liga || liga.pais !== region.pais) return false
+    if (!liga) return false
+    // Los torneos internacionales se ven desde los países que juegan en ellos.
+    if (!visibleEn(liga, region.pais)) return false
     if (deporte !== 'todos' && liga.deporte !== deporte) return false
-    if (provincia !== 'todas' && liga.provincia !== provincia) return false
+    if (provincia !== 'todas' && liga.provincia !== provincia && !liga.internacional) return false
+    if (categoria !== 'todas' && liga.categoria !== categoria) return false
     return true
   }
 
@@ -136,6 +148,26 @@ export default function Inicio() {
               ))}
             </div>
 
+            {categorias.length > 1 && (
+              <div className="carrete">
+                <button
+                  className={`chip ${categoria === 'todas' ? 'on' : ''}`}
+                  onClick={() => cambiarCategoria('todas')}
+                >
+                  Toda edad
+                </button>
+                {categorias.map((c) => (
+                  <button
+                    key={c}
+                    className={`chip ${categoria === c ? 'on' : ''}`}
+                    onClick={() => cambiarCategoria(c)}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="segmento">
               <button className={cuando === 'ahora' ? 'on' : ''} onClick={() => setCuando('ahora')}>
                 Ahora mismo{vivosF.length ? ` (${vivosF.length})` : ''}
@@ -150,6 +182,20 @@ export default function Inicio() {
             <Ahora partidos={vivosF} equipos={equipos} canchas={canchas} ligas={ligasPorId} eventos={eventosPorPartido} />
           ) : (
             <Viene partidos={proximosF} equipos={equipos} canchas={canchas} />
+          )}
+
+          {categoria !== 'todas' && deporte !== 'todos' && (
+            <Link to={`/cat/${deporte}/${encodeURIComponent(categoria)}`} className="card destacado-link">
+              <div className="fila-liga">
+                <div className="info">
+                  <div className="nombre">{categoria} en otros países</div>
+                  <div className="sub" style={{ marginTop: 2 }}>
+                    Tu categoría no existe solo aquí. Mira quiénes juegan al otro lado.
+                  </div>
+                </div>
+                <span className="chev">→</span>
+              </div>
+            </Link>
           )}
 
           <Podio figuras={figuras} />

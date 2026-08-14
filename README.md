@@ -19,6 +19,8 @@ npm run dev      # http://localhost:5173
 | **Siguiendo** | Los equipos que sigue quien mira: cuándo juegan, dónde, cómo llegar y cómo les fue |
 | **Equipo** | La página del equipo: puesto, forma, plantilla con números, resultados y el botón de seguir |
 | **Figuras** | Máximos anotadores de la provincia, cruzando todas sus ligas |
+| **Categoría** | La misma categoría país por país, con el torneo internacional que los cruza |
+| **Torneo** | Copa Amistad Panamá–Colombia 40+: convocatorias con refuerzos, no plantillas de club |
 | **Votaciones** | Dentro del partido: ¿quién gana? antes, jugador del partido después. Un toque, sin cuenta |
 | **Noticias** | Últimas noticias, con una nota de pago que corta a la mitad |
 | **Mis ligas** | Las ligas del organizador, con el saldo de partidos disponible |

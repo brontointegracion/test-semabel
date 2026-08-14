@@ -15,6 +15,7 @@ import Noticias from './pantallas/Noticias'
 import Equipo from './pantallas/Equipo'
 import Siguiendo from './pantallas/Siguiendo'
 import Figuras from './pantallas/Figuras'
+import Categoria from './pantallas/Categoria'
 import Noticia from './pantallas/Noticia'
 import Codigo from './pantallas/Codigo'
 
@@ -64,6 +65,7 @@ export default function App() {
           <Route path="/c/:slug" element={<Cancha />} />
           <Route path="/siguiendo" element={<Siguiendo />} />
           <Route path="/figuras" element={<Figuras />} />
+          <Route path="/cat/:deporte/:categoria" element={<Categoria />} />
           <Route path="/noticias" element={<Noticias />} />
           <Route path="/n/:slug" element={<Noticia />} />
           <Route path="/b/:codigo" element={<Codigo />} />

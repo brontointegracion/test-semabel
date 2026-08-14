@@ -24,6 +24,17 @@ export const useMiVoto = (partidoId) =>
     [partidoId],
   )
 
+/**
+ * Qué puede ver quien mira.
+ *
+ * La regla sigue siendo: tu país y nada más. La excepción son los objetos
+ * compartidos —un torneo internacional, un reto entre ligas— donde las dos
+ * partes se conectaron a propósito. Ahí la frontera se abre, porque las dos
+ * comunidades ya decidieron que querían verse.
+ */
+export const visibleEn = (liga, pais) =>
+  !!liga && (liga.pais === pais || (liga.internacional && (liga.paises || []).includes(pais)))
+
 /** Todo lo que necesita la portada. Los datos son pocos: se filtra en memoria. */
 export function useDescubrir() {
   return useLiveQuery(async () => {
@@ -295,7 +306,7 @@ export function useFiguras() {
     if (!region) return null
 
     const ligas = (await db.ligas.toArray()).filter(
-      (l) => l.pais === region.pais &&
+      (l) => l.pais === region.pais && !l.esTorneo &&
         (!region.provincia || region.provincia === 'todas' || l.provincia === region.provincia),
     )
     const ligaIds = new Set(ligas.map((l) => l.id))
@@ -332,4 +343,53 @@ export function useFiguras() {
       totalJugadores: filas.length,
     }
   }, [], null)
+}
+
+
+/** Una categoría, país por país: la pantalla que enseña que tu categoría existe en todas partes. */
+export function useCategoria(deporte, categoria) {
+  return useLiveQuery(async () => {
+    const todas = await db.ligas.toArray()
+    const ligas = todas.filter(
+      (l) => !l.esTorneo && l.deporte === deporte && l.categoria === categoria,
+    )
+    if (!ligas.length) return null
+
+    const partidos = await db.partidos.toArray()
+    const equipos = await db.equipos.toArray()
+    const eventos = await db.eventos
+      .where('partidoId')
+      .anyOf(partidos.filter((p) => p.estado === 'final').map((p) => p.id))
+      .toArray()
+    const eventosPorPartido = {}
+    for (const e of eventos) (eventosPorPartido[e.partidoId] ||= []).push(e)
+
+    const porPais = {}
+    for (const liga of ligas) {
+      const suyos = equipos.filter((e) => e.ligaId === liga.id)
+      const g = (porPais[liga.pais] ||= { pais: liga.pais, ligas: [], equipos: [], partidos: [] })
+      g.ligas.push(liga)
+      g.equipos.push(...suyos)
+      g.partidos.push(...partidos.filter((p) => p.ligaId === liga.id))
+    }
+
+    // Torneos internacionales de esta categoría: el puente entre los dos lados.
+    const torneos = todas.filter(
+      (l) => l.esTorneo && l.internacional && l.deporte === deporte && l.categoria === categoria,
+    )
+
+    return { ligas, porPais: Object.values(porPais), eventosPorPartido, torneos, equipos }
+  }, [deporte, categoria], null)
+}
+
+/** Las otras fichas de la misma persona: su liga, y los torneos que jugó. */
+export function useOtrasFichas(personaId, fichaId) {
+  return useLiveQuery(async () => {
+    if (!personaId) return []
+    const fichas = (await db.jugadores.where('personaId').equals(personaId).toArray())
+      .filter((f) => f.id !== fichaId)
+    const ligas = porId(await db.ligas.toArray())
+    const equipos = porId(await db.equipos.toArray())
+    return fichas.map((f) => ({ ficha: f, liga: ligas[f.ligaId], equipo: equipos[f.equipoId] }))
+  }, [personaId, fichaId], [])
 }
