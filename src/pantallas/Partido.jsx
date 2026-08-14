@@ -35,6 +35,13 @@ export default function Partido() {
     return () => lock?.release?.()
   }, [])
 
+  // Salir con Esc o con el gesto del sistema también tiene que apagar el modo.
+  useEffect(() => {
+    const alCambiar = () => setCompleta(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', alCambiar)
+    return () => document.removeEventListener('fullscreenchange', alCambiar)
+  }, [])
+
   if (!d) return null
   const { partido, liga, cancha, local, visita, jugadores, eventos } = d
 
@@ -90,6 +97,15 @@ export default function Partido() {
           <Lado equipo={visita} puntos={gv} />
         </div>
 
+        {/* En pantalla completa las figuras van aquí: nadie hace scroll en un televisor. */}
+        {completa && hayDetalle && (
+          <div className="figuras-tv">
+            {[local, visita].map((eq) => (
+              <ColumnaFiguras key={eq.id} equipo={eq} eventos={eventos} jugadores={jugadores} />
+            ))}
+          </div>
+        )}
+
         <div className="pie">
           <div>
             <div>{cancha?.nombre}</div>
@@ -114,7 +130,7 @@ export default function Partido() {
           )}
         </div>
 
-        {hayDetalle && <div className="bajar">Desliza para el detalle ↓</div>}
+        {hayDetalle && !completa && <div className="bajar">Desliza para el detalle ↓</div>}
       </div>
 
       {hayDetalle && (
@@ -137,6 +153,31 @@ export default function Partido() {
           </p>
         </div>
       )}
+    </div>
+  )
+}
+
+/** Las mismas figuras, en una tira que cabe en el marcador a pantalla completa. */
+function ColumnaFiguras({ equipo, eventos, jugadores }) {
+  const { mejor, masFaltas } = destacadosDeEquipo({ eventos, jugadores, equipoId: equipo.id })
+  const corto = (j) => `#${j.dorsal} ${j.nombre.split(' ')[0]} ${j.nombre.split(' ')[1]?.[0] || ''}.`
+
+  return (
+    <div className="col">
+      <div className="titulo">
+        <span className="marca-eq" style={{ background: equipo.color }} />
+        {equipo.corto}
+      </div>
+      <div className="fig">
+        <span className="rol">Mejor</span>
+        <span className="quien">{mejor ? corto(mejor.jugador) : '—'}</span>
+        <span className="n">{mejor ? mejor.puntos : ''}</span>
+      </div>
+      <div className="fig">
+        <span className="rol">Faltas</span>
+        <span className="quien">{masFaltas ? corto(masFaltas.jugador) : '—'}</span>
+        <span className="n faltas">{masFaltas ? masFaltas.faltas : ''}</span>
+      </div>
     </div>
   )
 }

@@ -468,7 +468,81 @@ td.pts { font-weight: 800; color: var(--acento-ink); }
 
 .board .desfase { color: var(--aviso); }
 
-.board.pantalla-completa .equipo .puntos { font-size: clamp(5rem, 30vw, 16rem); }
+/* A pantalla completa el marcador ocupa todo y no hay scroll: lo que importa
+   tiene que caber. Los números ceden un poco de tamaño para que las figuras
+   entren debajo. */
+.board-pagina:fullscreen { height: 100%; overflow: hidden; }
+
+.board-pagina:fullscreen .board { min-height: 0; height: 100%; }
+
+.board.pantalla-completa .equipo .puntos { font-size: clamp(4.5rem, 24vw, 13rem); }
+
+.figuras-tv {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 22px;
+  border-top: 1px solid var(--board-line);
+  margin-top: 10px;
+  padding-top: 12px;
+}
+
+.figuras-tv .col { min-width: 0; }
+
+.figuras-tv .titulo {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: clamp(0.68rem, 1.9vw, 0.85rem);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--board-mute);
+  margin-bottom: 5px;
+}
+
+.figuras-tv .marca-eq { width: 12px; height: 4px; border-radius: 2px; flex: none; }
+
+.figuras-tv .fig {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.figuras-tv .fig .rol {
+  flex: none;
+  width: 52px;
+  font-size: clamp(0.58rem, 1.5vw, 0.7rem);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--board-mute);
+}
+
+.figuras-tv .fig .quien {
+  flex: 1;
+  min-width: 0;
+  font-size: clamp(0.85rem, 2.4vw, 1.25rem);
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.figuras-tv .fig .n {
+  font-size: clamp(0.95rem, 2.8vw, 1.45rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.figuras-tv .fig .n.faltas { color: var(--acento); }
+
+/* En pantallas anchas —un televisor— cada equipo se pega a su lado del marcador. */
+@media (min-width: 720px) {
+  .figuras-tv { gap: 8px 60px; }
+  .figuras-tv .col:last-child .titulo,
+  .figuras-tv .col:last-child .fig { flex-direction: row-reverse; }
+  .figuras-tv .col:last-child .fig .quien { text-align: right; }
+}
 
 .bajar {
   text-align: center; padding: 10px 0 2px;
