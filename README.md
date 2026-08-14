@@ -32,7 +32,7 @@ Un link se comparte por WhatsApp, se lee antes de tocarlo y a veces se dicta. Po
 nombre y termina en un código corto, que es lo que de verdad identifica:
 
 ```
-/p/halcones-vs-titanes-del-norte-7531     un partido
+/p/halcones-vs-titanes-2026-08-14-7531    un partido, con su fecha
 /l/liga-barrial-san-miguelito-4821        una liga
 /j/luis-carrasco-3092                     un jugador
 /c/cancha-don-bosco-1177                  una cancha
@@ -100,6 +100,9 @@ src/
   lib/reloj-calculo.js  La cuenta regresiva, sin base de datos: se puede probar
   lib/reloj.js       Arrancar, detener, ajustar y cerrar el período
   lib/sesion.js      Quién puede qué
+  lib/enlaces.js     Direcciones legibles; el código es lo que identifica
+  lib/mapas.js       Waze y Google Maps por coordenadas
+  lib/meta.js        Título, descripción y datos estructurados por página
   pantallas/         Una pantalla por archivo
 ```
 
@@ -148,6 +151,5 @@ y que respete franjas ya ocupadas por otra liga.
 El segundo verifica la cuenta regresiva: que detenido no corra, que corriendo baje segundo a
 segundo, que llegue a cero sin pasarse y que 59.4s se vea como `01:00` y no como `00:59`.
 
-Verifica, de 4 a 12 equipos: todos contra todos sin repetir pareja, ninguna franja usada
-dos veces, ningún equipo dos veces el mismo día, y que respeta franjas ya ocupadas por
-otra liga en la misma cancha.
+El tercero verifica las direcciones: acentos y ñ fuera, que el número dentro de un nombre no
+se confunda con el que identifica, y que sin fecha no se cuele un «undefined».
