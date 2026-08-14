@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useDescubrir, useRegion } from '../datos'
+import { useDescubrir, useRegion, useFiguras } from '../datos'
 import { marcadorEquipo } from '../lib/marcador'
 import { cambiarProvincia, cambiarDeporte } from '../lib/region'
 import { Marca, Escudo, Vacio, RelojVivo, diaRelativo, hora, fechaCorta, mismoDia } from '../ui'
-import { urlLiga, urlPartido } from '../lib/enlaces'
+import { urlLiga, urlPartido, urlEquipo, urlJugador } from '../lib/enlaces'
 import { useMeta } from '../lib/meta'
 
 const DEPORTES = [
@@ -17,6 +17,9 @@ export default function Inicio() {
   const d = useDescubrir()
   const region = useRegion()
   const [cuando, setCuando] = useState('ahora')
+  const [busca, setBusca] = useState('')
+  const [verTodas, setVerTodas] = useState(false)
+  const figuras = useFiguras()
 
   const provincias = useMemo(() => {
     if (!d || !region) return []
@@ -32,7 +35,8 @@ export default function Inicio() {
 
   if (!d || !region) return null
 
-  const { ligas, ligasPorId, equipos, canchas, vivos, proximos, eventosPorPartido } = d
+  const { ligas, ligasPorId, equipos, canchas, vivos, proximos, eventosPorPartido,
+          listaEquipos, listaJugadores } = d
   // Provincia y deporte se recuerdan: quien viene por el baloncesto de Chiriquí
   // vuelve al baloncesto de Chiriquí sin tener que elegirlo otra vez.
   const provincia = region.provincia || 'todas'
@@ -148,37 +152,18 @@ export default function Inicio() {
             <Viene partidos={proximosF} equipos={equipos} canchas={canchas} />
           )}
 
-          <Link to="/figuras" className="card destacado-link">
-            <div className="fila-liga">
-              <div className="info">
-                <div className="nombre">Figuras del barrio</div>
-                <div className="sub" style={{ marginTop: 2 }}>
-                  Los que más anotan, cruzando todas las ligas de la zona.
-                </div>
-              </div>
-              <span className="chev">→</span>
-            </div>
-          </Link>
+          <Podio figuras={figuras} />
 
-          <h2 className="seccion">
-            {provincia === 'todas' ? 'Todas las ligas' : `Ligas en ${provincia}`}
-          </h2>
-          <div className="lista">
-            {ligasF.map((l) => (
-              <Link key={l.id} to={urlLiga(l)} className="card">
-                <div className="fila-liga">
-                  <div className="info">
-                    <div className="nombre">{l.nombre}</div>
-                    <div className="sub" style={{ marginTop: 2 }}>
-                      {l.provincia} · {l.deporte === 'baloncesto' ? 'Baloncesto' : 'Fútbol sala'} ·
-                      {' '}organiza {l.organizador}
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            ))}
-            {!ligasF.length && <Vacio>No hay ligas con ese filtro.</Vacio>}
-          </div>
+          <Buscador
+            texto={busca}
+            alEscribir={setBusca}
+            ligas={ligasF}
+            equipos={listaEquipos}
+            jugadores={listaJugadores}
+            ligasPorId={ligasPorId}
+            verTodas={verTodas}
+            alternarTodas={() => setVerTodas((v) => !v)}
+          />
         </>
       )}
     </>
@@ -254,5 +239,135 @@ function Viene({ partidos, equipos, canchas }) {
         )
       })}
     </div>
+  )
+}
+
+
+/**
+ * Las figuras, con los tres primeros a la vista.
+ *
+ * Antes esto era un link que prometía nombres. Ver tres nombres de verdad —con
+ * su escudo y su promedio— es lo que hace que alguien toque: busca el suyo.
+ */
+function Podio({ figuras }) {
+  if (!figuras?.anotadores?.length) return null
+  const tres = figuras.anotadores.slice(0, 3)
+
+  return (
+    <>
+      <h2 className="seccion">Figuras del barrio</h2>
+      <p className="sub" style={{ marginTop: -6, marginBottom: 10 }}>
+        Los que más anotan, cruzando todas las ligas de la zona.
+      </p>
+
+      <div className="podio">
+        {tres.map((f, i) => (
+          <Link key={f.jugador.id} to={urlJugador(f.jugador)} className={`escalon p${i + 1}`}>
+            <span className="puesto">{i + 1}</span>
+            <Escudo equipo={f.equipo} />
+            <span className="quien">{f.jugador.nombre}</span>
+            <span className="cifra">{f.promedio.toFixed(1)}</span>
+            <span className="unidad">por juego</span>
+          </Link>
+        ))}
+      </div>
+
+      <Link to="/figuras" className="btn fantasma" style={{ marginTop: 10 }}>
+        Ver la tabla completa
+      </Link>
+    </>
+  )
+}
+
+/**
+ * Buscar, en vez de una lista larga.
+ *
+ * La lista de ligas es navegación, no contenido: se usa una vez, para encontrar
+ * la propia. Con seis ligas una lista funciona; con seiscientas, no. Buscar
+ * escala y además encuentra equipos y jugadores, que es como la gente pregunta.
+ */
+function Buscador({ texto, alEscribir, ligas, equipos, jugadores, ligasPorId, verTodas, alternarTodas }) {
+  const q = texto.trim().toLowerCase()
+  const coincide = (n) => n?.toLowerCase().includes(q)
+  const ligaIds = new Set(ligas.map((l) => l.id))
+
+  const hallazgos = q.length >= 2
+    ? {
+        ligas: ligas.filter((l) => coincide(l.nombre)).slice(0, 5),
+        equipos: equipos.filter((e) => ligaIds.has(e.ligaId) && coincide(e.nombre)).slice(0, 6),
+        jugadores: jugadores.filter((j) => ligaIds.has(j.ligaId) && coincide(j.nombre)).slice(0, 6),
+      }
+    : null
+
+  const nada = hallazgos && !hallazgos.ligas.length && !hallazgos.equipos.length && !hallazgos.jugadores.length
+
+  return (
+    <>
+      <h2 className="seccion">Encuentra lo tuyo</h2>
+      <div className="campo" style={{ marginBottom: 10 }}>
+        <input
+          type="search"
+          value={texto}
+          onChange={(e) => alEscribir(e.target.value)}
+          placeholder="Tu liga, tu equipo o tu nombre"
+          aria-label="Buscar liga, equipo o jugador"
+        />
+      </div>
+
+      {hallazgos && (
+        <div className="lista">
+          {hallazgos.equipos.map((e) => (
+            <Link key={e.id} to={urlEquipo(e)} className="jugador-fila">
+              <Escudo equipo={e} size="sm" />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="nombre" style={{ fontWeight: 600 }}>{e.nombre}</div>
+                <div className="sub" style={{ fontSize: '0.74rem' }}>Equipo · {ligasPorId[e.ligaId]?.nombre}</div>
+              </div>
+            </Link>
+          ))}
+          {hallazgos.jugadores.map((j) => (
+            <Link key={j.id} to={urlJugador(j)} className="jugador-fila">
+              <div className="dorsal">{j.dorsal}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="nombre" style={{ fontWeight: 600 }}>{j.nombre}</div>
+                <div className="sub" style={{ fontSize: '0.74rem' }}>Jugador · {ligasPorId[j.ligaId]?.nombre}</div>
+              </div>
+            </Link>
+          ))}
+          {hallazgos.ligas.map((l) => (
+            <Link key={l.id} to={urlLiga(l)} className="jugador-fila">
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="nombre" style={{ fontWeight: 600 }}>{l.nombre}</div>
+                <div className="sub" style={{ fontSize: '0.74rem' }}>Liga · {l.provincia}</div>
+              </div>
+            </Link>
+          ))}
+          {nada && <Vacio>No encontramos nada con «{texto}».</Vacio>}
+        </div>
+      )}
+
+      {!hallazgos && (
+        <>
+          <button className="btn fantasma" onClick={alternarTodas}>
+            {verTodas ? 'Ocultar las ligas' : `Ver las ${ligas.length} ligas de la zona`}
+          </button>
+          {verTodas && (
+            <div className="lista" style={{ marginTop: 10 }}>
+              {ligas.map((l) => (
+                <Link key={l.id} to={urlLiga(l)} className="jugador-fila">
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="nombre" style={{ fontWeight: 600 }}>{l.nombre}</div>
+                    <div className="sub" style={{ fontSize: '0.74rem' }}>
+                      {l.provincia} · {l.deporte === 'baloncesto' ? 'Baloncesto' : 'Fútbol sala'} · organiza {l.organizador}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+              {!ligas.length && <Vacio>No hay ligas con ese filtro.</Vacio>}
+            </div>
+          )}
+        </>
+      )}
+    </>
   )
 }

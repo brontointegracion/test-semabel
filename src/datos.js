@@ -27,11 +27,12 @@ export const useMiVoto = (partidoId) =>
 /** Todo lo que necesita la portada. Los datos son pocos: se filtra en memoria. */
 export function useDescubrir() {
   return useLiveQuery(async () => {
-    const [ligas, partidos, equipos, canchas] = await Promise.all([
+    const [ligas, partidos, equipos, canchas, jugadores] = await Promise.all([
       db.ligas.toArray(),
       db.partidos.toArray(),
       db.equipos.toArray(),
       db.canchas.toArray(),
+      db.jugadores.toArray(),
     ])
 
     const vivos = partidos.filter((p) => p.estado === 'vivo')
@@ -49,6 +50,9 @@ export function useDescubrir() {
     return {
       ligas,
       ligasPorId: porId(ligas),
+      // Listas planas para el buscador; los mapas para pintar.
+      listaEquipos: equipos,
+      listaJugadores: jugadores,
       equipos: porId(equipos),
       canchas: porId(canchas),
       vivos,

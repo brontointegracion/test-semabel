@@ -272,6 +272,50 @@ h2.seccion { font-size: 1.02rem; font-weight: 700; letter-spacing: -0.01em; marg
 
 .destacado-link { margin-top: 18px; }
 
+/* ---- podio de figuras ---- */
+
+.podio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+
+.escalon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-lg);
+  text-align: center;
+  min-width: 0;
+}
+
+/* El primero se nota, pero sin romper la fila. */
+.escalon.p1 { border-color: var(--acento); background: var(--acento-wash); }
+
+.escalon .puesto {
+  font-size: 0.66rem; font-weight: 800; letter-spacing: 0.06em;
+  color: var(--ink-mute); width: auto;
+}
+
+.escalon.p1 .puesto { color: var(--acento-ink); }
+
+.escalon .quien {
+  font-size: 0.78rem; font-weight: 700; line-height: 1.2;
+  margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 100%;
+}
+
+.escalon .cifra {
+  font-size: 1.25rem; font-weight: 800;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+}
+
+.escalon .unidad {
+  font-size: 0.58rem; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--ink-mute);
+}
+
 /* ---- votaciones ---- */
 
 .votacion {
