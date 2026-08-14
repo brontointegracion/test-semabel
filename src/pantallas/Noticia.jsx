@@ -2,10 +2,17 @@ import { Link, useParams } from 'react-router-dom'
 import { useNoticia } from '../datos'
 import { Topbar, fechaCorta } from '../ui'
 import { codigoDe, urlLiga } from '../lib/enlaces'
+import { useMeta } from '../lib/meta'
 
 export default function Noticia() {
   const { slug } = useParams()
   const d = useNoticia(codigoDe(slug))
+  useMeta({
+    titulo: d && d.noticia.titulo,
+    descripcion: d && d.noticia.entrada,
+    tipo: 'article',
+  })
+
   if (!d) return null
 
   const { noticia, liga } = d

@@ -5,7 +5,7 @@
 // alta. Un link se comparte por WhatsApp, se lee antes de tocarlo y a veces se
 // dicta. Así que cada dirección lleva nombre y termina en un código corto:
 //
-//   /p/halcones-vs-titanes-7531
+//   /p/halcones-vs-titanes-2026-08-14-7531
 //   /l/liga-barrial-san-miguelito-4821
 //   /j/luis-carrasco-3092
 //   /b/7531                        ← para escribir con el control del televisor
@@ -23,7 +23,7 @@ export function slug(texto = '') {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
-    .slice(0, 60)
+    .slice(0, 90)
 }
 
 /** El código es lo que va al final: "halcones-vs-titanes-7531" → "7531". */
@@ -32,14 +32,25 @@ export function codigoDe(parametro = '') {
   return m ? m[1] : String(parametro)
 }
 
+// Sin fecha no se inventa nada: mejor una dirección más corta que una con
+// "undefined" dentro.
+const fechaDe = (iso) => (typeof iso === 'string' ? iso.slice(0, 10) : '')
+
 const arma = (prefijo, nombre, codigo) => `/${prefijo}/${slug(nombre)}-${codigo}`
 
 export const urlLiga = (liga) =>
   liga ? arma('l', liga.nombre, liga.codigo) : '/'
 
+// Con la fecha, porque los mismos dos equipos se cruzan varias veces por
+// temporada: sin ella, dos partidos distintos tendrían el mismo nombre en la
+// dirección y quien busca no sabría cuál está abriendo.
 export const urlPartido = (partido, local, visita) =>
   partido
-    ? arma('p', `${local?.nombre || ''} vs ${visita?.nombre || ''}`, partido.codigo)
+    ? arma(
+        'p',
+        `${local?.nombre || ''} vs ${visita?.nombre || ''} ${fechaDe(partido.inicio)}`,
+        partido.codigo,
+      )
     : '/'
 
 export const urlJugador = (jugador) =>

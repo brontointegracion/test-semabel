@@ -6,6 +6,7 @@ import { esDuenoDe } from '../lib/sesion'
 import { PERIODOS, restanteMs, mmss, corriendo, nombrePeriodo } from '../lib/reloj'
 import { Escudo, fechaCorta, hora } from '../ui'
 import { codigoDe, urlPartido, urlJugador } from '../lib/enlaces'
+import { useMeta, useDatosEstructurados, partidoComoEvento } from '../lib/meta'
 
 /**
  * El marcador. No es un tablero de resultados que además muestra el puntaje:
@@ -44,6 +45,35 @@ export default function Partido() {
     document.addEventListener('fullscreenchange', alCambiar)
     return () => document.removeEventListener('fullscreenchange', alCambiar)
   }, [])
+
+  // Lo que va al título, a la descripción y a la tarjeta que se comparte.
+  // Un partido es la página que más se comparte del sitio: es la que tiene que
+  // decir quién juega, contra quién, cuándo, dónde y —si ya terminó— cómo quedó.
+  const gLocal = d ? marcadorEquipo(d.eventos, d.partido.localId) : 0
+  const gVisita = d ? marcadorEquipo(d.eventos, d.partido.visitaId) : 0
+  const cerrado = d?.partido.estado === 'final'
+
+  useMeta({
+    titulo: d && (
+      cerrado
+        ? `${d.local?.nombre} ${gLocal}-${gVisita} ${d.visita?.nombre}`
+        : `${d.local?.nombre} vs ${d.visita?.nombre}`
+    ),
+    descripcion: d && (
+      cerrado
+        ? `Resultado: ${d.local?.nombre} ${gLocal}-${gVisita} ${d.visita?.nombre}. ` +
+          `${d.liga?.nombre}, ${fechaCorta(d.partido.inicio)} en ${d.cancha?.nombre}.`
+        : d.partido.estado === 'vivo'
+          ? `En vivo: ${d.local?.nombre} ${gLocal}-${gVisita} ${d.visita?.nombre}. ` +
+            `${d.liga?.nombre}, desde ${d.cancha?.nombre}.`
+          : `${d.local?.nombre} contra ${d.visita?.nombre} el ${fechaCorta(d.partido.inicio)} ` +
+            `a las ${hora(d.partido.inicio)} en ${d.cancha?.nombre}. ${d.liga?.nombre}.`
+    ),
+  })
+
+  useDatosEstructurados(
+    d ? partidoComoEvento({ ...d, golesLocal: gLocal, golesVisita: gVisita }) : null,
+  )
 
   if (!d) return null
   const { partido, liga, cancha, local, visita, jugadores, eventos } = d

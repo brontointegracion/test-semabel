@@ -2,10 +2,19 @@ import { Link, useParams } from 'react-router-dom'
 import { useCancha } from '../datos'
 import { Topbar, Escudo, fechaCorta, hora, mismoDia } from '../ui'
 import { codigoDe, urlLiga, urlPartido } from '../lib/enlaces'
+import { useMeta } from '../lib/meta'
 
 export default function Cancha() {
   const { slug } = useParams()
   const d = useCancha(codigoDe(slug))
+  useMeta({
+    titulo: d && `${d.cancha.nombre}, ${d.cancha.barrio}: agenda y ligas`,
+    descripcion: d && (
+      `Qué se juega en ${d.cancha.nombre} (${d.cancha.barrio}, ${d.cancha.provincia}): ` +
+      `${d.ligas.length} liga(s), calendario y horarios ocupados.`
+    ),
+  })
+
   if (!d) return null
 
   const { cancha, ligas, partidos, equiposPorId, ligasPorId } = d

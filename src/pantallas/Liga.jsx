@@ -4,6 +4,7 @@ import { useLiga } from '../datos'
 import { tablaPosiciones, estadisticaJugadores, marcadorEquipo } from '../lib/marcador'
 import { Topbar, Escudo, Vacio, fechaCorta, hora, mismoDia } from '../ui'
 import { codigoDe, urlLiga, urlPartido, urlJugador } from '../lib/enlaces'
+import { useMeta } from '../lib/meta'
 
 const PESTANAS = [
   ['tabla', 'Posiciones'],
@@ -16,6 +17,15 @@ export default function Liga() {
   const d = useLiga(codigoDe(slug))
   const [pestana, setPestana] = useState('tabla')
   const [copiado, setCopiado] = useState(false)
+
+  useMeta({
+    titulo: d && `${d.liga.nombre}: tabla, calendario y goleadores`,
+    descripcion: d && (
+      `Posiciones, calendario y estadísticas de ${d.liga.nombre}. ` +
+      `${d.equipos.length} equipos de ${d.liga.deporte === 'baloncesto' ? 'baloncesto' : 'fútbol sala'} ` +
+      `en ${d.liga.provincia}. Marcador en vivo y resultados de cada jornada.`
+    ),
+  })
 
   if (!d) return null
   const { liga, equipos, jugadores, partidos, equiposPorId, canchasPorId, eventosPorPartido } = d

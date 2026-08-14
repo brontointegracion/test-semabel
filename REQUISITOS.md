@@ -119,6 +119,10 @@ Constraints the whole design hangs on.
 
 **The site scopes itself to the visitor's country, automatically.** Someone opening it from Panamá gets Panamá: its ligas, its canchas, its news, and a province filter within it — Bocas del Toro, Chiriquí, Darién, and the rest. Other countries are not shown. The country is detected from the visitor's IP address; when that lookup fails — no connection, an ad blocker, a service worker serving the page offline — it falls back to the device's timezone, which is right nearly always and depends on nobody. The country is never displayed and cannot be changed — not by a guest, not by an organizer, not by a venue owner. Nobody picks which country they see. The consequence, accepted deliberately: a visitor whose IP resolves to a country with no ligas sees an empty site, and someone abroad cannot follow a liga back home.
 
+**A shared link has to describe itself.** The product's distribution is people forwarding links, so the preview card that appears in WhatsApp *is* the marketing. WhatsApp, Facebook and X do not run JavaScript: they fetch the HTML, read the `og:` tags the server returned, and leave. A single-page app returns the same empty shell for every URL, so every match anyone shares looks identical and says nothing — the organizer paid for visibility and got a grey box. Every public page must therefore be server-rendered or pre-rendered with its own title, description and image. This is not an optimization; without it the core loop does not work.
+
+**The address says what the page is.** A match URL carries both teams, the date and a short code: `/p/toros-de-david-vs-bravos-de-dolega-2026-08-14-7139`. The date matters because the same two teams meet several times a season — without it two different matches would look like the same page to a person and to a crawler. The code at the end is what identifies the record, so renaming a team never breaks a link that is already circulating.
+
 **What is public, and what belongs to the owner.** Anyone — no account, no install — gets the home page, a liga's page with its table and calendar, a match with its scoreboard and figures, player profiles, and the news. Everything that *changes* something belongs to the person who owns that liga: their list of ligas, creating one, the saldo, and the console that keeps the score. Being an organizer is not enough to score somebody else's match; the check is ownership of that specific liga, never the role alone. A guest who reaches an owner's screen by typing the URL is sent back to the home page.
 
 **Fouls are events, exactly like points.** Same list, same undo, same audit trail. That makes discipline a first-class statistic — most-fouled player per team, team fouls per period — without a second system, and it is what lets the match page show figures rather than only a score.
@@ -171,6 +175,7 @@ Constraints the whole design hangs on.
 - Venue as a first-class entity with location
 - Organizer-typed rosters, claimable by players
 - Guest and owner roles: console, ligas list, saldo and liga creation are owner-only
+- Readable addresses, per-page titles and descriptions, `SportsEvent` structured data
 - Open worldwide signup, email + WhatsApp verified
 - Season payment, prepaid scoring saldo, venue subscription, free-tier caps
 - Spanish and English, local currency display
@@ -210,6 +215,12 @@ Each of these changes what gets built.
 **Offline capture versus a live board** — *architectural.* These two requirements pull against each other. If the árbitro's phone has no signal, nothing can be real-time, and a board showing a stale score without saying so is worse than no board. Workable shape: live push when connected, queued sync when not, and a public board that states plainly how old the number is. Note that the canchas most likely to hang a TV are the ones with wifi — so the venues paying monthly are exactly where live works properly.
 
 **Venue deduplication at global scale** — Anchoring a cancha to an address and coordinates is easy to imagine in one country and hard across every address format in the world. Since that dedup is what makes the per-venue free-tier cap real, decide whether the cap leans more on geolocation proximity (universal) than on address matching (not).
+
+**Rendering on the server** — *blocks the marketing product.* The prototype sets titles, descriptions and structured data from the browser, which serves the tab title and Google-after-rendering, but not the preview cards that make a forwarded link worth forwarding. The decision is only *how*: pre-render the public pages at publish time, or server-render them. Match pages change during play, so a live match needs its card regenerated or served fresh — which argues for server rendering rather than a static build.
+
+**A picture on the card** — *highest-leverage marketing asset.* Once pages are server-rendered, generate an image per match showing both teams and the scoreline. A WhatsApp card reading "Toros de David 78–71 Bravos de Dolega" gets forwarded; a grey box does not. It's the cheapest thing on this list that directly produces the attendance the organizer is buying.
+
+**Team pages are missing.** People search for a team by name — "Toros de David" — far more than for a fixture. Right now a team has no page of its own: no squad, no results, no upcoming games, nothing to rank. It is the largest gap in the site's search surface, and it costs little because the data already exists.
 
 **Build order** — *recommendation.* The generator and billing both sit ahead of the first published liga, and neither is small. Consider shipping a version where the organizer enters a schedule by hand and pays nothing, to get real ligas on real canchas before either exists — then the generator sells itself to people already using the product. Real-time push being a v1 requirement rather than a later optimization strengthens this: the engineering is better spent on the board than on the generator.
 

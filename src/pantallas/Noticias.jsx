@@ -2,10 +2,16 @@ import { Link } from 'react-router-dom'
 import { useNoticias, useRegion } from '../datos'
 import { Marca, Vacio, fechaCorta } from '../ui'
 import { urlNoticia } from '../lib/enlaces'
+import { useMeta } from '../lib/meta'
 
 export default function Noticias() {
   const noticias = useNoticias()
   const region = useRegion()
+
+  useMeta({
+    titulo: 'Últimas noticias del barrio',
+    descripcion: 'Crónicas, resultados y análisis de las ligas de calle: quién gana, quién anota y qué se juega esta semana.',
+  })
 
   if (!region) return null
 

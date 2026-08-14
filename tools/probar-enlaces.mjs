@@ -14,11 +14,11 @@ console.log('\ndirecciones')
 const liga = { nombre: 'Liga Barrial San Miguelito', codigo: '4821' }
 const local = { nombre: 'Halcones' }
 const visita = { nombre: 'Titanes del Norte' }
-const partido = { codigo: '7531' }
+const partido = { codigo: '7531', inicio: '2026-08-14T19:00:00.000Z' }
 const jugador = { nombre: 'Luis Carrasco', codigo: '3092' }
 
 eq(urlLiga(liga), '/l/liga-barrial-san-miguelito-4821', 'liga')
-eq(urlPartido(partido, local, visita), '/p/halcones-vs-titanes-del-norte-7531', 'partido')
+eq(urlPartido(partido, local, visita), '/p/halcones-vs-titanes-del-norte-2026-08-14-7531', 'partido, con fecha')
 eq(urlJugador(jugador), '/j/luis-carrasco-3092', 'jugador')
 eq(urlTele(partido), '/b/7531', 'código para el televisor')
 
@@ -31,6 +31,11 @@ eq(codigoDe('guerreros-24-de-diciembre-vs-halcones-1234'), '1234',
 check(
   codigoDe('cualquier-cosa-inventada-7531') === codigoDe(urlPartido(partido, local, visita).split('/').pop()),
   'si el nombre cambia, el código sigue encontrando el partido',
+)
+
+check(
+  !urlPartido({ codigo: '7531' }, local, visita).includes('undefined'),
+  'sin fecha no se cuela un "undefined" en la dirección',
 )
 
 console.log('\nlo que se comparte se puede leer')

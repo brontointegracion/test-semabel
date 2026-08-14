@@ -3,10 +3,20 @@ import { db } from '../db'
 import { useJugador } from '../datos'
 import { Topbar, Escudo, fechaCorta } from '../ui'
 import { codigoDe, urlPartido } from '../lib/enlaces'
+import { useMeta } from '../lib/meta'
 
 export default function Jugador() {
   const { slug } = useParams()
   const d = useJugador(codigoDe(slug))
+  useMeta({
+    titulo: d && `${d.jugador.nombre} (${d.equipo?.nombre}): estadísticas`,
+    descripcion: d && (
+      `${d.jugador.nombre}, dorsal ${d.jugador.dorsal} de ${d.equipo?.nombre} en ${d.liga?.nombre}. ` +
+      `${d.puntos} puntos en ${d.partidosJugados} partidos, ${d.faltas} faltas.`
+    ),
+    tipo: 'profile',
+  })
+
   if (!d) return null
 
   const { jugador, equipo, liga, equiposPorId, partidosPorId, eventos, puntos, faltas, partidosJugados } = d

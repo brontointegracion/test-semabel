@@ -5,6 +5,7 @@ import { marcadorEquipo } from '../lib/marcador'
 import { cambiarProvincia } from '../lib/region'
 import { Marca, Escudo, Vacio, RelojVivo, diaRelativo, hora, fechaCorta, mismoDia } from '../ui'
 import { urlLiga, urlPartido } from '../lib/enlaces'
+import { useMeta } from '../lib/meta'
 
 const DEPORTES = [
   ['todos', 'Todos'],
@@ -22,6 +23,13 @@ export default function Inicio() {
     if (!d || !region) return []
     return [...new Set(d.ligas.filter((l) => l.pais === region.pais).map((l) => l.provincia))].sort()
   }, [d, region])
+
+  useMeta({
+    titulo: 'Ligas de barrio: resultados en vivo y calendario',
+    descripcion:
+      'Sigue las ligas de baloncesto y fútbol sala de tu provincia: marcador en vivo, ' +
+      'tabla de posiciones, calendario y estadísticas de cada jugador.',
+  })
 
   if (!d || !region) return null
 
