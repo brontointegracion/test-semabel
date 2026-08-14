@@ -68,8 +68,15 @@ export default function Equipo() {
           <Link to={urlLiga(liga)} className="sub">{liga?.nombre}</Link>
           {forma.length > 0 && (
             <div className="forma">
+              <span className="rotulo">Últimos {forma.length}</span>
               {forma.map((r, i) => (
-                <span key={i} className={`marca ${r === 'G' ? 'gano' : r === 'P' ? 'perdio' : ''}`}>{r}</span>
+                <span
+                  key={i}
+                  className={`marca ${r === 'G' ? 'gano' : r === 'P' ? 'perdio' : ''}`}
+                  title={r === 'G' ? 'Ganó' : r === 'P' ? 'Perdió' : 'Empató'}
+                >
+                  {r}
+                </span>
               ))}
             </div>
           )}
@@ -174,16 +181,21 @@ export default function Equipo() {
           const rivalId = p.localId === equipo.id ? p.visitaId : p.localId
           const otros = marcadorEquipo(evs, rivalId)
           return (
-            <Link key={p.id} to={urlPartido(p, equiposPorId[p.localId], equiposPorId[p.visitaId])} className="jugador-fila">
-              <span className={`marca ${mios > otros ? 'gano' : mios < otros ? 'perdio' : ''}`}>
-                {mios > otros ? 'G' : mios < otros ? 'P' : 'E'}
-              </span>
-              <Escudo equipo={equiposPorId[rivalId]} size="sm" />
+            <Link key={p.id} to={urlPartido(p, equiposPorId[p.localId], equiposPorId[p.visitaId])} className="resultado">
+              <div className="duelo">
+                <Escudo equipo={equipo} size="sm" />
+                <Escudo equipo={equiposPorId[rivalId]} size="sm" />
+              </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="nombre" style={{ fontWeight: 600 }}>{equiposPorId[rivalId]?.nombre}</div>
+                <div className="nombre" style={{ fontWeight: 600 }}>vs {equiposPorId[rivalId]?.nombre}</div>
                 <div className="sub" style={{ fontSize: '0.74rem' }}>{fechaCorta(p.inicio)}</div>
               </div>
-              <div style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{mios}-{otros}</div>
+              <div className="cierre">
+                <div className="cifra">{mios}-{otros}</div>
+                <div className={`desenlace ${mios > otros ? 'gano' : mios < otros ? 'perdio' : ''}`}>
+                  {mios > otros ? 'Ganó' : mios < otros ? 'Perdió' : 'Empató'}
+                </div>
+              </div>
             </Link>
           )
         })}

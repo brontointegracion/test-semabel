@@ -117,7 +117,7 @@ export default function Siguiendo() {
         {!proximos.length && <p className="sub">No hay partidos programados por ahora.</p>}
       </div>
 
-      <h2 className="seccion">Cómo les fue</h2>
+      <h2 className="seccion">Resultados</h2>
       <div className="lista">
         {recientes.map((p) => {
           const yo = mio(p)
@@ -125,18 +125,23 @@ export default function Siguiendo() {
           const mios = marcadorEquipo(evs, yo?.id)
           const otros = marcadorEquipo(evs, rival(p, yo?.id)?.id)
           return (
-            <Link key={p.id} to={urlPartido(p, todosEquipos[p.localId], todosEquipos[p.visitaId])} className="jugador-fila">
-              <span className={`marca ${mios > otros ? 'gano' : mios < otros ? 'perdio' : ''}`}>
-                {mios > otros ? 'G' : mios < otros ? 'P' : 'E'}
-              </span>
-              <Escudo equipo={rival(p, yo?.id)} size="sm" />
+            <Link key={p.id} to={urlPartido(p, todosEquipos[p.localId], todosEquipos[p.visitaId])} className="resultado">
+              <div className="duelo">
+                <Escudo equipo={yo} size="sm" />
+                <Escudo equipo={rival(p, yo?.id)} size="sm" />
+              </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="nombre" style={{ fontWeight: 600 }}>
                   {yo?.nombre} vs {rival(p, yo?.id)?.nombre}
                 </div>
                 <div className="sub" style={{ fontSize: '0.74rem' }}>{fechaCorta(p.inicio)}</div>
               </div>
-              <div style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{mios}-{otros}</div>
+              <div className="cierre">
+                <div className="cifra">{mios}-{otros}</div>
+                <div className={`desenlace ${mios > otros ? 'gano' : mios < otros ? 'perdio' : ''}`}>
+                  {mios > otros ? 'Ganó' : mios < otros ? 'Perdió' : 'Empató'}
+                </div>
+              </div>
             </Link>
           )
         })}

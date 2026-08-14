@@ -201,7 +201,41 @@ h2.seccion { font-size: 1.02rem; font-weight: 700; letter-spacing: -0.01em; marg
 
 /* ---- forma y resultados ---- */
 
-.forma { display: flex; gap: 4px; margin-top: 8px; }
+.forma { display: flex; align-items: center; gap: 4px; margin-top: 8px; }
+
+.forma .rotulo {
+  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--ink-mute);
+  margin-right: 4px;
+}
+
+/* Una fila de resultado: los dos escudos juntos dicen quién jugó contra quién,
+   y la palabra dice cómo terminó. La letra suelta se confundía con un escudo. */
+.resultado {
+  display: flex; align-items: center; gap: 11px;
+  padding: 9px 12px 9px 9px;
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+}
+
+.duelo { display: flex; flex: none; }
+
+.duelo .escudo:last-child { margin-left: -9px; box-shadow: 0 0 0 2px var(--surface); }
+
+.resultado .cierre { flex: none; text-align: right; }
+
+.resultado .cifra {
+  font-weight: 800; font-size: 1.05rem;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
+}
+
+.resultado .desenlace {
+  font-size: 0.64rem; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--ink-mute); margin-top: 1px;
+}
+
+.resultado .desenlace.gano { color: var(--acento-ink); }
 
 .marca {
   flex: none;
