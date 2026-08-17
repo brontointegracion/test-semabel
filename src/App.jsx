@@ -17,6 +17,7 @@ import Siguiendo from './pantallas/Siguiendo'
 import Figuras from './pantallas/Figuras'
 import Categoria from './pantallas/Categoria'
 import Reto from './pantallas/Reto'
+import Retar from './pantallas/Retar'
 import Noticia from './pantallas/Noticia'
 import Codigo from './pantallas/Codigo'
 
@@ -68,6 +69,7 @@ export default function App() {
           <Route path="/figuras" element={<Figuras />} />
           <Route path="/cat/:deporte/:categoria" element={<Categoria />} />
           <Route path="/r/:slug" element={<Reto />} />
+          <Route path="/l/:slug/retar" element={<SoloOrganizador sesion={sesion}><Retar /></SoloOrganizador>} />
           <Route path="/noticias" element={<Noticias />} />
           <Route path="/n/:slug" element={<Noticia />} />
           <Route path="/b/:codigo" element={<Codigo />} />

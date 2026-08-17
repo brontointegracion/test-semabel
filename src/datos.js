@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
+import { cronicaDePartido, resumenDeJornada } from './lib/cronica'
 
 const porId = (filas) => Object.fromEntries(filas.map((f) => [f.id, f]))
 
@@ -474,3 +475,82 @@ export const useRetosDeCategoria = (deporte, categoria) =>
     const todos = await db.retos.toArray()
     return todos.filter((r) => r.deporte === deporte && r.categoria === categoria)
   }, [deporte, categoria], [])
+
+
+/**
+ * Con quién se puede retar: misma categoría, mismo deporte, y que la otra liga
+ * también haya dejado la puerta abierta. El país no importa — un reto es
+ * justamente el objeto compartido que cruza la frontera.
+ */
+export const useRivalesPosibles = (liga) =>
+  useLiveQuery(async () => {
+    if (!liga?.aceptaRetos) return []
+    const todas = await db.ligas.toArray()
+    return todas.filter(
+      (l) =>
+        l.id !== liga.id &&
+        !l.esTorneo &&
+        l.aceptaRetos &&
+        l.deporte === liga.deporte &&
+        l.categoria === liga.categoria,
+    )
+  }, [liga?.id, liga?.aceptaRetos, liga?.deporte, liga?.categoria], [])
+
+
+/**
+ * Las crónicas que se escriben solas, a partir de lo que ya está guardado.
+ * Reemplazan a la sección editorial: no hay nadie escribiendo cada semana en
+ * cada barrio, y aun así cada liga tiene sus propias notas.
+ */
+export function useCronicas() {
+  return useLiveQuery(async () => {
+    const region = await db.meta.get('region')
+    if (!region) return []
+
+    const ligas = (await db.ligas.toArray()).filter(
+      (l) => l.pais === region.pais || (l.internacional && (l.paises || []).includes(region.pais)),
+    )
+    const ligasPorId = porId(ligas)
+    const ligaIds = new Set(ligas.map((l) => l.id))
+
+    const partidos = (await db.partidos.toArray()).filter((p) => ligaIds.has(p.ligaId))
+    const finales = partidos.filter((p) => p.estado === 'final')
+    if (!finales.length) return []
+
+    const eventos = await db.eventos.where('partidoId').anyOf(finales.map((p) => p.id)).toArray()
+    const eventosPorPartido = {}
+    for (const e of eventos) (eventosPorPartido[e.partidoId] ||= []).push(e)
+
+    const equipos = porId(await db.equipos.toArray())
+    const jugadores = await db.jugadores.toArray()
+    const canchas = porId(await db.canchas.toArray())
+
+    // Los últimos partidos jugados, que es de lo que la gente quiere leer.
+    const recientes = [...finales].sort((a, b) => b.inicio.localeCompare(a.inicio)).slice(0, 8)
+
+    const notas = recientes.map((p) => {
+      const liga = ligasPorId[p.ligaId]
+      const c = cronicaDePartido({
+        partido: p,
+        liga,
+        cancha: canchas[p.canchaId],
+        local: equipos[p.localId],
+        visita: equipos[p.visitaId],
+        jugadores: jugadores.filter((j) => j.ligaId === p.ligaId),
+        eventos: eventosPorPartido[p.id] || [],
+        partidosLiga: partidos.filter((x) => x.ligaId === p.ligaId),
+        eventosPorPartido,
+      })
+      return c && { ...c, id: p.id, liga, partido: p, equipos }
+    }).filter(Boolean)
+
+    // Un resumen de jornada por cada liga con actividad, al final.
+    const resumenes = ligas.map((liga) => {
+      const suyos = finales.filter((p) => p.ligaId === liga.id).slice(-4)
+      const r = resumenDeJornada({ partidos: suyos, eventosPorPartido, liga })
+      return r && { ...r, id: `resumen-${liga.id}`, liga }
+    }).filter(Boolean)
+
+    return [...notas, ...resumenes].sort((a, b) => String(b.cuando).localeCompare(String(a.cuando)))
+  }, [], [])
+}

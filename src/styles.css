@@ -1102,3 +1102,62 @@ td.pts { font-weight: 800; color: var(--acento-ink); }
   line-height: 1.1;
   margin-top: 10px;
 }
+
+/* ---- casilla de verificación ---- */
+
+.casilla {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  cursor: pointer;
+  margin-bottom: 4px;
+}
+
+.casilla input {
+  flex: none;
+  width: 20px; height: 20px;
+  margin-top: 1px;
+  accent-color: var(--acento);
+}
+
+.casilla > span { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+
+.casilla .sub { font-size: 0.82rem; line-height: 1.4; }
+
+/* ---- elegir una opción de una lista ---- */
+
+.opcion {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  cursor: pointer;
+  text-align: left;
+}
+
+.opcion.elegida { border-color: var(--acento); background: var(--acento-wash); }
+
+.opcion .marcador-radio {
+  flex: none;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  background: var(--paper);
+}
+
+.opcion.elegida .marcador-radio {
+  border-color: var(--acento);
+  box-shadow: inset 0 0 0 4px var(--acento);
+}
+
+.opcion .nombre { display: block; font-weight: 700; }
+
+.opcion .sub { display: block; font-size: 0.8rem; margin-top: 2px; }

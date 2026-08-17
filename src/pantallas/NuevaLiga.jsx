@@ -28,6 +28,8 @@ export default function NuevaLiga() {
   const [franjas, setFranjas] = useState(['19:00', '20:30'])
   const [desde, setDesde] = useState(enISO(hoy))
   const [hasta, setHasta] = useState(enISO(en8))
+  const [categoria, setCategoria] = useState('Libre')
+  const [aceptaRetos, setAceptaRetos] = useState(true)
   const [paso, setPaso] = useState(1)
   const [guardando, setGuardando] = useState(false)
 
@@ -72,6 +74,8 @@ export default function NuevaLiga() {
       diasSemana: dias,
       franjas,
       minutosPorPeriodo: deporte === 'baloncesto' ? 10 : 20,
+      categoria,
+      aceptaRetos,
       desde: new Date(`${desde}T00:00:00`).toISOString(),
       hasta: new Date(`${hasta}T23:59:59`).toISOString(),
       pais: (canchas || []).find((c) => c.id === canchaIds[0])?.pais,
@@ -209,6 +213,33 @@ export default function NuevaLiga() {
       </div>
 
       <div className="campo">
+        <label htmlFor="cat">Categoría</label>
+        <select id="cat" value={categoria} onChange={(e) => setCategoria(e.target.value)}>
+          <option value="Libre">Libre (cualquier edad)</option>
+          <option value="35+">Veteranos 35+</option>
+          <option value="40+">Veteranos 40+</option>
+          <option value="45+">Veteranos 45+</option>
+          <option value="50+">Veteranos 50+</option>
+        </select>
+      </div>
+
+      <label className="casilla">
+        <input
+          type="checkbox"
+          checked={aceptaRetos}
+          onChange={(e) => setAceptaRetos(e.target.checked)}
+        />
+        <span>
+          <strong>Aceptar retos de otras ligas</strong>
+          <span className="sub">
+            Otras ligas de {categoria === 'Libre' ? 'la misma categoría' : `categoría ${categoria}`} y
+            del mismo deporte podrán retarte. Cada una juega lo suyo en su cancha y se comparan los
+            promedios de la semana. Nadie viaja.
+          </span>
+        </span>
+      </label>
+
+      <div className="campo" style={{ marginTop: 16 }}>
         <label htmlFor="eq">Equipos: {nEquipos}</label>
         <input id="eq" type="range" min="4" max="12" step="2" value={nEquipos}
           onChange={(e) => setNEquipos(Number(e.target.value))} />

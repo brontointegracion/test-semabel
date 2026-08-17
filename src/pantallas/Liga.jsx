@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { useLiga, useRetosDeLiga } from '../datos'
+import { useLiga, useRetosDeLiga, useSesion } from '../datos'
+import { esDuenoDe } from '../lib/sesion'
 import { tablaPosiciones, estadisticaJugadores, marcadorEquipo } from '../lib/marcador'
 import { Topbar, Escudo, Vacio, fechaCorta, hora, mismoDia } from '../ui'
 import { codigoDe, urlLiga, urlPartido, urlJugador, urlEquipo, urlReto } from '../lib/enlaces'
@@ -16,6 +17,7 @@ export default function Liga() {
   const { slug } = useParams()
   const d = useLiga(codigoDe(slug))
   const retos = useRetosDeLiga(d?.liga?.id)
+  const sesion = useSesion()
   const [pestana, setPestana] = useState('tabla')
   const [copiado, setCopiado] = useState(false)
 
@@ -62,6 +64,9 @@ export default function Liga() {
           <button className="btn" onClick={compartir}>
             {copiado ? 'Link copiado' : 'Compartir link'}
           </button>
+          {esDuenoDe(sesion, liga) && liga.aceptaRetos && !liga.esTorneo && (
+            <Link className="btn fantasma" to={`${urlLiga(liga)}/retar`}>Retar a otra liga</Link>
+          )}
         </div>
         <p className="sub" style={{ marginTop: 10, marginBottom: 0 }}>
           Quien abra el link ve la tabla, el calendario y el marcador en vivo. No necesita cuenta
