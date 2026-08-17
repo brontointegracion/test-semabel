@@ -114,6 +114,8 @@ src/
   lib/seguir.js      Seguir equipos y jugadores, sin cuenta
   lib/votos.js       Votaciones; los votos ajenos son simulados y estables
   lib/meta.js        Título, descripción y datos estructurados por página
+  lib/cabecera.js    El <head> que tendrá que devolver el servidor, ya escrito
+  lib/cronica.js     Crónicas automáticas a partir de los eventos
   pantallas/         Una pantalla por archivo
 ```
 
@@ -153,6 +155,8 @@ npm run build && npm run preview
 node tools/probar-calendario.mjs
 node tools/probar-reloj.mjs
 node tools/probar-enlaces.mjs
+node tools/probar-cronica.mjs
+node tools/probar-cabecera.mjs
 ```
 
 El primero verifica, de 4 a 12 equipos, que el calendario sea todos contra todos sin repetir

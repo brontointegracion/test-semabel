@@ -249,7 +249,11 @@ Each of these changes what gets built.
 
 **Venue deduplication at global scale** — Anchoring a cancha to an address and coordinates is easy to imagine in one country and hard across every address format in the world. Since that dedup is what makes the per-venue free-tier cap real, decide whether the cap leans more on geolocation proximity (universal) than on address matching (not).
 
-**Rendering on the server** — *blocks the marketing product.* The prototype sets titles, descriptions and structured data from the browser, which serves the tab title and Google-after-rendering, but not the preview cards that make a forwarded link worth forwarding. The decision is only *how*: pre-render the public pages at publish time, or server-render them. Match pages change during play, so a live match needs its card regenerated or served fresh — which argues for server rendering rather than a static build.
+**Rendering on the server** — *blocks the marketing product, and cannot be finished without a backend.* The prototype sets titles, descriptions and structured data from the browser, which serves the tab title and Google-after-rendering, but not the preview cards that make a forwarded link worth forwarding. This one is not a matter of effort: the data lives in each visitor's browser, so there is no server that could render a match it has never seen. It unblocks the moment a backend exists, and not before.
+
+What *is* already done is the half that will not change: `src/lib/cabecera.js` takes a match and returns exactly the `<head>` a server must emit — title with the scoreline, description with date, venue, liga and category, `og:` tags, canonical, and the large-card variant when an image exists. It handles the three states differently, because a match still to be played must not invent a score. The server will call this function and paste the result; nothing above it needs redesigning. Verified in `tools/probar-cabecera.mjs`.
+
+The decision left is only *how*: pre-render public pages at publish time, or server-render them. Match pages change during play, so a live match needs its card regenerated or served fresh — which argues for server rendering rather than a static build.
 
 **A picture on the card** — *highest-leverage marketing asset.* Once pages are server-rendered, generate an image per match showing both teams and the scoreline. A WhatsApp card reading "Toros de David 78–71 Bravos de Dolega" gets forwarded; a grey box does not. It's the cheapest thing on this list that directly produces the attendance the organizer is buying.
 
