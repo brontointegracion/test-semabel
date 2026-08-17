@@ -74,17 +74,34 @@ export default function Liga() {
         </p>
       </div>
 
-      {retos.map((r) => (
-        <Link key={r.id} to={urlReto(r)} className="card destacado-link">
-          <div className="fila-liga">
-            <div className="info">
-              <div className="eyebrow">Reto en curso</div>
-              <div className="nombre" style={{ marginTop: 3 }}>{r.nombre}</div>
+      {retos.map((r) => {
+        const ahora = Date.now()
+        const abre = new Date(r.desde).getTime()
+        const cierra = new Date(r.hasta).getTime()
+        const estado = ahora < abre ? 'porEmpezar' : ahora > cierra ? 'terminado' : 'enCurso'
+        const dias = Math.max(0, Math.ceil((abre - ahora) / 86400000))
+
+        return (
+          <Link key={r.id} to={urlReto(r)} className="card destacado-link">
+            <div className="fila-liga">
+              <div className="info">
+                <div className="eyebrow">
+                  {estado === 'porEmpezar' ? 'Reto acordado' : estado === 'enCurso' ? 'Reto en curso' : 'Reto terminado'}
+                </div>
+                <div className="nombre" style={{ marginTop: 3 }}>{r.nombre}</div>
+                <div className="sub" style={{ marginTop: 2 }}>
+                  {estado === 'porEmpezar'
+                    ? `Arranca el ${fechaCorta(r.desde)}, en ${dias} día${dias === 1 ? '' : 's'}`
+                    : estado === 'enCurso'
+                      ? `Termina el ${fechaCorta(r.hasta)}`
+                      : `Se jugó del ${fechaCorta(r.desde)} al ${fechaCorta(r.hasta)}`}
+                </div>
+              </div>
+              <span className="chev">→</span>
             </div>
-            <span className="chev">→</span>
-          </div>
-        </Link>
-      ))}
+          </Link>
+        )
+      })}
 
       <div className="selector" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginTop: 16 }}>
         {PESTANAS.map(([k, etiqueta]) => (

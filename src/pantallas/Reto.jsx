@@ -39,7 +39,7 @@ export default function Reto() {
     )
   }
 
-  const { reto, a, b, equipos, lider, diasRestantes, abierto } = d
+  const { reto, a, b, equipos, lider, porEmpezar, enCurso, terminado, diasParaEmpezar, diasRestantes } = d
 
   const mandar = async () => {
     const texto =
@@ -67,9 +67,17 @@ export default function Reto() {
           <span className="pill">
             {fechaCorta(reto.desde)} — {fechaCorta(reto.hasta)}
           </span>
-          {abierto
-            ? <span className="pill vivo">Quedan {diasRestantes} día{diasRestantes === 1 ? '' : 's'}</span>
-            : <span className="pill">Terminado</span>}
+          {porEmpezar && (
+            <span className="pill">
+              Empieza en {diasParaEmpezar} día{diasParaEmpezar === 1 ? '' : 's'}
+            </span>
+          )}
+          {enCurso && (
+            <span className="pill vivo">
+              Quedan {diasRestantes} día{diasRestantes === 1 ? '' : 's'}
+            </span>
+          )}
+          {terminado && <span className="pill">Terminado</span>}
         </div>
       </div>
 
@@ -125,7 +133,11 @@ export default function Reto() {
                   </div>
                 </Link>
               ))}
-              {!lado.partidos.length && <p className="sub">Todavía no han jugado esta semana.</p>}
+              {!lado.partidos.length && (
+                <p className="sub">
+                  {porEmpezar ? 'Cuando empiece, aquí van sus partidos.' : 'Todavía no han jugado esta semana.'}
+                </p>
+              )}
             </div>
           </div>
         ))}
@@ -133,12 +145,18 @@ export default function Reto() {
 
       <div className="card" style={{ marginTop: 16, textAlign: 'center' }}>
         <div style={{ fontWeight: 700 }}>
-          {lider ? `Va arriba ${lider.liga?.nombre}` : 'Van igualados'}
+          {porEmpezar
+            ? 'Todavía no arranca'
+            : lider
+              ? `Va arriba ${lider.liga?.nombre}`
+              : 'Van igualados'}
         </div>
         <p className="sub" style={{ marginTop: 6 }}>
-          {abierto
-            ? 'Todavía se puede dar vuelta: quedan partidos por jugar.'
-            : 'Así terminó la semana.'}
+          {porEmpezar
+            ? `Cuentan los partidos que se jueguen desde el ${fechaCorta(reto.desde)}. Los de antes no suman.`
+            : enCurso
+              ? 'Todavía se puede dar vuelta: quedan partidos por jugar.'
+              : 'Así terminó la semana.'}
         </p>
         <button className="btn" style={{ marginTop: 10 }} onClick={mandar}>
           Mandar al grupo

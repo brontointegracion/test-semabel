@@ -7,7 +7,7 @@ import { restanteMs } from './lib/reloj-calculo'
 //
 // Sube SEMILLA cuando cambie la forma de los datos: el prototipo se
 // resiembra solo en vez de quedar a medias.
-const SEMILLA = 11
+const SEMILLA = 12
 
 // Códigos cortos: los que se leen en la dirección y se escriben en el televisor.
 // Únicos entre sí para que nunca dos cosas respondan al mismo número.
@@ -34,6 +34,7 @@ const CANCHAS = [
   { clave: 'bocas', nombre: 'Cancha Isla Colón', barrio: 'Bocas del Toro', provincia: 'Bocas del Toro', pais: 'PA', lat: 9.3405, lng: -82.2419, techada: false },
   { clave: 'darien', nombre: 'Polideportivo La Palma', barrio: 'La Palma', provincia: 'Darién', pais: 'PA', lat: 8.4064, lng: -78.1425, techada: false },
   { clave: 'envigado', nombre: 'Placa Envigado Centro', barrio: 'Envigado', provincia: 'Antioquia', pais: 'CO', lat: 6.1697, lng: -75.5828, techada: false },
+  { clave: 'bello', nombre: 'Polideportivo Tulio Ospina', barrio: 'Bello', provincia: 'Antioquia', pais: 'CO', lat: 6.3378, lng: -75.5553, techada: true },
 ]
 
 const PALETA = ['#C9452B', '#2A5C86', '#D89B1C', '#1E7F8C', '#6B4E9B', '#0D6B55', '#8C3B63', '#3F6B22']
@@ -52,7 +53,7 @@ const LIGAS = [
     equipos: nombresEquipo(['Halcones', 'Titanes del Norte', 'Leones de Calidonia', 'Tiburones', 'Águilas de Betania', 'Guerreros 24 de Diciembre']),
   },
   {
-    nombre: 'Copa Chorrillo Fútbol Sala', deporte: 'futsal', mia: true,
+    nombre: 'Copa Chorrillo Fútbol Sala', deporte: 'futsal', mia: true, retable: true,
     canchas: ['chorrillo'], dias: [2, 6], franjas: ['19:30'],
     equipos: nombresEquipo(['Barraza FC', 'Santa Ana', 'Marañón', 'Boca La Caja']),
   },
@@ -70,6 +71,11 @@ const LIGAS = [
     nombre: 'Liga Darién Fútbol Sala', deporte: 'futsal', organizador: 'Ovidio Cabrera',
     canchas: ['darien'], dias: [6], franjas: ['17:00', '18:30'],
     equipos: nombresEquipo(['La Palma', 'Yaviza', 'Metetí', 'Sambú']),
+  },
+  {
+    nombre: 'Liga Aburrá Fútbol Sala', deporte: 'futsal', retable: true, organizador: 'Jhon Restrepo',
+    canchas: ['bello'], dias: [1, 5], franjas: ['19:00', '20:30'],
+    equipos: nombresEquipo(['Bello Centro', 'Niquía', 'Zamora', 'París']),
   },
   {
     nombre: 'Liga Antioqueña 40+', deporte: 'baloncesto', categoria: '40+', organizador: 'Sara Betancur',
@@ -169,7 +175,7 @@ export async function sembrarSiHaceFalta() {
       deporte: def.deporte,
       categoria: def.categoria || 'Libre',
       // El organizador decide si su liga se deja retar por otra de su categoría.
-      aceptaRetos: def.categoria ? true : false,
+      aceptaRetos: !!(def.categoria || def.retable),
       codigo: codigoUnico(),
       canchaIds: suyas.map((c) => c.id),
       pais: suyas[0].pais,
@@ -549,6 +555,26 @@ async function sembrarReto() {
 
   const desde = new Date(); desde.setDate(desde.getDate() - 10); desde.setHours(0, 0, 0, 0)
   const hasta = new Date(); hasta.setDate(hasta.getDate() + 4); hasta.setHours(23, 59, 59, 0)
+
+  const futA = ligas.find((l) => l.nombre.startsWith('Copa Chorrillo'))
+  const futB = ligas.find((l) => l.nombre.startsWith('Liga Aburrá'))
+  if (futA && futB) {
+    // Este empieza en tres días: sirve para ver el estado "todavía no arranca".
+    const abre = new Date(); abre.setDate(abre.getDate() + 3); abre.setHours(0, 0, 0, 0)
+    const cierra = new Date(abre); cierra.setDate(abre.getDate() + 7); cierra.setHours(23, 59, 59, 0)
+    await db.retos.add({
+      id: uid(),
+      codigo: codigoUnico(),
+      nombre: 'Reto El Chorrillo – Bello',
+      deporte: 'futsal',
+      categoria: 'Libre',
+      ligaAId: futA.id,
+      ligaBId: futB.id,
+      desde: abre.toISOString(),
+      hasta: cierra.toISOString(),
+      estado: 'abierto',
+    })
+  }
 
   await db.retos.add({
     id: uid(),

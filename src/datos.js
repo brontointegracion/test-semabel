@@ -445,7 +445,13 @@ export function useReto(codigo) {
 
     const a = await lado(ligaA)
     const b = await lado(ligaB)
-    const dias = Math.ceil((hasta - Date.now()) / 86400000)
+    const ahora = Date.now()
+
+    // Tres estados, no dos: uno que todavía no arranca no es lo mismo que uno
+    // en curso con cero partidos jugados, y no puede tener líder.
+    const porEmpezar = ahora < desde
+    const terminado = ahora > hasta
+    const enCurso = !porEmpezar && !terminado
 
     return {
       reto,
@@ -454,9 +460,13 @@ export function useReto(codigo) {
       equipos,
       // Se compara el promedio por partido: si se comparara el total, ganaría
       // siempre la liga que juega más veces, que no es mérito de nadie.
-      lider: a.promedio === b.promedio ? null : a.promedio > b.promedio ? a : b,
-      diasRestantes: dias > 0 ? dias : 0,
-      abierto: Date.now() <= hasta,
+      lider: porEmpezar || a.promedio === b.promedio ? null : a.promedio > b.promedio ? a : b,
+      porEmpezar,
+      enCurso,
+      terminado,
+      diasParaEmpezar: Math.max(0, Math.ceil((desde - ahora) / 86400000)),
+      diasRestantes: Math.max(0, Math.ceil((hasta - ahora) / 86400000)),
+      abierto: !terminado,
     }
   }, [codigo])
 }
