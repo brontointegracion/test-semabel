@@ -146,14 +146,14 @@ export default function Reto() {
       <div className="card" style={{ marginTop: 16, textAlign: 'center' }}>
         <div style={{ fontWeight: 700 }}>
           {porEmpezar
-            ? 'Todavía no arranca'
+            ? `Lo mandó ${a.liga?.nombre}`
             : lider
               ? `Va arriba ${lider.liga?.nombre}`
               : 'Van igualados'}
         </div>
         <p className="sub" style={{ marginTop: 6 }}>
           {porEmpezar
-            ? `Cuentan los partidos que se jueguen desde el ${fechaCorta(reto.desde)}. Los de antes no suman.`
+            ? `Todavía no arranca. Cuentan los partidos que se jueguen desde el ${fechaCorta(reto.desde)}; los de antes no suman.`
             : enCurso
               ? 'Todavía se puede dar vuelta: quedan partidos por jugar.'
               : 'Así terminó la semana.'}

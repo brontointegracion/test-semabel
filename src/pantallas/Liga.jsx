@@ -80,13 +80,17 @@ export default function Liga() {
         const cierra = new Date(r.hasta).getTime()
         const estado = ahora < abre ? 'porEmpezar' : ahora > cierra ? 'terminado' : 'enCurso'
         const dias = Math.max(0, Math.ceil((abre - ahora) / 86400000))
+        // Nadie acordó nada: una liga lo mandó y la otra lo recibió.
+        const loMande = r.ligaAId === liga.id
 
         return (
           <Link key={r.id} to={urlReto(r)} className="card destacado-link">
             <div className="fila-liga">
               <div className="info">
                 <div className="eyebrow">
-                  {estado === 'porEmpezar' ? 'Reto acordado' : estado === 'enCurso' ? 'Reto en curso' : 'Reto terminado'}
+                  {estado === 'porEmpezar'
+                    ? (loMande ? 'Reto enviado' : 'Reto recibido')
+                    : estado === 'enCurso' ? 'Reto en curso' : 'Reto terminado'}
                 </div>
                 <div className="nombre" style={{ marginTop: 3 }}>{r.nombre}</div>
                 <div className="sub" style={{ marginTop: 2 }}>

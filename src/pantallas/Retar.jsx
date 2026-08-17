@@ -12,9 +12,9 @@ const PAISES = { PA: 'Panamá', CO: 'Colombia' }
 /**
  * Retar a otra liga.
  *
- * Tres decisiones y ya: a quién, qué semana, y listo. Nada de invitaciones,
- * confirmaciones ni ida y vuelta — si las dos ligas dejaron abierta la puerta
- * ("acepto retos"), el reto se arma solo. La fricción aquí mataría la idea:
+ * Tres decisiones y ya: a quién, qué semana, y listo. Se envía, no se negocia:
+ * si las dos ligas dejaron abierta la puerta ("acepto retos"), queda enviado y
+ * las dos lo ven. La fricción aquí mataría la idea:
  * esto tiene que poder pasar un martes por la noche, entre dos organizadores
  * que se conocen de un grupo de WhatsApp.
  */
@@ -139,10 +139,10 @@ export default function Retar() {
           </p>
 
           <button className="btn" style={{ marginTop: 18 }} disabled={!elegida || creando} onClick={crear}>
-            {elegida ? `Retar a ${elegida.nombre}` : 'Elige una liga'}
+            {elegida ? `Enviar reto a ${elegida.nombre}` : 'Elige una liga'}
           </button>
           <p className="sub" style={{ marginTop: 10, textAlign: 'center' }}>
-            Se arma al instante y las dos ligas lo ven. No hay que esperar a que nadie acepte.
+            Se envía al instante y las dos ligas lo ven. No hay que esperar a que nadie acepte.
           </p>
         </>
       )}
