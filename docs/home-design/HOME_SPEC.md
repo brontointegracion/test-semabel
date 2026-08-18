@@ -12,6 +12,8 @@ Home is Sebel's public sports-discovery surface. Per `REQUISITOS.md` §3 ("Goals
 
 Home is not a marketing page that happens to mention sports. Per the product's own framing: **the product is the marketing.** A live score is the pitch; a paragraph about live scores is not.
 
+Home is visitor-first by design, even though the organizer remains the product's primary actor at the business level (`REQUISITOS.md` §2 — the only one who creates data). Those are different questions: who adopts the product, versus who this page is built to serve first. Home's job is to get a fan from a cold link to "what's happening near me" in seconds. Organizer acquisition is a secondary, welcome outcome of that — never the page's purpose.
+
 ## 2. Actors
 
 | Actor | What they get on Home |
@@ -44,13 +46,14 @@ In current `Inicio.jsx` order:
 **Per your instruction, the target hierarchy for a redesign is:**
 
 1. Sebel identity/navigation
+1b. Brand/value statement (small, optional) — if present, must communicate local sports discovery ("what's playable near you, right now") — never Sebel's organizer/scheduling/scoring capabilities. See §15 for where that message belongs instead.
 2. Remembered context (province/sport/category)
 3. Live activity — `Ahora mismo`
 4. Upcoming — `Lo que viene`
 5. Local league/team/player discovery
 6. Figures/statistical discovery
 7. Search/discovery
-8. Sponsorship (always visually secondary; must never interrupt or compete with live or upcoming sports content, but its exact responsive position is not fixed to last)
+8. Sponsorship (always visually secondary; must never appear before the visitor has received live/upcoming sports content — its earliest legitimate position is after `Lo que viene`. Not required to be strictly last among everything that follows.)
 
 This reorders presentation only. Every data source, hook, and behavior listed below must survive the reorder unchanged.
 
@@ -152,7 +155,11 @@ Home does not currently link to: a dedicated calendar view, a footer, or any `/p
 - Do not invent sample content that implies real venues, teams, or players beyond generically plausible Latin American placeholder names (see `HOME_V0_BRIEF.md` for placeholder-content guidance).
 - Do not invent a "trending" or algorithmic recommendation concept — the podium and search are the only discovery mechanisms that exist.
 
-## 15. Mapping summary (quick reference)
+## 15. Where the organizer message belongs instead
+
+The current hero copy ("Aquí se arma el calendario, se lleva el marcador desde el teléfono...") describes organizer workflow, not visitor value. It doesn't get deleted — it belongs on the organizer-acquisition surface: adjacent to or reached from the existing "Soy organizador" control in `<Marca />`, most naturally on the screen an organizer lands on after that click (`Ligas.jsx` / `Mis ligas`, per `src/App.jsx`'s routing). That screen has no Home-equivalent spec today. Relocating the copy into a real screen is future, separately-scoped work — this note exists so the message isn't silently lost when the hero changes.
+
+## 16. Mapping summary (quick reference)
 
 | Concept | File / symbol |
 |---|---|

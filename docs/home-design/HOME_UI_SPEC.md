@@ -19,6 +19,8 @@ Do not reproduce their layouts, components, color systems, logos, or any proprie
 - **Strava-like**: sports/community energy, activity-forward tone, a product that feels like it belongs to people who actually play, not to a marketing department.
 - **Pluralsight-like**: restraint, whitespace discipline, calm typographic hierarchy, a responsive grid that doesn't feel like a stretched phone screen on desktop.
 
+> **The primary Home user is the visitor/fan, not the organizer.** The primary job is fast local discovery: what's live now, what's coming next. "Soy organizador" stays clearly reachable everywhere — it is a utility control, never the thing the hero is selling.
+
 ## 2. Mandatory visual direction
 
 - **Light theme.** White/off-white primary canvas. This is a firm requirement, not a placeholder — do not propose a dark theme, dark hero, or dark "scoreboard mode" for the page as a whole.
@@ -46,7 +48,7 @@ In priority order, top to bottom on mobile and left-to-right/top-to-bottom by vi
 5. **Local discovery** — ligas/teams relevant to the current filter (existing "ver todas las ligas" / search surface).
 6. **Figures** — statistical podium, cross-liga.
 7. **Search** — can be positioned as a persistent, lightweight entry point rather than strictly last in DOM order, since search is a scale mechanism (`HOME_SPEC.md` §9) that becomes more important as the number of ligas grows. Where exactly it sits relative to #5/#6 is an open decision — see §14.
-8. **Sponsorship** — always visually secondary; never interrupts or competes with live or upcoming sports content. May be placed where the responsive composition works best, provided it remains clearly subordinate — its exact position is not fixed to "last."
+8. **Sponsorship** — always visually secondary; must never appear before the visitor has received live/upcoming sports content — its earliest legitimate position is after `Lo que viene`. Not required to be strictly last among everything that follows.
 
 > Do not let a large generic marketing hero push live sports activity far down the page. A small brand/value statement may exist if useful, but the product itself is the main attraction.
 
@@ -154,7 +156,7 @@ These are not resolved by product requirements or by the mandatory direction abo
 - **How "many upcoming matches" degrades** — scroll, "show more" pagination, or a hard cap with a link to a fuller view. `HOME_SPEC.md` confirms no dedicated calendar page currently exists, so "link to full calendar" is not assumable without new product scope.
 - **Desktop navigation treatment** — whether the existing bottom tab bar simply persists at desktop width, moves, or is supplemented, is not specified by the current app (`App.jsx` renders the same `tabbar` regardless of viewport today) and is open for the redesign to address thoughtfully.
 - **Multi-column arrangement specifics on desktop** — how many columns, and which regions share a row, are open, governed only by the hierarchy and anti-flattening rules in §5.
-- **Sponsor visual treatment** — as long as it stays visually subordinate and never interrupts or competes with live or upcoming sports content (§4, §10), its specific card/banner form and its exact responsive position are open.
+- **Sponsor visual treatment** — its specific card/banner form, and exactly where it sits *among the regions after `Lo que viene`*, remain open. Whether it can appear before `Lo que viene` is not open — it can't (§4).
 
 ## 15. Visual non-goals
 
@@ -166,6 +168,7 @@ Explicitly out of scope for this redesign, regardless of how it's approached:
 - Gradients used as decorative texture, glassmorphism, stacked drop shadows.
 - Any visual element that implies a feature not in `HOME_SPEC.md` (calendar view, notifications, trending module, footer with legal pages).
 - Literal reproduction of Strava's or Pluralsight's layouts, components, or branding.
+- Hero copy that explains organizer/software capabilities (scheduling, scoring, league management) instead of what a visitor gets from opening the page.
 
 ## 16. Desktop/mobile parity principle
 
@@ -187,6 +190,7 @@ A candidate design should be checked against this list before being accepted:
 - [ ] Checked at 320/375/390/430px, tablet, standard desktop, and wide desktop.
 - [ ] Desktop uses horizontal space with real multi-region composition, not a stretched phone column.
 - [ ] Mobile is single-column, thumb-usable, with the live score legible in under a second.
-- [ ] Sponsor content is present but unmistakably the quietest region on the page at every width.
+- [ ] Hero (if present) communicates local sports discovery, not organizer software capabilities.
+- [ ] Sponsor content never appears before `Ahora mismo`/`Lo que viene`, and is unmistakably the quietest region at every width.
 - [ ] No invented features (calendar page, notifications, footer, trending, extra sports, match-day numbers).
 - [ ] No overlapping elements, no essential text clipped, at any tested width.

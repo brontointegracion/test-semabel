@@ -19,6 +19,8 @@ Sebel is a **responsive web application / PWA**, not a marketing website. It's u
 
 Same product identity, same content regions, same priority order across mobile and desktop — but genuinely composed for each, not one stretched into the other.
 
+Home is built for the visitor/fan first. Organizer acquisition is secondary — "Soy organizador" stays reachable, but it is not the hero's pitch.
+
 ## Direction
 
 - **Light theme only.** White/off-white canvas. No dark mode, no dark hero.
@@ -30,14 +32,14 @@ Same product identity, same content regions, same priority order across mobile a
 
 ## Hierarchy (top to bottom / by visual weight)
 
-1. Compact identity/nav (wordmark + session control — not a hero)
+1. Compact identity/nav (wordmark + session control — not a hero). A small value statement may exist below it — if so, it sells local discovery ("qué se juega cerca de ti, ahora"), not scheduling or scoring software.
 2. Remembered filters: province, sport, category — shown as already-applied, not an empty form
 3. **Ahora mismo** (live matches) — the dominant content when present; score is the single most legible element on the page
 4. **Lo que viene** (upcoming) — important, but clearly secondary to Ahora mismo whenever live matches exist; follows immediately below with lower visual weight. When there are no live matches, Lo que viene may become the dominant sports region.
 5. Local league/team discovery
 6. Figures (top scorers, cross-league)
 7. Search
-8. Sponsor slot — always visually secondary, never interrupting or competing with live or upcoming sports content; may be placed where the responsive composition works best, provided it remains clearly subordinate
+8. Sponsor slot — always visually secondary; must never appear before the visitor has received live/upcoming sports content — its earliest legitimate position is after Lo que viene. Not required to be strictly last among everything that follows.
 
 ## Deliverables
 
