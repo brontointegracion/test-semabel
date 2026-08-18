@@ -104,20 +104,24 @@ export default function Inicio() {
         </div>
       </section>
 
-      <div className="banner">
-        <div className="marca-patro">TU<br />LOGO</div>
-        <div className="texto">
-          <span className="etiqueta">Espacio patrocinado</span>
-          <strong>Un aviso pequeño, del negocio de la esquina.</strong>
-          Nunca sobre el marcador ni encima del partido.
-        </div>
-      </div>
-
       {!delPais.length ? (
-        <Vacio>
-          Todavía no hay ligas por aquí.<br />
-          Si organizas una, puedes ser la primera.
-        </Vacio>
+        <>
+          {/* Sin ligas no hay Ahora mismo/Lo que viene que el patrocinio
+              pudiera adelantarse a mostrar, así que se queda exactamente
+              donde estaba: mismo lugar, mismo aspecto que antes. */}
+          <div className="banner">
+            <div className="marca-patro">TU<br />LOGO</div>
+            <div className="texto">
+              <span className="etiqueta">Espacio patrocinado</span>
+              <strong>Un aviso pequeño, del negocio de la esquina.</strong>
+              Nunca sobre el marcador ni encima del partido.
+            </div>
+          </div>
+          <Vacio>
+            Todavía no hay ligas por aquí.<br />
+            Si organizas una, puedes ser la primera.
+          </Vacio>
+        </>
       ) : (
         <>
           <div className="hm-filtros">
@@ -227,6 +231,19 @@ export default function Inicio() {
                 verTodas={verTodas}
                 alternarTodas={() => setVerTodas((v) => !v)}
               />
+
+              {/* Después de Ahora mismo, Lo que viene y el descubrimiento —
+                  nunca antes. En escritorio queda al pie de la columna
+                  secundaria; en móvil, como hm-costado no tiene estilo
+                  propio, cae naturalmente al final de la página. */}
+              <div className="banner">
+                <div className="marca-patro">TU<br />LOGO</div>
+                <div className="texto">
+                  <span className="etiqueta">Espacio patrocinado</span>
+                  <strong>Un aviso pequeño, del negocio de la esquina.</strong>
+                  Nunca sobre el marcador ni encima del partido.
+                </div>
+              </div>
             </aside>
           </div>
         </>
@@ -344,9 +361,14 @@ function Podio({ figuras }) {
           <Link key={f.jugador.id} to={urlJugador(f.jugador)} className={`escalon p${i + 1}`}>
             <span className="puesto">{i + 1}</span>
             <Escudo equipo={f.equipo} />
-            <span className="quien">{f.jugador.nombre}</span>
-            <span className="cifra">{f.promedio.toFixed(1)}</span>
-            <span className="unidad">por juego</span>
+            <span className="quien">
+              {f.jugador.nombre}
+              <span className="equipo-nombre">{f.equipo.nombre}</span>
+            </span>
+            <span className="escalon-valor">
+              <span className="cifra">{f.promedio.toFixed(1)}</span>
+              <span className="unidad">por juego</span>
+            </span>
           </Link>
         ))}
       </div>

@@ -323,20 +323,23 @@ h2.seccion { font-size: 1.02rem; font-weight: 700; letter-spacing: -0.01em; marg
 
 .columna-pais .jugador-fila { background: var(--paper); }
 
-/* ---- podio de figuras ---- */
+/* ---- podio de figuras: lista compacta, no tarjetas en columna ----
+   Antes era una rejilla de 3 tarjetas verticales centradas; ahora es una
+   lista vertical de filas horizontales, igual en móvil que en escritorio —
+   el mismo patrón que ya usan Buscador y el plantel de Equipo. */
 
-.podio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.podio { display: flex; flex-direction: column; gap: 6px; }
 
 .escalon {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 4px;
-  padding: 14px 8px 12px;
+  gap: 10px;
+  padding: 9px 12px;
   background: var(--surface);
   border: 1px solid var(--line-soft);
-  border-radius: var(--r-lg);
-  text-align: center;
+  border-radius: var(--r-md);
+  text-align: left;
   min-width: 0;
 }
 
@@ -344,26 +347,44 @@ h2.seccion { font-size: 1.02rem; font-weight: 700; letter-spacing: -0.01em; marg
 .escalon.p1 { border-color: var(--acento); background: var(--acento-wash); }
 
 .escalon .puesto {
-  font-size: 0.66rem; font-weight: 800; letter-spacing: 0.06em;
-  color: var(--ink-mute); width: auto;
+  flex: none;
+  font-size: 0.78rem; font-weight: 800; letter-spacing: 0.02em;
+  color: var(--ink-mute); width: 16px; text-align: center;
 }
 
 .escalon.p1 .puesto { color: var(--acento-ink); }
 
 .escalon .quien {
-  font-size: 0.78rem; font-weight: 700; line-height: 1.2;
-  margin-top: 2px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  font-size: 0.88rem; font-weight: 700; line-height: 1.25;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  max-width: 100%;
+}
+
+.escalon .equipo-nombre {
+  font-size: 0.72rem; font-weight: 500;
+  color: var(--ink-mute);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.escalon-valor {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  margin-left: auto;
 }
 
 .escalon .cifra {
-  font-size: 1.25rem; font-weight: 800;
+  font-size: 1.1rem; font-weight: 800; line-height: 1.15;
   font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
 }
 
 .escalon .unidad {
-  font-size: 0.58rem; font-weight: 700; letter-spacing: 0.06em;
+  font-size: 0.56rem; font-weight: 700; letter-spacing: 0.05em;
   text-transform: uppercase; color: var(--ink-mute);
 }
 
