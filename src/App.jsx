@@ -1,6 +1,7 @@
 import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
 import { useSesion } from './datos'
 import { esOrganizador } from './lib/sesion'
+import { TABS, iconosTab } from './ui'
 import Inicio from './pantallas/Inicio'
 import Ligas from './pantallas/Ligas'
 import Liga from './pantallas/Liga'
@@ -23,18 +24,11 @@ import Codigo from './pantallas/Codigo'
 
 const SIN_TABS = [/^\/p\/[^/]+$/, /^\/p\/[^/]+\/consola$/, /^\/b\//]
 
-const iconos = {
-  inicio: 'M4 11.5L12 4l8 7.5M6 10v10h12V10',
-  ligas: 'M4 5h16M4 12h16M4 19h10',
-  siguiendo: 'M12 20.5s-7-4.6-7-9.6a4 4 0 017-2.6 4 4 0 017 2.6c0 5-7 9.6-7 9.6z',
-  saldo: 'M3 8h18v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm0 0l2.4-4h13.2L21 8M7 14h4',
-}
-
 function Tab({ to, id, children }) {
   return (
     <NavLink to={to} className={({ isActive }) => (isActive ? 'activo' : undefined)} end={to === '/'}>
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d={iconos[id]} stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+        <path d={iconosTab[id]} stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
       {children}
     </NavLink>
@@ -87,10 +81,9 @@ export default function App() {
 
       {conTabs && (
         <nav className="tabbar">
-          <Tab to="/" id="inicio">Inicio</Tab>
-          {organiza && <Tab to="/ligas" id="ligas">Mis ligas</Tab>}
-          <Tab to="/siguiendo" id="siguiendo">Siguiendo</Tab>
-          {organiza && <Tab to="/saldo" id="saldo">Saldo</Tab>}
+          {TABS.filter((t) => !t.organizador || organiza).map((t) => (
+            <Tab key={t.id} to={t.to} id={t.id}>{t.label}</Tab>
+          ))}
         </nav>
       )}
     </div>

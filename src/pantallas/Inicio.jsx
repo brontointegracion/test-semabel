@@ -16,7 +16,6 @@ const DEPORTES = [
 export default function Inicio() {
   const d = useDescubrir()
   const region = useRegion()
-  const [cuando, setCuando] = useState('ahora')
   const [busca, setBusca] = useState('')
   const [verTodas, setVerTodas] = useState(false)
   const figuras = useFiguras()
@@ -77,31 +76,33 @@ export default function Inicio() {
   }
 
   return (
-    <>
+    <div className="home">
       <Marca />
 
-      <div className="hero">
-        <h1>El barrio también tiene <em>estadísticas</em>.</h1>
-        <p>
+      {/* Encabezado compacto: presenta el producto en una línea y una frase,
+          no una portada de marketing. Los totales siguen siendo los reales
+          de useDescubrir(), solo cambia cómo se muestran. */}
+      <section className="hm-hero">
+        <h1 className="hm-hero-titulo">El barrio también tiene <em>estadísticas</em>.</h1>
+        <p className="hm-hero-sub">
           Ligas de calle, canchas de tierra y torneos que nadie anotaba. Aquí se arma el
           calendario, se lleva el marcador desde el teléfono y todo se comparte con un link.
           Sin instalar nada, sin cuenta para mirar.
         </p>
-        <div className="cifras">
-          <div className="cifra">
-            <div className="n">{totales.ligas}</div>
-            <div className="q">Ligas</div>
-          </div>
-          <div className="cifra">
-            <div className="n">{totales.provincias}</div>
-            <div className="q">Provincias</div>
-          </div>
-          <div className="cifra">
-            <div className="n">{totales.canchas}</div>
-            <div className="q">Canchas</div>
-          </div>
+        <div className="hm-hero-cifras">
+          <span className="hm-cifra">
+            <b>{totales.ligas}</b> {totales.ligas === 1 ? 'liga' : 'ligas'}
+          </span>
+          <span className="hm-cifra-sep" aria-hidden="true">·</span>
+          <span className="hm-cifra">
+            <b>{totales.provincias}</b> {totales.provincias === 1 ? 'provincia' : 'provincias'}
+          </span>
+          <span className="hm-cifra-sep" aria-hidden="true">·</span>
+          <span className="hm-cifra">
+            <b>{totales.canchas}</b> {totales.canchas === 1 ? 'cancha' : 'canchas'}
+          </span>
         </div>
-      </div>
+      </section>
 
       <div className="banner">
         <div className="marca-patro">TU<br />LOGO</div>
@@ -119,11 +120,11 @@ export default function Inicio() {
         </Vacio>
       ) : (
         <>
-          <div className="filtros">
+          <div className="hm-filtros">
             {provincias.length > 1 && (
-              <div className="carrete">
+              <div className="hm-scroll">
                 <button
-                  className={`chip ${provincia === 'todas' ? 'on' : ''}`}
+                  className={`hm-chip ${provincia === 'todas' ? 'on' : ''}`}
                   onClick={() => cambiarProvincia('todas')}
                 >
                   Todas las provincias
@@ -131,7 +132,7 @@ export default function Inicio() {
                 {provincias.map((p) => (
                   <button
                     key={p}
-                    className={`chip ${provincia === p ? 'on' : ''}`}
+                    className={`hm-chip ${provincia === p ? 'on' : ''}`}
                     onClick={() => cambiarProvincia(p)}
                   >
                     {p}
@@ -140,18 +141,24 @@ export default function Inicio() {
               </div>
             )}
 
-            <div className="segmento">
+            <div className="hm-segmento" role="tablist" aria-label="Deporte">
               {DEPORTES.map(([k, etiqueta]) => (
-                <button key={k} className={deporte === k ? 'on' : ''} onClick={() => cambiarDeporte(k)}>
+                <button
+                  key={k}
+                  role="tab"
+                  aria-selected={deporte === k}
+                  className={`hm-segmento-btn ${deporte === k ? 'on' : ''}`}
+                  onClick={() => cambiarDeporte(k)}
+                >
                   {etiqueta}
                 </button>
               ))}
             </div>
 
             {categorias.length > 1 && (
-              <div className="carrete">
+              <div className="hm-scroll">
                 <button
-                  className={`chip ${categoria === 'todas' ? 'on' : ''}`}
+                  className={`hm-chip ${categoria === 'todas' ? 'on' : ''}`}
                   onClick={() => cambiarCategoria('todas')}
                 >
                   Toda edad
@@ -159,7 +166,7 @@ export default function Inicio() {
                 {categorias.map((c) => (
                   <button
                     key={c}
-                    className={`chip ${categoria === c ? 'on' : ''}`}
+                    className={`hm-chip ${categoria === c ? 'on' : ''}`}
                     onClick={() => cambiarCategoria(c)}
                   >
                     {c}
@@ -167,52 +174,64 @@ export default function Inicio() {
                 ))}
               </div>
             )}
-
-            <div className="segmento">
-              <button className={cuando === 'ahora' ? 'on' : ''} onClick={() => setCuando('ahora')}>
-                Ahora mismo{vivosF.length ? ` (${vivosF.length})` : ''}
-              </button>
-              <button className={cuando === 'viene' ? 'on' : ''} onClick={() => setCuando('viene')}>
-                Lo que viene
-              </button>
-            </div>
           </div>
 
-          {cuando === 'ahora' ? (
-            <Ahora partidos={vivosF} equipos={equipos} canchas={canchas} ligas={ligasPorId} eventos={eventosPorPartido} />
-          ) : (
-            <Viene partidos={proximosF} equipos={equipos} canchas={canchas} />
-          )}
+          {/* Escritorio: dos columnas. En móvil, hm-reja/hm-principal/hm-costado
+              no llevan estilo propio, así que esto se apila exactamente igual
+              que antes — el espaciado sigue viniendo de los márgenes de cada
+              componente, no de este contenedor. */}
+          <div className="hm-reja">
+            <div className="hm-principal">
+              {/* Las dos secciones se muestran siempre, una debajo de la otra.
+                  Ahora mismo domina cuando hay partidos en vivo; si no hay
+                  ninguno, Lo que viene pasa a ser la región dominante — su
+                  título cambia de peso, el contenido es el mismo de siempre. */}
+              <section className="hm-seccion-ahora">
+                <h2 className="hm-titulo-vivo">
+                  Ahora mismo
+                  {vivosF.length > 0 && <span className="hm-cuenta-vivo">{vivosF.length}</span>}
+                </h2>
+                <Ahora partidos={vivosF} equipos={equipos} canchas={canchas} ligas={ligasPorId} eventos={eventosPorPartido} />
+              </section>
 
-          {categoria !== 'todas' && deporte !== 'todos' && (
-            <Link to={`/cat/${deporte}/${encodeURIComponent(categoria)}`} className="card destacado-link">
-              <div className="fila-liga">
-                <div className="info">
-                  <div className="nombre">{categoria} en otros países</div>
-                  <div className="sub" style={{ marginTop: 2 }}>
-                    Tu categoría no existe solo aquí. Mira quiénes juegan al otro lado.
+              <section className={`hm-seccion-viene ${vivosF.length === 0 ? 'dominante' : ''}`}>
+                <h2 className="hm-titulo-viene">Lo que viene</h2>
+                <Viene partidos={proximosF} equipos={equipos} canchas={canchas} />
+              </section>
+
+              {categoria !== 'todas' && deporte !== 'todos' && (
+                <Link to={`/cat/${deporte}/${encodeURIComponent(categoria)}`} className="card destacado-link">
+                  <div className="fila-liga">
+                    <div className="info">
+                      <div className="nombre">{categoria} en otros países</div>
+                      <div className="sub" style={{ marginTop: 2 }}>
+                        Tu categoría no existe solo aquí. Mira quiénes juegan al otro lado.
+                      </div>
+                    </div>
+                    <span className="chev">→</span>
                   </div>
-                </div>
-                <span className="chev">→</span>
-              </div>
-            </Link>
-          )}
+                </Link>
+              )}
+            </div>
 
-          <Podio figuras={figuras} />
+            <aside className="hm-costado">
+              <Podio figuras={figuras} />
 
-          <Buscador
-            texto={busca}
-            alEscribir={setBusca}
-            ligas={ligasF}
-            equipos={listaEquipos}
-            jugadores={listaJugadores}
-            ligasPorId={ligasPorId}
-            verTodas={verTodas}
-            alternarTodas={() => setVerTodas((v) => !v)}
-          />
+              <Buscador
+                texto={busca}
+                alEscribir={setBusca}
+                ligas={ligasF}
+                equipos={listaEquipos}
+                jugadores={listaJugadores}
+                ligasPorId={ligasPorId}
+                verTodas={verTodas}
+                alternarTodas={() => setVerTodas((v) => !v)}
+              />
+            </aside>
+          </div>
         </>
       )}
-    </>
+    </div>
   )
 }
 
@@ -222,30 +241,44 @@ function Ahora({ partidos, equipos, canchas, ligas, eventos }) {
   }
 
   return (
-    <div className="lista" style={{ marginTop: 14 }}>
+    <div className={`hm-vivo-grid ${partidos.length > 1 ? 'varios' : ''}`}>
       {partidos.map((p) => {
         const evs = eventos[p.id] || []
+        const local = equipos[p.localId]
+        const visita = equipos[p.visitaId]
+        // El marcador sigue siendo la suma de eventos reales, nunca un número
+        // guardado. Solo se usa aquí para resaltar visualmente al que va
+        // arriba — en un empate, ninguno de los dos se atenúa.
+        const golesLocal = marcadorEquipo(evs, p.localId)
+        const golesVisita = marcadorEquipo(evs, p.visitaId)
+        const arriba = golesLocal === golesVisita ? null : golesLocal > golesVisita ? p.localId : p.visitaId
+
         return (
-          <Link key={p.id} to={urlPartido(p, equipos[p.localId], equipos[p.visitaId])} className="card">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-              <span className="pill vivo"><i className="punto" />EN VIVO</span>
-              <RelojVivo partido={p} liga={ligas[p.ligaId]} eventos={evs} />
-              <span className="sub" style={{ marginLeft: 'auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {ligas[p.ligaId]?.nombre}
+          <Link key={p.id} to={urlPartido(p, local, visita)} className="hm-marcador">
+            <div className="hm-marcador-cabeza">
+              <span className="hm-badge-vivo">
+                <span className="hm-vivo-punto" aria-hidden="true" />
+                En vivo
               </span>
+              <RelojVivo partido={p} liga={ligas[p.ligaId]} eventos={evs} />
+              <span className="hm-marcador-liga">{ligas[p.ligaId]?.nombre}</span>
             </div>
-            {[equipos[p.localId], equipos[p.visitaId]].map((eq) => (
-              <div key={eq.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0' }}>
-                <Escudo equipo={eq} size="sm" />
-                <span style={{ flex: 1, fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {eq.nombre}
-                </span>
-                <span style={{ fontSize: '1.5rem', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>
-                  {marcadorEquipo(evs, eq.id)}
-                </span>
-              </div>
-            ))}
-            <div className="sub" style={{ marginTop: 10 }}>{canchas[p.canchaId]?.nombre}</div>
+
+            <div className="hm-marcador-cuerpo">
+              {[local, visita].map((eq) => {
+                const goles = eq.id === p.localId ? golesLocal : golesVisita
+                const pierde = arriba && eq.id !== arriba
+                return (
+                  <div key={eq.id} className={`hm-lado ${pierde ? 'pierde' : ''}`}>
+                    <Escudo equipo={eq} size="sm" />
+                    <span className="hm-lado-nombre">{eq.nombre}</span>
+                    <span className="hm-tanteo">{goles}</span>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="hm-marcador-pie">{canchas[p.canchaId]?.nombre}</div>
           </Link>
         )
       })}

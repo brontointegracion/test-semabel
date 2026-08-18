@@ -159,6 +159,39 @@ a { color: inherit; text-decoration: none; }
 
 .tabbar svg { width: 21px; height: 21px; }
 
+/* ---- navegación de escritorio (en la cabecera compartida, Marca) ----
+   Reemplaza a la barra inferior a partir de cierto ancho, no la duplica:
+   misma lista de rutas y etiquetas (TABS, en ui.jsx), un solo lugar donde
+   vive esa lista. En páginas que no usan <Marca/> (las que llevan Topbar,
+   como Liga, Jugador o Consola) esta clase no existe, así que su barra
+   inferior sigue funcionando exactamente igual que siempre, a cualquier
+   ancho. */
+
+.nav-escritorio { display: none; }
+
+@media (min-width: 900px) {
+  .nav-escritorio {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    margin-left: 20px;
+  }
+
+  .nav-escritorio a {
+    padding: 7px 14px;
+    border-radius: 999px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--ink-mute);
+  }
+
+  .nav-escritorio a:hover { color: var(--ink); background: var(--surface-2); }
+
+  .nav-escritorio a.activo { color: var(--acento-ink); background: var(--acento-wash); font-weight: 700; }
+
+  .app:has(.nav-escritorio) .tabbar { display: none; }
+}
+
 /* ---- tipografía ---- */
 
 .eyebrow {
@@ -1161,3 +1194,331 @@ td.pts { font-weight: 800; color: var(--acento-ink); }
 .opcion .nombre { display: block; font-weight: 700; }
 
 .opcion .sub { display: block; font-size: 0.8rem; margin-top: 2px; }
+
+/* ===========================================================================
+   PORTADA — primer paso de portación visual (referencia v0)
+   ===========================================================================
+
+   Todo vive bajo clases nuevas con el prefijo hm-. Nada de esto redefine una
+   clase compartida: .hero, .cifras, .filtros (como contenedor), .chip,
+   .segmento, .card, .pill, .vacio siguen sirviendo a Categoria.jsx,
+   NuevaLiga.jsx, Figuras.jsx y al resto de Inicio.jsx sin ningún cambio.
+
+   Las variables --hm-* no son colores nuevos: apuntan a los tokens globales
+   de arriba, para que este bloque se entienda sin tener que buscar en el
+   resto del archivo qué gris o qué rojo está usando.
+
+   Alcance de este paso: encabezado compacto, filtros de provincia/deporte/
+   categoría, y las tarjetas de "ahora mismo". El interruptor ahora/viene,
+   "lo que viene", figuras, buscador y el patrocinio quedan con su aspecto
+   de siempre — es a propósito, llegan en un paso aparte.
+   =========================================================================== */
+
+.home {
+  --hm-bg: var(--paper);
+  --hm-card: var(--paper);
+  --hm-card-alt: var(--surface);
+  --hm-ink: var(--ink);
+  --hm-ink-2: var(--ink-soft);
+  --hm-ink-3: var(--ink-mute);
+  --hm-line: var(--line-soft);
+  --hm-accent: var(--acento);
+  --hm-accent-ink: var(--acento-ink);
+  --hm-radius: var(--r-lg);
+}
+
+/* ---- encabezado compacto ---- */
+
+.hm-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 22px 0 4px;
+}
+
+.hm-hero-titulo {
+  margin: 0;
+  font-size: clamp(1.3rem, 4.5vw, 1.6rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--hm-ink);
+  text-wrap: balance;
+}
+
+.hm-hero-titulo em { font-style: normal; color: var(--hm-accent-ink); }
+
+.hm-hero-sub {
+  margin: 0;
+  max-width: 46em;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--hm-ink-3);
+}
+
+.hm-hero-cifras {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.hm-cifra { font-size: 0.84rem; color: var(--hm-ink-3); }
+
+.hm-cifra b { font-weight: 800; color: var(--hm-ink); font-variant-numeric: tabular-nums; }
+
+.hm-cifra-sep { color: var(--hm-line); }
+
+/* ---- filtros ---- */
+
+.hm-filtros { display: flex; flex-direction: column; gap: 8px; margin: 16px 0 4px; }
+
+.hm-scroll {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.hm-scroll::-webkit-scrollbar { display: none; }
+
+.hm-chip {
+  flex: none;
+  padding: 7px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--hm-line);
+  background: var(--hm-card);
+  color: var(--hm-ink-2);
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.hm-chip:hover { border-color: var(--hm-ink-3); }
+
+.hm-chip.on { background: var(--hm-accent); border-color: var(--hm-accent); color: #fff; font-weight: 700; }
+
+.hm-segmento {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--hm-card-alt);
+  width: max-content;
+}
+
+.hm-segmento-btn {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--hm-ink-2);
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.hm-segmento-btn.on { background: var(--hm-card); color: var(--hm-ink); }
+
+/* ---- ahora mismo: tarjetas de marcador ---- */
+
+.hm-vivo-grid { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+
+@media (min-width: 560px) {
+  /* Con más de un partido en vivo y sitio de sobra, dos por fila — siguen
+     siendo lo más grande de la página, no se comprimen para caber más. */
+  .hm-vivo-grid.varios { display: grid; grid-template-columns: 1fr 1fr; align-items: start; }
+}
+
+.hm-marcador {
+  display: block;
+  background: var(--hm-card);
+  border: 1px solid var(--hm-line);
+  border-radius: var(--hm-radius);
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+}
+
+.hm-marcador:hover { border-color: var(--hm-accent); }
+
+.hm-marcador-cabeza {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--hm-line);
+  background: var(--hm-card-alt);
+}
+
+/* "En vivo" nunca depende solo del color: siempre lleva la palabra al lado
+   del punto, y el punto respeta prefers-reduced-motion. */
+.hm-badge-vivo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border-radius: 5px;
+  background: var(--hm-accent);
+  color: #fff;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.hm-vivo-punto {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  animation: hm-latido 1.4s ease-in-out infinite;
+}
+
+@keyframes hm-latido { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .hm-vivo-punto { animation: none; }
+}
+
+.hm-marcador-liga {
+  margin-left: auto;
+  min-width: 0;
+  font-size: 0.76rem;
+  color: var(--hm-ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hm-marcador-cuerpo { padding: 6px 14px 4px; }
+
+.hm-lado { display: flex; align-items: center; gap: 11px; padding: 9px 0; }
+
+.hm-lado + .hm-lado { border-top: 1px solid var(--hm-line); }
+
+.hm-lado-nombre {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--hm-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* El número manda: es lo más grande y legible de la tarjeta, en cualquier
+   cantidad de dígitos (1 en fútbol sala, 3 en baloncesto). */
+.hm-tanteo {
+  font-size: clamp(1.9rem, 8vw, 2.4rem);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  min-width: 1.4ch;
+  text-align: right;
+  color: var(--hm-ink);
+}
+
+.hm-lado.pierde .hm-lado-nombre,
+.hm-lado.pierde .hm-tanteo { color: var(--hm-ink-3); }
+
+.hm-marcador-pie {
+  padding: 10px 14px;
+  border-top: 1px solid var(--hm-line);
+  font-size: 0.76rem;
+  color: var(--hm-ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- portada, paso 2: composición de escritorio ----------------------------
+   Solo rejilla, ancho y posición sticky — nada de esto redefine el aspecto de
+   Podio, Buscador, .partido/.dia-sep (Viene) o el interruptor ahora/viene.
+   Se reubican tal cual están; su propio CSS no cambia una línea.
+
+   En móvil .hm-reja/.hm-principal/.hm-costado no llevan ninguna regla: el
+   apilado y el espaciado siguen siendo exactamente los de antes, porque
+   siguen viniendo de los márgenes propios de cada componente (h2.seccion,
+   .destacado-link, etc.), no de un gap nuevo en el contenedor.
+------------------------------------------------------------------------- */
+
+@media (min-width: 900px) {
+  /* Atado a .home vía :has(): no toca la regla base de .app, así que ninguna
+     otra ruta (Liga, Partido, Consola…) se entera de este ancho. */
+  .app:has(.home) { max-width: 1100px; }
+
+  .hm-reja {
+    display: grid;
+    grid-template-columns: minmax(0, 1.9fr) minmax(280px, 1fr);
+    align-items: start;
+    gap: 40px;
+  }
+
+  .hm-principal { min-width: 0; }
+
+  .hm-costado {
+    min-width: 0;
+    /* 72px es una estimación del alto real de .topbar (padding + una línea
+       de la marca); si no calza al pixel, es un ajuste cosmético menor. */
+    position: sticky;
+    top: 72px;
+  }
+}
+
+/* ---- ahora mismo / lo que viene: siempre las dos, con peso distinto -------
+   Ya no es un interruptor: las dos secciones están siempre montadas, en este
+   orden. El título de "Ahora mismo" lleva el acento rojo porque hay partidos
+   en vivo que mirar; el de "Lo que viene" es más chico y gris por defecto.
+
+   Cuando no hay ningún partido en vivo, .dominante le da a "Lo que viene" el
+   mismo peso que tendría "Ahora mismo" — es la región deportiva de la visita,
+   así que no puede quedarse con el tratamiento más apagado.
+------------------------------------------------------------------------- */
+
+.hm-seccion-ahora { margin-top: 4px; }
+
+.hm-seccion-viene { margin-top: 28px; }
+
+.hm-titulo-vivo,
+.hm-titulo-viene {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 12px;
+  padding-left: 11px;
+  border-left: 3px solid var(--hm-line);
+  font-weight: 800;
+  letter-spacing: -0.015em;
+}
+
+.hm-titulo-vivo {
+  font-size: 1.15rem;
+  color: var(--hm-ink);
+  border-left-color: var(--hm-accent);
+}
+
+.hm-titulo-viene {
+  font-size: 0.98rem;
+  color: var(--hm-ink-2);
+}
+
+.hm-seccion-viene.dominante .hm-titulo-viene {
+  font-size: 1.15rem;
+  color: var(--hm-ink);
+  border-left-color: var(--hm-accent);
+}
+
+.hm-cuenta-vivo {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--hm-accent);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}

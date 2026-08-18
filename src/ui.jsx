@@ -1,9 +1,29 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { useSesion } from './datos'
 import { entrar, salir, esOrganizador } from './lib/sesion'
 import { periodoActual } from './lib/marcador'
 import { PERIODOS, restanteMs, mmss, corriendo, nombrePeriodo } from './lib/reloj-calculo'
+
+/**
+ * La única lista de la navegación principal. La usan la barra inferior
+ * (móvil, en App.jsx) y la navegación de la cabecera (escritorio, aquí
+ * abajo en Marca) — así nunca hay dos sitios que puedan quedar
+ * desincronizados en qué rutas o etiquetas existen.
+ */
+export const TABS = [
+  { id: 'inicio', to: '/', label: 'Inicio' },
+  { id: 'ligas', to: '/ligas', label: 'Mis ligas', organizador: true },
+  { id: 'siguiendo', to: '/siguiendo', label: 'Siguiendo' },
+  { id: 'saldo', to: '/saldo', label: 'Saldo', organizador: true },
+]
+
+export const iconosTab = {
+  inicio: 'M4 11.5L12 4l8 7.5M6 10v10h12V10',
+  ligas: 'M4 5h16M4 12h16M4 19h10',
+  siguiendo: 'M12 20.5s-7-4.6-7-9.6a4 4 0 017-2.6 4 4 0 017 2.6c0 5-7 9.6-7 9.6z',
+  saldo: 'M3 8h18v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm0 0l2.4-4h13.2L21 8M7 14h4',
+}
 
 export const DIAS_CORTO = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
@@ -55,10 +75,23 @@ export function Topbar({ titulo, atras = true, accion = null }) {
 export function Marca() {
   const sesion = useSesion()
   const dentro = esOrganizador(sesion)
+  const tabs = TABS.filter((t) => !t.organizador || dentro)
 
   return (
     <div className="topbar">
       <div className="marca">sebel<span>.</span></div>
+
+      {/* Solo visible a partir de cierto ancho (ver styles.css): en móvil la
+          navegación sigue siendo la barra inferior de siempre. Misma lista,
+          mismas rutas, mismas etiquetas — no hay una segunda a mano. */}
+      <nav className="nav-escritorio" aria-label="Navegación principal">
+        {tabs.map((t) => (
+          <NavLink key={t.id} to={t.to} end={t.to === '/'} className={({ isActive }) => (isActive ? 'activo' : undefined)}>
+            {t.label}
+          </NavLink>
+        ))}
+      </nav>
+
       <div style={{ flex: 1 }} />
       <button className="sesion" onClick={dentro ? salir : entrar}>
         {dentro ? 'Salir' : 'Soy organizador'}
