@@ -1291,6 +1291,81 @@ td.pts { font-weight: 800; color: var(--acento-ink); }
 
 .hm-cifra-sep { color: var(--hm-line); }
 
+/* ---- sin ligas en el país ----
+   Único bloque de contenido cuando no hay ligas: por eso lleva su propia
+   tarjeta (no la de .vacio, que es un texto suelto para listas vacías
+   dentro de una pantalla con más cosas alrededor) — aquí es lo primero
+   que se lee, antes que el patrocinio. */
+
+.hm-vacio-liga {
+  margin-top: 16px;
+  padding: 34px 20px;
+  border: 1px dashed var(--hm-line);
+  border-radius: var(--hm-radius);
+  background: var(--hm-card-alt);
+  text-align: center;
+}
+
+.hm-vacio-liga-titulo {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--hm-ink);
+}
+
+.hm-vacio-liga-sub {
+  margin: 4px 0 0;
+  font-size: 0.88rem;
+  color: var(--hm-ink-3);
+}
+
+/* ---- ligas cerca de ti ----
+   Mismas filas que ya usaba el "ver todas las ligas" de Buscador (.lista/
+   .jugador-fila, sin cambios); esto solo le pone encabezado y contador
+   propios, para que sea su propia sección en vez de un desplegable. */
+
+.hm-ligas-cerca-cabeza {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 26px 0 10px;
+}
+
+.hm-ligas-cerca-cabeza h2.seccion { margin: 0; }
+
+.hm-ligas-cerca-cabeza .sub { font-size: 0.84rem; white-space: nowrap; }
+
+/* ---- figuras del barrio: contenida, no suelta ----
+   Las filas de .podio/.escalon no cambian; esto solo les pone un marco —
+   mismo vocabulario que .hm-vacio-liga (borde, fondo, radio de Home) — para
+   que el bloque se lea compacto también a los 760px del flujo único, sin
+   depender del ancho angosto de la barra lateral que ya no existe. */
+
+.hm-figuras {
+  margin-top: 28px;
+  padding: 18px 20px 20px;
+  border: 1px solid var(--hm-line);
+  border-radius: var(--hm-radius);
+  background: var(--hm-card-alt);
+}
+
+.hm-figuras h2.seccion { margin-top: 0; }
+
+/* ---- encuentra lo tuyo: contenida, pero más liviana que Figuras ----
+   Mismo marco (borde + radio de Home) que .hm-figuras, sin el fondo teñido:
+   es una herramienta, no una lista de contenido, así que pesa menos en la
+   jerarquía visual — más suelta que Figuras, pero ya no flotando sin borde. */
+
+.hm-buscador {
+  margin-top: 28px;
+  padding: 16px 18px 18px;
+  border: 1px solid var(--hm-line);
+  border-radius: var(--hm-radius);
+}
+
+.hm-buscador h2.seccion { margin-top: 0; }
+
 /* ---- filtros ---- */
 
 .hm-filtros { display: flex; flex-direction: column; gap: 8px; margin: 16px 0 4px; }
@@ -1457,39 +1532,18 @@ td.pts { font-weight: 800; color: var(--acento-ink); }
   white-space: nowrap;
 }
 
-/* ---- portada, paso 2: composición de escritorio ----------------------------
-   Solo rejilla, ancho y posición sticky — nada de esto redefine el aspecto de
-   Podio, Buscador, .partido/.dia-sep (Viene) o el interruptor ahora/viene.
-   Se reubican tal cual están; su propio CSS no cambia una línea.
+/* ---- portada: un solo flujo, también en escritorio -------------------------
+   Ya no hay grilla de dos columnas ni riel fijo: escritorio sigue el mismo
+   apilado vertical único que el móvil siempre tuvo (Ahora mismo → Lo que
+   viene → Figuras → Buscador → patrocinio), uno debajo del otro. Por eso
+   .hm-reja/.hm-principal/.hm-costado no llevan ninguna regla propia — el
+   espaciado sigue viniendo de los márgenes de cada componente, no de un
+   contenedor de rejilla.
 
-   En móvil .hm-reja/.hm-principal/.hm-costado no llevan ninguna regla: el
-   apilado y el espaciado siguen siendo exactamente los de antes, porque
-   siguen viniendo de los márgenes propios de cada componente (h2.seccion,
-   .destacado-link, etc.), no de un gap nuevo en el contenedor.
+   El ancho de .app tampoco se ensancha para Home: usa el mismo ancho de
+   columna única que el resto del sitio (Liga, Partido, Consola…), que es
+   justo el que pide un feed de descubrimiento en vez de un dashboard.
 ------------------------------------------------------------------------- */
-
-@media (min-width: 900px) {
-  /* Atado a .home vía :has(): no toca la regla base de .app, así que ninguna
-     otra ruta (Liga, Partido, Consola…) se entera de este ancho. */
-  .app:has(.home) { max-width: 1100px; }
-
-  .hm-reja {
-    display: grid;
-    grid-template-columns: minmax(0, 1.9fr) minmax(280px, 1fr);
-    align-items: start;
-    gap: 40px;
-  }
-
-  .hm-principal { min-width: 0; }
-
-  .hm-costado {
-    min-width: 0;
-    /* 72px es una estimación del alto real de .topbar (padding + una línea
-       de la marca); si no calza al pixel, es un ajuste cosmético menor. */
-    position: sticky;
-    top: 72px;
-  }
-}
 
 /* ---- ahora mismo / lo que viene: siempre las dos, con peso distinto -------
    Ya no es un interruptor: las dos secciones están siempre montadas, en este

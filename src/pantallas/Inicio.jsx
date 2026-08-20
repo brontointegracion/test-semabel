@@ -106,9 +106,13 @@ export default function Inicio() {
 
       {!delPais.length ? (
         <>
-          {/* Sin ligas no hay Ahora mismo/Lo que viene que el patrocinio
-              pudiera adelantarse a mostrar, así que se queda exactamente
-              donde estaba: mismo lugar, mismo aspecto que antes. */}
+          {/* Sin ligas, esto es lo único que hay que leer: va primero,
+              con su propia tarjeta. El patrocinio sigue abajo, igual que
+              siempre, pero ya no compite por ser lo primero que se ve. */}
+          <div className="hm-vacio-liga">
+            <p className="hm-vacio-liga-titulo">Todavía no hay ligas por aquí.</p>
+            <p className="hm-vacio-liga-sub">Si organizas una, puedes ser la primera.</p>
+          </div>
           <div className="banner">
             <div className="marca-patro">TU<br />LOGO</div>
             <div className="texto">
@@ -117,10 +121,6 @@ export default function Inicio() {
               Nunca sobre el marcador ni encima del partido.
             </div>
           </div>
-          <Vacio>
-            Todavía no hay ligas por aquí.<br />
-            Si organizas una, puedes ser la primera.
-          </Vacio>
         </>
       ) : (
         <>
@@ -180,10 +180,11 @@ export default function Inicio() {
             )}
           </div>
 
-          {/* Escritorio: dos columnas. En móvil, hm-reja/hm-principal/hm-costado
-              no llevan estilo propio, así que esto se apila exactamente igual
-              que antes — el espaciado sigue viniendo de los márgenes de cada
-              componente, no de este contenedor. */}
+          {/* Un solo flujo vertical, igual en escritorio que en móvil: ya no
+              hay grilla ni riel fijo. hm-reja/hm-principal/hm-costado siguen
+              aquí solo como ganchos de agrupación, sin estilo propio — el
+              espaciado sigue viniendo de los márgenes de cada componente,
+              no de este contenedor. */}
           <div className="hm-reja">
             <div className="hm-principal">
               {/* Las dos secciones se muestran siempre, una debajo de la otra.
@@ -216,6 +217,12 @@ export default function Inicio() {
                   </div>
                 </Link>
               )}
+
+              <LigasCercaDeTi
+                ligas={ligasF}
+                verTodas={verTodas}
+                alternarTodas={() => setVerTodas((v) => !v)}
+              />
             </div>
 
             <aside className="hm-costado">
@@ -228,8 +235,6 @@ export default function Inicio() {
                 equipos={listaEquipos}
                 jugadores={listaJugadores}
                 ligasPorId={ligasPorId}
-                verTodas={verTodas}
-                alternarTodas={() => setVerTodas((v) => !v)}
               />
 
               {/* Después de Ahora mismo, Lo que viene y el descubrimiento —
@@ -340,6 +345,46 @@ function Viene({ partidos, equipos, canchas }) {
 
 
 /**
+ * Las ligas del contexto actual (país/provincia/deporte/categoría), sueltas
+ * de Buscador: antes vivían tapadas detrás de "Ver las X ligas", ahora son
+ * su propia sección — mismas filas, mismo `ligasF`, nada nuevo que calcular.
+ */
+function LigasCercaDeTi({ ligas, verTodas, alternarTodas }) {
+  if (!ligas.length) return null
+  const visibles = verTodas ? ligas : ligas.slice(0, 5)
+
+  return (
+    <section className="hm-ligas-cerca">
+      <div className="hm-ligas-cerca-cabeza">
+        <h2 className="seccion">Ligas cerca de ti</h2>
+        <span className="sub">{ligas.length} {ligas.length === 1 ? 'liga' : 'ligas'}</span>
+      </div>
+
+      <div className="lista">
+        {visibles.map((l) => (
+          <Link key={l.id} to={urlLiga(l)} className="jugador-fila">
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="nombre" style={{ fontWeight: 600 }}>{l.nombre}</div>
+              <div className="sub" style={{ fontSize: '0.74rem' }}>
+                {l.provincia} · {l.deporte === 'baloncesto' ? 'Baloncesto' : 'Fútbol sala'} · organiza {l.organizador}
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      {ligas.length > 5 && (
+        <button className="btn fantasma" style={{ marginTop: 10 }} onClick={alternarTodas}>
+          {verTodas
+            ? 'Ocultar ligas'
+            : `Ver ${ligas.length - 5} ${ligas.length - 5 === 1 ? 'liga' : 'ligas'} más`}
+        </button>
+      )}
+    </section>
+  )
+}
+
+/**
  * Las figuras, con los tres primeros a la vista.
  *
  * Antes esto era un link que prometía nombres. Ver tres nombres de verdad —con
@@ -350,7 +395,7 @@ function Podio({ figuras }) {
   const tres = figuras.anotadores.slice(0, 3)
 
   return (
-    <>
+    <section className="hm-figuras">
       <h2 className="seccion">Figuras del barrio</h2>
       <p className="sub" style={{ marginTop: -6, marginBottom: 10 }}>
         Los que más anotan, cruzando todas las ligas de la zona.
@@ -376,7 +421,7 @@ function Podio({ figuras }) {
       <Link to="/figuras" className="btn fantasma" style={{ marginTop: 10 }}>
         Ver la tabla completa
       </Link>
-    </>
+    </section>
   )
 }
 
@@ -387,7 +432,7 @@ function Podio({ figuras }) {
  * la propia. Con seis ligas una lista funciona; con seiscientas, no. Buscar
  * escala y además encuentra equipos y jugadores, que es como la gente pregunta.
  */
-function Buscador({ texto, alEscribir, ligas, equipos, jugadores, ligasPorId, verTodas, alternarTodas }) {
+function Buscador({ texto, alEscribir, ligas, equipos, jugadores, ligasPorId }) {
   const q = texto.trim().toLowerCase()
   const coincide = (n) => n?.toLowerCase().includes(q)
   const ligaIds = new Set(ligas.map((l) => l.id))
@@ -403,7 +448,7 @@ function Buscador({ texto, alEscribir, ligas, equipos, jugadores, ligasPorId, ve
   const nada = hallazgos && !hallazgos.ligas.length && !hallazgos.equipos.length && !hallazgos.jugadores.length
 
   return (
-    <>
+    <section className="hm-buscador">
       <h2 className="seccion">Encuentra lo tuyo</h2>
       <div className="campo" style={{ marginBottom: 10 }}>
         <input
@@ -446,29 +491,6 @@ function Buscador({ texto, alEscribir, ligas, equipos, jugadores, ligasPorId, ve
           {nada && <Vacio>No encontramos nada con «{texto}».</Vacio>}
         </div>
       )}
-
-      {!hallazgos && (
-        <>
-          <button className="btn fantasma" onClick={alternarTodas}>
-            {verTodas ? 'Ocultar las ligas' : `Ver las ${ligas.length} ligas de la zona`}
-          </button>
-          {verTodas && (
-            <div className="lista" style={{ marginTop: 10 }}>
-              {ligas.map((l) => (
-                <Link key={l.id} to={urlLiga(l)} className="jugador-fila">
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="nombre" style={{ fontWeight: 600 }}>{l.nombre}</div>
-                    <div className="sub" style={{ fontSize: '0.74rem' }}>
-                      {l.provincia} · {l.deporte === 'baloncesto' ? 'Baloncesto' : 'Fútbol sala'} · organiza {l.organizador}
-                    </div>
-                  </div>
-                </Link>
-              ))}
-              {!ligas.length && <Vacio>No hay ligas con ese filtro.</Vacio>}
-            </div>
-          )}
-        </>
-      )}
-    </>
+    </section>
   )
 }
