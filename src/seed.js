@@ -1,6 +1,7 @@
 import { db, uid } from './db'
 import { generarCalendario } from './lib/calendario'
 import { restanteMs } from './lib/reloj-calculo'
+import { partirNombre } from './lib/identidad'
 
 // Datos de ejemplo. Todo se genera relativo a hoy para que el prototipo
 // siempre esté "en temporada", con un partido en vivo que abrir.
@@ -203,12 +204,14 @@ export async function sembrarSiHaceFalta() {
         let d
         do { d = 1 + Math.floor(Math.random() * 30) } while (dorsales.has(d))
         dorsales.add(d)
+        const nombre = tomarNombre()
+        const { nombrePila, apellido } = partirNombre(nombre)
         jugadores.push({
           id: uid(), codigo: codigoUnico(), ligaId: liga.id, equipoId: eq.id,
           // personaId es el señor; la ficha es dónde está inscrito. Uno puede
           // tener varias fichas: su liga, y un torneo al que lo convocaron.
           personaId: uid(),
-          nombre: tomarNombre(), dorsal: d, reclamado: false,
+          nombre, nombrePila, apellido, dorsal: d, reclamado: false, activo: true,
         })
       }
     }
@@ -462,9 +465,9 @@ async function sembrarTorneo(canchas) {
       equipoId: equipo.id,
       // La misma persona que ya juega en su liga: su récord no empieza de cero.
       personaId: j.personaId,
-      nombre: j.nombre,
+      nombre: j.nombre, nombrePila: j.nombrePila, apellido: j.apellido,
       dorsal: 4 + i,
-      reclamado: false,
+      reclamado: false, activo: true,
       refuerzo,
       deEquipo: nombreDe(j.equipoId),
       deLiga: refuerzo ? ligaRefuerzo.nombre : ligaBase.nombre,

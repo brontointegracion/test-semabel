@@ -1,4 +1,5 @@
 import Dexie from 'dexie'
+import { partirNombre } from './lib/identidad'
 
 // Todo vive en el navegador. IndexedDB via Dexie: cada tabla es la que
 // tendría el backend, para que cambiar a un servidor no cambie las pantallas.
@@ -45,6 +46,28 @@ db.version(5).stores({
 db.version(6).stores({
   retos: 'id, codigo, estado',
 })
+
+// Nombre por separado y ficha activa/inactiva — ver docs/roster/ROSTER_MVP_SPEC.md.
+// El índice de jugadores no cambia: nombrePila, apellido y activo son
+// propiedades simples que nunca se consultan con .where(), así que no hace
+// falta indexarlas. Esta versión solo existe para enganchar el upgrade() de
+// abajo, que repara personaId y no toca id/codigo/eventos/partidos de nadie.
+db.version(7).stores({
+  jugadores: 'id, ligaId, equipoId, codigo, personaId',
+}).upgrade((tx) => tx.table('jugadores').toCollection().modify((j) => {
+  // Cada fila sin personaId es una persona nueva y distinta — el id se genera
+  // aquí adentro, por fila, para que nunca dos jugadores terminen compartiendo
+  // uno por accidente.
+  if (!j.personaId) j.personaId = uid()
+
+  // Relleno de baja confianza, editable por el organizador — nunca dato
+  // autoritativo. nombre no se toca: sigue siendo lo que ya se mostraba.
+  if (j.nombrePila === undefined) {
+    const partido = partirNombre(j.nombre)
+    j.nombrePila = partido.nombrePila
+    j.apellido = partido.apellido
+  }
+}))
 
 export const uid = () => Math.random().toString(36).slice(2, 10)
 

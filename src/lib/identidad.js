@@ -1,0 +1,32 @@
+// ---------------------------------------------------------------------------
+// La identidad del jugador: nombre completo compuesto desde nombrePila/
+// apellido —para que todo lo que ya lee jugador.nombre siga funcionando sin
+// tocarlo— y el mejor esfuerzo para partir un nombre existente en dos.
+//
+// No hay forma confiable de partir un nombre latinoamericano en pila y
+// apellido: "Sam Robles" puede ser un apellido compuesto o dos nombres, y
+// nada en el string lo distingue. Por eso partirNombre() es solo un relleno
+// editable para el organizador, nunca un dato de identidad autoritativo —
+// ver docs/roster/ROSTER_MVP_SPEC.md §8 y ROSTER_MVP_PLAN.md, pregunta 3.
+// ---------------------------------------------------------------------------
+
+/** Compone el nombre completo tal como lo espera todo el código existente. */
+export function nombreCompleto(nombrePila, apellido) {
+  return [nombrePila, apellido].filter(Boolean).join(' ').trim()
+}
+
+/**
+ * Mejor esfuerzo, no autoritativo: todo antes del último espacio es la
+ * "pila", el último token es el "apellido". Defensivo ante nombre vacío,
+ * null/undefined, espacios raros y nombres de una sola palabra.
+ */
+export function partirNombre(nombre) {
+  const partes = (nombre || '').trim().split(/\s+/).filter(Boolean)
+  if (!partes.length) return { nombrePila: '', apellido: '' }
+  if (partes.length === 1) return { nombrePila: partes[0], apellido: '' }
+  const apellido = partes.pop()
+  return { nombrePila: partes.join(' '), apellido }
+}
+
+/** Ausente se trata como activo: así se comportan todas las fichas de antes de que este campo existiera. */
+export const activoDe = (jugador) => jugador?.activo !== false
