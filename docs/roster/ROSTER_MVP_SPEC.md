@@ -227,7 +227,15 @@ The exact field name/shape is the only part left to the implementer; the behavio
 - Organizers populate rosters afterward, from each Team page (§7 Journey 1 → Journey 2).
 - No fixed Sebel-wide maximum roster size in MVP.
 
-This changes `src/pantallas/NuevaLiga.jsx`'s team-count-slider-plus-auto-generate model (`NuevaLiga.jsx:25,36-44,89-108`) into a model where the organizer enters N real team names directly, and the players array is not created at all during `publicar()` — team creation and roster population become two separate steps in time, not one atomic operation as today.
+**Team-name uniqueness — [DECISION], approved during Stage 2 pre-implementation review.**
+
+- Within one league, team names must be unique.
+- Comparison is on the trimmed, case-insensitive name — `"Halcones"`, `" halcones "`, and `"HALCONES"` conflict within the same league.
+- A duplicate blocks league publication until the organizer changes one of the conflicting names — this is a hard validation gate, not a warning.
+- **Accent-insensitive equivalence is explicitly not part of this rule** — `"Peña"` and `"Pena"` are treated as distinct team names; no additional normalization beyond trim + case-fold is introduced.
+- **Team names are not globally unique across Sebel.** The same name may exist in different leagues without conflict — this uniqueness check is scoped to the single league being created, exactly like the pre-existing player-name duplicate-matching scope pattern in §9, but for a different purpose (a hard block here, versus candidate disambiguation there — the two must not be conflated).
+
+This changes `src/pantallas/NuevaLiga.jsx`'s team-count-slider-plus-auto-generate model (`NuevaLiga.jsx:25,36-44,89-108`) into a model where the organizer enters N real team names directly, validated for uniqueness within that league, and the players array is not created at all during `publicar()` — team creation and roster population become two separate steps in time, not one atomic operation as today.
 
 ## 13. League `Jugadores` display requirements
 
@@ -337,6 +345,7 @@ All of the following must hold for this specification to be considered correctly
 25. A person's fichas across multiple sports (e.g. a basketball registration and a futsal registration) both resolve to the same `personaId` and are both reachable as that person's history (e.g. via the existing `useOtrasFichas` mechanism, `src/datos.js:387-396`).
 26. A cross-league candidate card shown to a non-owning organizer displays name, age (not exact date of birth), country when appropriate, sport, and relevant prior sporting context — and does **not** display exact date of birth, phone/WhatsApp, email, identification number/document, or account information.
 27. A candidate with a stored exact date of birth can still be surfaced/ranked as a plausible match using that value internally, even though the disclosed card shows only age, not the exact date.
+28. Two team names that normalize identically (trimmed, case-insensitive) within the **same** newly created league block publication until the organizer changes one; the same team name used in **two different** leagues is not blocked.
 
 ## 20. Explicit deferred items (reconciled after specification review)
 
@@ -348,6 +357,7 @@ All of the following must hold for this specification to be considered correctly
 - Active/inactive product/data behavior for removal → resolved, §11 (only the schema field's exact name/type remains open, see below).
 - Duplicate/candidate-person matching scope → resolved, §9 (Sebel-wide, not league-scoped).
 - What a non-owning organizer may see about a cross-league candidate → resolved, §9's cross-league candidate-disclosure rule, §6, §18.
+- Whether team names must be unique, and at what scope → resolved, §12 (unique within one league, trimmed/case-insensitive, not accent-insensitive, not global — flagged during Stage 2 pre-implementation review, now decided).
 
 **Still genuinely open**, not designed or implemented by this specification, listed so they are not mistaken for silent gaps:
 

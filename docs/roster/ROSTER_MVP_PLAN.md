@@ -132,24 +132,28 @@ Named here as acknowledgment only, not designed: (a) cross-device Sebel-wide can
 **Behavior changed:**
 - The "Equipos: N" range slider (`:242-246`) is replaced (or supplemented) with N text inputs for real team names — **minimal mobile approach:** keep the existing slider to pick the *count* first (already a single-thumb, thumb-friendly control proven to work on the current screen), then render exactly that many single-line text inputs directly below it, one per team, using the same `.campo`/`input` pattern already used elsewhere on this same screen (`:201-205`) — no new input component, no multi-step sub-wizard, no drag-to-reorder. This keeps the screen's existing vertical single-column flow (already mobile-first, per the app's established `.app` 760px/mobile-first architecture) and adds only repeated instances of a control the screen already has.
 - `publicar()` no longer creates any `jugadores` rows.
+- **Team-name uniqueness within one league — [DECISION], approved during Stage 2 pre-implementation review; resolves the duplicate-team-name question that review flagged as open.** Team names must be unique within the league being created, compared trimmed and case-insensitive (`"Halcones"` / `" halcones "` / `"HALCONES"` conflict; `"Peña"`/`"Pena"` do not — no accent normalization). A duplicate **blocks publication** (hard gate, not a warning) until the organizer changes one of the conflicting names. This uniqueness is scoped to the single league being created — the same team name may exist in different leagues without conflict, matching the spec's established pattern of league-scoped rather than Sebel-wide checks for this kind of validation (distinct from Stage 4's Sebel-wide *person* matching, which is a different mechanism for a different purpose).
 
 **Behavior explicitly preserved:** league creation still produces a real `liga`, real `equipos`, a real generated calendar/`partidos` set, and navigates to the new liga's page exactly as today (`NuevaLiga.jsx:124`). The two-step "Nueva liga" → "Calendario propuesto" flow (`paso` state, `:33,127-191`) is unchanged.
 
 **Implementation steps:**
 1. Replace `equiposDemo`'s `nombre: \`Equipo ${i+1}\`` generation with organizer-entered values, sourced from N new text inputs bound to a `nombresEquipos` array state, kept in sync as `nEquipos` changes (add/remove trailing entries, preserving already-typed names when the count increases — do not clear typed input on a slider nudge).
 2. Update the `listo` gate (`:58`) to also require every team name non-empty, alongside the existing name/cancha/día/franja checks, with an updated helper message (`:299-303`) reflecting the new requirement.
-3. Remove the player bulk-insert block (`:97-108`) from `publicar()` entirely.
-4. Confirm the "Calendario propuesto" review step (`paso === 2`) still renders correctly using the now-organizer-named teams (`equiposDemo.find(...)` lookups at `:157-158` already key off `.id`/`.nombre`, unaffected by the source of the name).
+3. Add the team-name uniqueness check: normalize each entered name (trim + case-fold, no accent-folding) and compare within the current `nombresEquipos` set; if any two normalize identically, publication is blocked (fold this into the `listo` gate alongside step 2, and surface which names conflict so the organizer knows what to change).
+4. Remove the player bulk-insert block (`:97-108`) from `publicar()` entirely.
+5. Confirm the "Calendario propuesto" review step (`paso === 2`) still renders correctly using the now-organizer-named teams (`equiposDemo.find(...)` lookups at `:157-158` already key off `.id`/`.nombre`, unaffected by the source of the name).
 
 **Automated validation:**
 - Unit test confirming `publicar()` produces `equipos` rows with organizer-entered names and zero associated `jugadores` rows.
+- Unit test for the uniqueness check: exact duplicate, whitespace/case-variant duplicate (blocked), accent-variant names (allowed, not treated as duplicates), and the same name reused across two *different* leagues (allowed).
 
 **Manual validation:**
 - Create a league end to end on a narrow (mobile-width) viewport with 4, 8, and 12 teams; confirm all name inputs are reachable, typeable, and retained when adjusting the team-count slider up and down.
+- Enter the same team name twice (including a case/whitespace-only variant) and confirm publication is blocked with a clear indication of the conflict; correct one name and confirm publication proceeds.
 - Confirm the published league's team page (`/e/:slug`) shows the real name and an empty roster.
 - Confirm the calendar/schedule review step and final publish still work unchanged.
 
-**Exit criteria:** no league can be published with a placeholder team or player name; every new team starts at zero players; existing league-creation behavior (calendar generation, pricing display, publish/navigate) is unaffected.
+**Exit criteria:** no league can be published with a placeholder team or player name; no league can be published with two team names that normalize identically within it; every new team starts at zero players; existing league-creation behavior (calendar generation, pricing display, publish/navigate) is unaffected.
 
 **Rollback/risk notes:** low risk — this stage only removes code (the placeholder generator) and extends an existing form; it does not touch the schema or any other screen. The main risk is a regression in the "Calendario propuesto" review step if team-name lookups elsewhere assumed a specific placeholder format — inspection found none (`:157-158` key off `.id`, not name format).
 
