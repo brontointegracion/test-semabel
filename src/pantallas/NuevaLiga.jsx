@@ -11,6 +11,25 @@ const FRANJAS = ['18:00', '19:00', '20:00', '21:00']
 
 const enISO = (d) => new Date(d).toISOString().slice(0, 10)
 
+// Mismo criterio que ya usa la semilla en seed.js: iniciales de las palabras
+// del nombre, hasta tres letras. Si el nombre no tiene letras (un caso raro,
+// pero el campo no obliga a que las tenga), se cae a las primeras letras/
+// símbolos tal cual, para que el escudo nunca se quede sin iniciales.
+const abreviarEquipo = (nombre) => {
+  const soloLetras = nombre
+    .replace(/[^A-Za-zÁÉÍÓÚÑ ]/g, '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 3)
+    .toUpperCase()
+  return soloLetras || nombre.trim().slice(0, 3).toUpperCase()
+}
+
+const normalizarNombreEquipo = (n) => n.trim().toLowerCase()
+
 export default function NuevaLiga() {
   const canchas = useCanchas()
   const sesion = useSesion()
@@ -23,6 +42,7 @@ export default function NuevaLiga() {
   const [nombre, setNombre] = useState('')
   const [deporte, setDeporte] = useState('baloncesto')
   const [nEquipos, setNEquipos] = useState(6)
+  const [nombresEquipos, setNombresEquipos] = useState(() => Array.from({ length: 6 }, () => ''))
   const [canchaIds, setCanchaIds] = useState([])
   const [dias, setDias] = useState([3, 5])
   const [franjas, setFranjas] = useState(['19:00', '20:30'])
@@ -32,16 +52,50 @@ export default function NuevaLiga() {
   const [aceptaRetos, setAceptaRetos] = useState(true)
   const [paso, setPaso] = useState(1)
   const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState(null)
+
+  // Al mover el control de cuántos equipos, los nombres que ya se habían
+  // escrito se quedan donde están: solo se agregan casillas vacías al final
+  // (al subir) o se recortan las de más (al bajar). Nunca se reordena nada.
+  const cambiarNEquipos = (n) => {
+    setNEquipos(n)
+    setNombresEquipos((prev) => (
+      n > prev.length
+        ? [...prev, ...Array.from({ length: n - prev.length }, () => '')]
+        : prev.slice(0, n)
+    ))
+  }
+
+  const cambiarNombreEquipo = (i, valor) =>
+    setNombresEquipos((prev) => prev.map((n, idx) => (idx === i ? valor : n)))
 
   const equiposDemo = useMemo(
-    () => Array.from({ length: nEquipos }, (_, i) => ({
-      id: `tmp-${i}`,
-      nombre: `Equipo ${i + 1}`,
-      corto: `E${i + 1}`,
-      color: COLORES[i % COLORES.length],
-    })),
-    [nEquipos],
+    () => nombresEquipos.map((n, i) => {
+      const nombreEq = n.trim()
+      return {
+        id: `tmp-${i}`,
+        nombre: nombreEq,
+        corto: nombreEq ? abreviarEquipo(nombreEq) : '',
+        color: COLORES[i % COLORES.length],
+      }
+    }),
+    [nombresEquipos],
   )
+
+  const nombresEquiposTrim = useMemo(() => nombresEquipos.map((n) => n.trim()), [nombresEquipos])
+  const faltaNombreEquipo = nombresEquiposTrim.some((n) => !n)
+  const nombresEquiposDuplicados = useMemo(() => {
+    const vistos = new Set()
+    const repetidos = new Set()
+    for (const n of nombresEquiposTrim) {
+      if (!n) continue
+      const clave = normalizarNombreEquipo(n)
+      if (vistos.has(clave)) repetidos.add(clave)
+      vistos.add(clave)
+    }
+    return repetidos
+  }, [nombresEquiposTrim])
+  const hayNombresDuplicados = nombresEquiposDuplicados.size > 0
 
   const propuesta = useMemo(() => {
     if (!canchaIds.length || !dias.length || !franjas.length) return { partidos: [], sinEspacio: false }
@@ -56,6 +110,7 @@ export default function NuevaLiga() {
   }, [equiposDemo, desde, hasta, dias, franjas, canchaIds])
 
   const listo = nombre.trim() && canchaIds.length && dias.length && franjas.length
+    && !faltaNombreEquipo && !hayNombresDuplicados
   const precio = (nEquipos * 1.5 + propuesta.partidos.length * 0.4).toFixed(2)
 
   const alternar = (lista, set, v) =>
@@ -63,65 +118,64 @@ export default function NuevaLiga() {
 
   const publicar = async () => {
     setGuardando(true)
+    setError(null)
     const ligaId = uid()
     const codigoLiga = String(1000 + Math.floor(Math.random() * 8999))
-    await db.ligas.add({
-      id: ligaId,
-      nombre: nombre.trim(),
-      deporte,
-      codigo: codigoLiga,
-      canchaIds,
-      diasSemana: dias,
-      franjas,
-      minutosPorPeriodo: deporte === 'baloncesto' ? 10 : 20,
-      categoria,
-      aceptaRetos,
-      desde: new Date(`${desde}T00:00:00`).toISOString(),
-      hasta: new Date(`${hasta}T23:59:59`).toISOString(),
-      pais: (canchas || []).find((c) => c.id === canchaIds[0])?.pais,
-      provincia: (canchas || []).find((c) => c.id === canchaIds[0])?.provincia,
-      estado: 'publicada',
-      pagada: true,
-      organizador: cuenta?.nombre || 'Organizador',
-      organizadorId: sesion?.cuentaId,
-    })
 
-    const equipos = equiposDemo.map((e) => ({
-      ...e,
-      id: uid(),
-      codigo: String(1000 + Math.floor(Math.random() * 8999)),
-      ligaId,
-    }))
-    await db.equipos.bulkAdd(equipos)
+    try {
+      await db.transaction('rw', db.ligas, db.equipos, db.partidos, async () => {
+        await db.ligas.add({
+          id: ligaId,
+          nombre: nombre.trim(),
+          deporte,
+          codigo: codigoLiga,
+          canchaIds,
+          diasSemana: dias,
+          franjas,
+          minutosPorPeriodo: deporte === 'baloncesto' ? 10 : 20,
+          categoria,
+          aceptaRetos,
+          desde: new Date(`${desde}T00:00:00`).toISOString(),
+          hasta: new Date(`${hasta}T23:59:59`).toISOString(),
+          pais: (canchas || []).find((c) => c.id === canchaIds[0])?.pais,
+          provincia: (canchas || []).find((c) => c.id === canchaIds[0])?.provincia,
+          estado: 'publicada',
+          pagada: true,
+          organizador: cuenta?.nombre || 'Organizador',
+          organizadorId: sesion?.cuentaId,
+        })
 
-    const jugadores = equipos.flatMap((eq, ei) =>
-      Array.from({ length: 6 }, (_, i) => ({
-        id: uid(),
-        codigo: String(1000 + Math.floor(Math.random() * 8999)),
-        ligaId,
-        equipoId: eq.id,
-        nombre: `Jugador ${ei + 1}-${i + 1}`,
-        dorsal: i + 4,
-        reclamado: false,
-      })),
-    )
-    await db.jugadores.bulkAdd(jugadores)
+        const equipos = equiposDemo.map((e) => ({
+          ...e,
+          id: uid(),
+          codigo: String(1000 + Math.floor(Math.random() * 8999)),
+          ligaId,
+        }))
+        await db.equipos.bulkAdd(equipos)
 
-    const mapa = Object.fromEntries(equiposDemo.map((e, i) => [e.id, equipos[i].id]))
-    await db.partidos.bulkAdd(
-      propuesta.partidos.map((p) => ({
-        id: uid(),
-        ligaId,
-        codigo: String(1000 + Math.floor(Math.random() * 8999)),
-        estado: 'programado',
-        localId: mapa[p.localId],
-        visitaId: mapa[p.visitaId],
-        canchaId: p.canchaId,
-        inicio: p.inicio,
-      })),
-    )
+        const mapa = Object.fromEntries(equiposDemo.map((e, i) => [e.id, equipos[i].id]))
+        await db.partidos.bulkAdd(
+          propuesta.partidos.map((p) => ({
+            id: uid(),
+            ligaId,
+            codigo: String(1000 + Math.floor(Math.random() * 8999)),
+            estado: 'programado',
+            localId: mapa[p.localId],
+            visitaId: mapa[p.visitaId],
+            canchaId: p.canchaId,
+            inicio: p.inicio,
+          })),
+        )
+      })
 
-    nav(urlLiga({ nombre: nombre.trim(), codigo: codigoLiga }), { replace: true })
+      nav(urlLiga({ nombre: nombre.trim(), codigo: codigoLiga }), { replace: true })
+    } catch (e) {
+      // La transacción no dejó nada a medias: si algo falló, no hay liga, ni
+      // equipos, ni partidos guardados. El organizador puede volver a intentar.
+      console.error('No se pudo publicar la liga:', e)
+      setGuardando(false)
+      setError('No se pudo publicar la liga. No se guardó nada a medias — puedes volver a intentarlo.')
+    }
   }
 
   if (paso === 2) {
@@ -180,10 +234,16 @@ export default function NuevaLiga() {
           )
         })}
 
+        {error && (
+          <div className="aviso alerta" style={{ marginTop: 12 }}>
+            {error}
+          </div>
+        )}
+
         <div className="btn-fila" style={{ marginTop: 18 }}>
-          <button className="btn fantasma" onClick={() => setPaso(1)}>Ajustar</button>
+          <button className="btn fantasma" onClick={() => { setPaso(1); setError(null) }}>Ajustar</button>
           <button className="btn" onClick={publicar} disabled={guardando || !propuesta.partidos.length}>
-            Publicar liga
+            {guardando ? 'Publicando…' : 'Publicar liga'}
           </button>
         </div>
       </>
@@ -240,9 +300,53 @@ export default function NuevaLiga() {
       </label>
 
       <div className="campo" style={{ marginTop: 16 }}>
-        <label htmlFor="eq">Equipos: {nEquipos}</label>
-        <input id="eq" type="range" min="4" max="12" step="2" value={nEquipos}
-          onChange={(e) => setNEquipos(Number(e.target.value))} />
+        <label>Equipos</label>
+        <div className="btn-fila" style={{ alignItems: 'center' }}>
+          <button
+            type="button"
+            className="btn fantasma"
+            onClick={() => cambiarNEquipos(Math.max(4, nEquipos - 2))}
+            disabled={nEquipos <= 4}
+            aria-label="Menos equipos"
+          >
+            −
+          </button>
+          <span style={{ fontWeight: 800, minWidth: 24, textAlign: 'center' }}>{nEquipos}</span>
+          <button
+            type="button"
+            className="btn fantasma"
+            onClick={() => cambiarNEquipos(Math.min(12, nEquipos + 2))}
+            disabled={nEquipos >= 12}
+            aria-label="Más equipos"
+          >
+            +
+          </button>
+        </div>
+      </div>
+
+      <div className="campo">
+        <label>Nombres de los equipos</label>
+        {nombresEquipos.map((n, i) => {
+          const repetido = n.trim() && nombresEquiposDuplicados.has(normalizarNombreEquipo(n))
+          return (
+            <input
+              key={i}
+              value={n}
+              onChange={(e) => cambiarNombreEquipo(i, e.target.value)}
+              placeholder="Nombre del equipo"
+              aria-label={`Nombre del equipo ${i + 1}`}
+              style={{
+                marginTop: i > 0 ? 8 : 0,
+                borderColor: repetido ? 'var(--acento)' : undefined,
+              }}
+            />
+          )
+        })}
+        {hayNombresDuplicados && (
+          <p className="sub" style={{ color: 'var(--acento-ink)', marginTop: 8 }}>
+            Hay nombres repetidos. Cada equipo necesita un nombre distinto dentro de esta liga.
+          </p>
+        )}
       </div>
 
       <div className="campo">
@@ -298,7 +402,8 @@ export default function NuevaLiga() {
       </button>
       {!listo && (
         <p className="sub" style={{ marginTop: 10, textAlign: 'center' }}>
-          Falta el nombre, al menos una cancha, un día y una hora.
+          Falta el nombre de la liga, un nombre para cada equipo sin repetir, al menos una
+          cancha, un día y una hora.
         </p>
       )}
     </>
