@@ -655,6 +655,805 @@ If the previous number conflicts with an active teammate, Decision 32 must be re
 
 Reactivation must remain an explicit organizer action and must not occur implicitly through editing.
 
+### Decision 41 — Complete Stage 3B decisions before Stage 3A implementation
+
+Before implementing Stage 3A:
+
+1. finish the remaining Stage 3B product/UI decisions;
+2. prepare a precise Stage 3B v0.app design brief;
+3. do not spend v0.app credits yet.
+
+After the Stage 3 destination is sufficiently defined, Stage 3A may be separately authorized, implemented, and validated.
+
+Stage 3A must still PASS before Stage 3B implementation begins, as established by Decision 20.
+
+This sequencing decision does not authorize implementation.
+
+### Decision 42 — No roster search/filter for MVP
+
+`Team → Plantilla` will not include roster search or filtering in Stage 3 MVP.
+
+Keep the roster interface simple and compact.
+
+Search/filtering may be reconsidered later if actual roster sizes or user behavior demonstrate a need.
+
+### Decision 43 — Active Plantilla ordering
+
+Active players in `Team → Plantilla` are ordered by **jersey/player number ascending**.
+
+Example:
+
+`#4`
+`#7`
+`#10`
+`#23`
+
+### Decision 44 — Legacy ficha without jersey number
+
+Legacy or migrated records that lack a jersey/player number must render safely rather than breaking the roster UI.
+
+Display the missing number as:
+
+`—`
+
+However, a valid available jersey/player number is required before such a ficha can be reactivated or otherwise returned to active roster use.
+
+This exception exists for compatibility with legacy/migrated data and does not change the normal Add Player requirement that jersey/player number is required.
+
+### Decision 45 — Compact statistics remain in Plantilla
+
+`Team → Plantilla` should preserve useful current player statistics already provided by the Team page.
+
+The row hierarchy should remain compact:
+
+1. jersey/player number and player name are primary;
+2. sport-appropriate current statistics are secondary.
+
+Do not turn every player into a large card merely to display statistics.
+
+A future visual redesign must not accidentally remove useful existing sporting information.
+
+### Decision 46 — Minimal player action menus
+
+For an active ficha, the organizer action menu contains:
+
+* `Editar jugador`
+* `Desactivar jugador`
+
+For an inactive ficha under `Ver inactivos`, the organizer action menu contains:
+
+* `Editar jugador`
+* `Reactivar jugador`
+
+Do not add additional roster-management actions for Stage 3 MVP unless separately approved.
+
+### Decision 47 — Non-blocking success feedback
+
+After a successful roster mutation, show short non-blocking feedback rather than another confirmation modal.
+
+Examples:
+
+* `Jugador añadido`
+* `Jugador actualizado`
+* `Jugador desactivado`
+* `Jugador reactivado`
+
+The exact visual implementation may be a toast or equivalent lightweight feedback mechanism.
+
+### Decision 48 — Preserve form state after validation/save failure
+
+If adding or editing a player fails:
+
+* keep the Add/Edit modal or bottom sheet open;
+* preserve the organizer's entered values;
+* show the error at or near the relevant field when applicable.
+
+The organizer must not have to re-enter the form after a validation or save error.
+
+### Decision 49 — Jersey/player number representation
+
+For MVP, jersey/player number accepts:
+
+* `0`;
+* positive whole numbers.
+
+`00` is **not** treated as a distinct jersey/player number from `0` in MVP.
+
+Do not introduce separate string semantics for `00` at this stage.
+
+### Decision 50 — Jersey/player number range
+
+For MVP, valid jersey/player numbers are:
+
+`0–99`, inclusive.
+
+The value must be a whole number.
+
+The existing approved uniqueness rule still applies among active players of the same team.
+
+### Decision 51 — Date-of-birth validity
+
+Date of birth remains optional.
+
+When supplied:
+
+* it must be a valid date;
+* it must not be later than the current date.
+
+### Decision 52 — No minimum roster-registration age
+
+Sebel imposes no minimum age at the roster-registration level for MVP.
+
+Minors may be registered as players.
+
+This does not resolve or weaken separate future requirements involving:
+
+* guardian consent;
+* profile claiming;
+* expanded personal profiles;
+* privacy;
+* competition-specific eligibility.
+
+### Decision 53 — Do not publicly expose minor age/DOB in Plantilla
+
+`Team → Plantilla` must not publicly display a minor player's:
+
+* age;
+* exact date of birth.
+
+When DOB has been collected, it remains non-public information and may be used only for appropriate authorized purposes such as:
+
+* identity/disambiguation;
+* future eligibility rules.
+
+This decision concerns the Team → Plantilla public surface and does not by itself define the complete Sebel minors/privacy policy.
+
+### Decision 54 — Do not publicly expose adult age/DOB in Plantilla by default
+
+`Team → Plantilla` also does not publicly display an adult player's:
+
+* age;
+* exact date of birth.
+
+The public Plantilla remains focused on sporting information:
+
+* jersey/player number;
+* player name;
+* compact sport-appropriate statistics.
+
+Age/DOB may be used on another Sebel surface only when that surface has a defined product purpose and appropriate access/privacy rules.
+
+### Decision 55 — Authorized organizer may view/edit recorded DOB
+
+When an authorized organizer opens `Editar jugador`, an existing recorded date of birth is visible and editable.
+
+DOB remains:
+
+* non-public;
+* optional;
+* subject to the validation rules established by Decision 51.
+
+Public `Team → Plantilla` behavior from Decisions 53–54 remains unchanged.
+
+### Decision 56 — Previously recorded DOB may be removed
+
+Because DOB is optional, an authorized organizer may remove a previously recorded DOB and return the field to empty.
+
+Entering DOB once does not make it permanently mandatory.
+
+### Decision 57 — DOB edits never automatically change established identity
+
+Editing, correcting, or removing DOB must never automatically:
+
+* split an established identity;
+* unlink a ficha from its established `personaId`;
+* merge identities;
+* otherwise change the established `personaId`.
+
+Identity correction is a separate controlled process.
+
+### Decision 58 — Identity unlink/split correction deferred
+
+If fichas were previously linked to the same `personaId` incorrectly and are later discovered to represent different people, normal Stage 3 roster management must not provide a general identity unlink/split operation.
+
+Correcting that situation may affect historical matches, statistics, and person history.
+
+A dedicated future identity-correction workflow must handle this class of correction.
+
+That future workflow may eventually be AI/agent-assisted, but consequential identity changes remain controlled and human-authorized.
+
+### Decision 59 — General merge of established people deferred
+
+If two established person identities were previously treated as different people but are later discovered to represent the same human, Stage 3 MVP does not provide a general `merge people` operation.
+
+This does not prevent the approved Add/Edit duplicate-resolution flow from linking to an existing person when the identity decision is being made in that controlled workflow.
+
+Repairing already-established separate identities belongs to the future dedicated identity-correction workflow.
+
+### Decision 60 — Show all relevant duplicate candidates
+
+If same-league duplicate detection returns multiple plausible candidates, Sebel must show all relevant candidates to the organizer.
+
+Sebel must not silently choose the most likely candidate.
+
+The organizer explicitly selects:
+
+* the matching existing person; or
+* `Es otra persona`.
+
+Candidate presentation remains subject to the privacy/context rules already approved for duplicate resolution.
+
+### Decision 61 — Same person already active on same team UX
+
+If the organizer chooses `Es la misma persona`, but that person already has an active ficha on the same team/registration context:
+
+* do not create another active ficha;
+* explain that the player is already on this team's active roster;
+* provide an appropriate `Ver / Editar jugador` path to the existing ficha.
+
+This is not treated merely as an unexplained generic validation error.
+
+### Decision 62 — Public visitors do not see management controls
+
+A visitor who is not an authorized organizer sees the public active `Team → Plantilla` normally but does not see roster-management controls.
+
+Do not show:
+
+* `Añadir jugador`;
+* Edit/Deactivate action menus;
+* `Ver inactivos`.
+
+For MVP, omit unauthorized management controls rather than rendering disabled controls.
+
+### Decision 63 — Authoritative revalidation at mutation/save time
+
+Roster mutations must revalidate authoritative business rules at save/execution time.
+
+Client/UI validation may provide early UX feedback, but it is not authoritative.
+
+For example, if another operation assigns the same jersey number before the current organizer saves, the shared domain/application operation must detect the new conflict and reject the mutation safely.
+
+When a save-time conflict occurs:
+
+* preserve the organizer's form data;
+* keep the interaction recoverable;
+* explain the relevant conflict.
+
+This extends Decisions 29 and 30: authoritative roster rules belong in reusable shared operations, not solely in React validation.
+
+### Decision 64 — Consecutive Add Player workflow
+
+After successfully adding a player, the organizer may choose:
+
+`Añadir otro jugador`
+
+This provides an efficient path for entering several roster players consecutively.
+
+The normal completion path may still return to the updated `Team → Plantilla`.
+
+Do not require the organizer to navigate away and reopen the Add Player interaction for every player.
+
+### Decision 65 — Añadir otro jugador starts fresh
+
+When the organizer chooses `Añadir otro jugador`, open a fresh Add Player form.
+
+Do not carry over the previous player's:
+
+* `nombrePila`;
+* `apellido1`;
+* `apellido2`;
+* DOB;
+* jersey/player number.
+
+This reduces accidental duplicate or stale player data during consecutive roster entry.
+
+### Decision 66 — Each Add Player save is independent
+
+Each successful `Añadir jugador` operation is an independently completed roster mutation.
+
+After a player is successfully saved:
+
+* that player is immediately registered;
+* that player immediately becomes part of the active Plantilla;
+* the save does not depend on completing any subsequent player entry.
+
+`Añadir otro jugador` starts a new independent Add Player operation.
+
+Consecutive player entry is **not** one batch transaction.
+
+If an organizer successfully adds five players and stops while entering the sixth, the first five remain safely registered.
+
+### Decision 67 — Responsive behavior during consecutive entry
+
+During consecutive Add Player entry:
+
+#### Desktop
+
+The updated Plantilla may remain visible behind the Add Player modal.
+
+After each successful addition, the roster reflected behind the modal should be capable of showing the newly added player.
+
+#### Mobile
+
+The bottom sheet remains the primary interaction focus.
+
+Do not introduce unnecessary mobile UI complexity merely to keep the complete roster simultaneously visible while entering the next player.
+
+Decision 66 remains authoritative: each successful addition is independently saved regardless of presentation.
+
+### Decision 68 — Warn before discarding unsaved form changes
+
+If the organizer attempts to close an Add/Edit Player modal or bottom sheet that contains unsaved changes, Sebel must warn before discarding those changes.
+
+If the form is untouched/empty, it may close immediately without an unnecessary confirmation.
+
+### Decision 69 — No Add/Edit form draft persistence for MVP
+
+When warning about unsaved Add/Edit Player changes, provide two clear choices:
+
+* `Seguir editando`
+* `Descartar cambios`
+
+Stage 3 MVP does not implement automatic draft saving or persistent player-form drafts.
+
+Discarding changes explicitly removes the unsaved form state.
+
+### Decision 70 — Clearly identify required and optional fields
+
+The Add/Edit Player form must clearly distinguish required from optional fields.
+
+Use the following field intent:
+
+* `Nombre *` — required
+* `Primer apellido *` — required
+* `Segundo apellido` — optional
+* `Número *` — required
+* `Fecha de nacimiento` — optional
+
+The exact visual treatment may be refined during UI design, but the required/optional distinction must be clear before submission.
+
+### Decision 71 — Trim accidental surrounding whitespace
+
+Before validation, duplicate comparison, and persistence, Sebel must trim leading and trailing whitespace from:
+
+* `nombrePila`;
+* `apellido1`;
+* `apellido2`.
+
+For example:
+
+`"  Miguel "` → `"Miguel"`
+
+This normalization prevents accidental whitespace from becoming part of the canonical stored value or interfering with duplicate detection.
+
+### Decision 72 — Duplicate comparison is case-insensitive
+
+Name-based duplicate candidate detection must be case-insensitive.
+
+For example:
+
+`miguel sam robles`
+
+and:
+
+`Miguel Sam Robles`
+
+must be capable of producing the same normalized duplicate candidate.
+
+Case-insensitive matching does not authorize automatic identity linking.
+
+The organizer still resolves:
+
+* same person; or
+* different person.
+
+### Decision 73 — Preserve canonical capitalization separately from matching normalization
+
+Sebel must preserve the organizer-entered/canonical capitalization of player names for storage and display.
+
+Do **not** lowercase the authoritative stored/display name merely to simplify matching.
+
+Duplicate/identity candidate comparison uses a separate normalization process.
+
+Conceptually:
+
+Canonical/display:
+
+`Miguel Sam Robles`
+
+Comparison representation:
+
+`miguel sam robles`
+
+A second persisted lowercase copy is **not required by this product decision**. The implementation may normalize at comparison time unless a later performance/search requirement justifies persisted/indexed normalized fields.
+
+### Decision 74 — Accent-insensitive duplicate candidate detection
+
+For duplicate candidate detection, Sebel should normalize accent/diacritic differences.
+
+For example:
+
+`José Pérez`
+
+and:
+
+`Jose Perez`
+
+may be treated as possible duplicate candidates.
+
+The canonical stored/display name must preserve its actual accents.
+
+Accent-insensitive matching is for candidate detection only and must never automatically merge or link identities.
+
+The organizer remains responsible for the same-person/different-person decision.
+
+### Decision 75 — Collapse repeated internal whitespace for duplicate comparison
+
+Duplicate-name normalization must collapse accidental repeated internal whitespace.
+
+For example:
+
+`Miguel  Sam   Robles`
+
+should compare using an equivalent normalized representation to:
+
+`Miguel Sam Robles`
+
+This is a comparison rule.
+
+The canonical displayed/stored name should remain properly formatted rather than preserving accidental repeated whitespace.
+
+### Decision 76 — Keep punctuation meaningful for MVP matching
+
+Stage 3 MVP must **not broadly strip punctuation** from names during duplicate candidate normalization.
+
+Apostrophes, hyphens, and similar punctuation may be meaningful parts of a person's name.
+
+For example, do not automatically assume equivalence merely by removing punctuation from cases such as:
+
+* `D'Angelo` vs `DAngelo`
+* `María-José` vs `María José`
+
+This deliberately avoids overly aggressive candidate matching and false positives.
+
+More sophisticated fuzzy/name matching may be evaluated later.
+
+### Decision 77 — Normalize before required-field validation
+
+Name normalization required for input hygiene must occur before required-field validation.
+
+A required field containing only whitespace is therefore empty and invalid after trimming.
+
+For example:
+
+`Nombre = "   "`
+→ trim
+→ `""`
+→ required-field validation fails.
+
+Apply this behavior to required player-name fields such as:
+
+* `nombrePila`;
+* `apellido1`.
+
+Show the resulting validation problem at the relevant field.
+
+### Decision 78 — Maximum name-field length
+
+After trimming, each individual canonical player-name field has a maximum length of **50 characters**:
+
+* `nombrePila` / `Nombre` — max 50;
+* `apellido1` / `Primer apellido` — max 50;
+* `apellido2` / `Segundo apellido` — max 50 when supplied.
+
+Do not use a combined full-name limit as a replacement for these individual field limits.
+
+### Decision 79 — No digits in player-name fields
+
+Player-name fields must reject digits `0–9`.
+
+For example, a normal player name such as:
+
+`Miguel123`
+
+is invalid.
+
+Do not implement an unnecessarily restrictive ASCII-only `letters` validator.
+
+Legitimate names may contain Unicode letters, accents/diacritics, spaces, and meaningful punctuation such as apostrophes or hyphens, subject to the other approved validation rules.
+
+### Decision 80 — No arbitrary multi-character minimum
+
+Required player-name fields must not impose an arbitrary minimum such as two or three characters.
+
+After normalization/trimming, a legitimate single-letter name or surname may be valid.
+
+For required fields:
+
+* minimum: at least one valid character satisfying the approved name rules;
+* maximum: 50 characters;
+* digits: prohibited.
+
+Decision 82 further defines that punctuation alone is not sufficient.
+
+### Decision 81 — Segundo apellido may be empty
+
+`apellido2` / `Segundo apellido` is optional.
+
+It may be completely empty without producing a validation error.
+
+If supplied, it follows the applicable approved rules for:
+
+* trimming;
+* maximum 50 characters;
+* no digits;
+* canonical spelling/capitalization preservation;
+* duplicate-comparison normalization.
+
+### Decision 82 — Name fields cannot contain punctuation only
+
+When a player-name field is supplied, it must contain at least **one letter**.
+
+Spaces and meaningful punctuation such as apostrophes and hyphens may accompany letters.
+
+Values consisting only of punctuation/spacing are invalid.
+
+Examples of invalid supplied values include:
+
+* `---`
+* `'`
+
+This applies to required name fields and to optional `apellido2` when a value is supplied.
+
+### Decision 83 — Hybrid field validation UX
+
+The Add/Edit Player form uses hybrid validation behavior.
+
+* Do not prematurely show errors on untouched fields.
+* After the organizer has interacted with a field, obvious field-level validation problems may be shown when leaving the field or as appropriate during subsequent editing.
+* On submit/save, validate the complete form again.
+* Authoritative business rules must still be revalidated by the shared operation at mutation/save time as established by Decision 63.
+
+UI validation improves feedback but is not the authoritative enforcement layer.
+
+### Decision 84 — Explicit Add/Edit primary-action copy
+
+Use operation-specific primary-action labels.
+
+For Add Player:
+
+`Añadir jugador`
+
+For Edit Player:
+
+`Guardar cambios`
+
+Do not use generic `Guardar` for both operations.
+
+### Decision 85 — Explicit lifecycle confirmation actions
+
+Lifecycle confirmation dialogs/sheets use explicit action labels.
+
+For deactivation:
+
+* primary: `Desactivar jugador`
+* secondary: `Cancelar`
+
+For reactivation:
+
+* primary: `Reactivar jugador`
+* secondary: `Cancelar`
+
+Avoid generic `Confirmar` as the primary lifecycle action.
+
+### Decision 86 — Zero-player Plantilla empty state
+
+When a team has zero active players, `Team → Plantilla` must show a purposeful empty state rather than blank roster space.
+
+Use the product intent:
+
+**Plantilla**
+
+`Todavía no hay jugadores en este equipo.`
+
+For an authorized organizer, provide:
+
+`Añadir primer jugador`
+
+For a public/unauthorized visitor, show the informative empty state but no roster-management action.
+
+This must be represented in the later Stage 3B v0.app design brief.
+
+### Decision 87 — Añadir jugador belongs with the Plantilla header
+
+When the active Plantilla already contains players, the organizer's:
+
+`+ Añadir jugador`
+
+action belongs in or directly alongside the Plantilla section header.
+
+Do not represent Add Player as another large player/roster card.
+
+Mobile may adapt placement according to available width, but the action must remain clearly associated with Plantilla.
+
+### Decision 88 — Compact row action menu
+
+For an authorized organizer, each compact active-player row uses a `⋯` action menu at the end of the row.
+
+The menu exposes the already-approved active-ficha actions:
+
+* `Editar jugador`
+* `Desactivar jugador`
+
+Do not permanently display these management actions as large buttons on every roster row.
+
+Public/unauthorized visitors do not see the action menu, consistent with Decision 62.
+
+### Decision 89 — Ver inactivos remains inside Team → Plantilla
+
+For Stage 3 MVP, `Ver inactivos` is not a separate route/page.
+
+It is a secondary roster-management state within:
+
+`Team → Plantilla`
+
+Conceptual navigation:
+
+`Plantilla → Ver inactivos → inactive roster → Volver a Plantilla`
+
+Keep active and inactive roster management within the Team/Plantilla context.
+
+### Decision 90 — Hide Ver inactivos when none exist
+
+Show `Ver inactivos` only when the team has at least one inactive ficha.
+
+If the inactive count is zero, omit the option.
+
+Do not create an unnecessary empty management destination.
+
+### Decision 91 — Inactive roster ordering
+
+Within `Ver inactivos`, order inactive fichas by **most recently deactivated first**.
+
+This requires enough lifecycle metadata to determine the latest deactivation time.
+
+The ordering requirement therefore establishes a concrete product need for deactivation timestamp data.
+
+### Decision 92 — Latest deactivation timestamp
+
+If a ficha is:
+
+`active → deactivated → reactivated → deactivated again`
+
+the current lifecycle metadata must record the **latest deactivation timestamp**.
+
+Stage 3 MVP does not require a complete lifecycle-event history solely to derive this ordering.
+
+Current-state lifecycle data must be sufficient to support Decision 91.
+
+### Decision 93 — Event-sourcing boundary for Stage 3
+
+Stage 3 roster management uses **current-state persistence plus explicit lifecycle/audit events where useful**.
+
+Stage 3 does **not** adopt full event sourcing for roster management.
+
+The authoritative current roster/ficha state remains directly persisted.
+
+Design roster operations so they can emit explicit domain/audit events without requiring replay of the complete event stream to reconstruct current roster state.
+
+Full event sourcing remains a deliberate future architecture evaluation for domains where immutable history/replay may provide stronger value, especially:
+
+* match play-by-play / scoring events;
+* later identity-correction operations such as consequential merge/split/link repair.
+
+Do not interpret this decision as authorizing full event sourcing in Stage 3.
+
+### Decision 94 — Minimal roster lifecycle audit metadata
+
+Stage 3 roster lifecycle/audit records must capture at least:
+
+* action type;
+* ficha ID;
+* timestamp;
+* actor/organizer ID when available.
+
+Initial action types include:
+
+* `created`
+* `edited`
+* `deactivated`
+* `reactivated`
+
+Richer before/after snapshots and full event-sourcing semantics are not required for Stage 3 MVP.
+
+### Decision 95 — Audit every successful organizer ficha edit
+
+Every successful organizer edit to a ficha should create an `edited` audit entry.
+
+Do not restrict edit auditing only to changes considered identity-sensitive or lifecycle-sensitive.
+
+This includes ordinary successful corrections such as jersey/player-number changes.
+
+Failed validation attempts do not represent successful ficha edits.
+
+### Decision 96 — Audit trail is internal/system-only for MVP
+
+The roster audit trail is internal/system-only in Stage 3 MVP.
+
+Capture the approved audit information, but do not add an organizer-facing audit-history UI in this stage.
+
+A future product requirement may expose appropriate audit information later.
+
+---
+
+## Architecture clarification — audit events are not current state
+
+Keep the distinction explicit:
+
+**Current ficha/roster state**
+→ remains directly persisted and authoritative for normal application reads.
+
+**Lifecycle/audit records**
+→ provide traceability of successful roster operations.
+
+**Full event sourcing**
+→ is not being adopted for Stage 3 roster management.
+
+The architecture should avoid coupling React components directly to audit persistence. Roster operations remain responsible for authoritative mutation behavior under Decisions 29, 30, and 63.
+
+---
+
+## Normalization boundary
+
+Decisions 71–76 establish a deliberate distinction:
+
+**Canonical player data**
+→ preserves the person's human-readable name.
+
+**Duplicate candidate normalization**
+→ may normalize case, accents/diacritics, and accidental whitespace.
+
+**Identity decision**
+→ remains human-authorized.
+
+Normalization must **never itself merge identities**.
+
+---
+
+## Product-level finding discovered during Stage 3 — Youth participation and monetization
+
+**This is a product-level finding, not a numbered Stage 3 decision, and does not authorize implementation.**
+
+Sebel's emerging product/business principle is that **children and their personal data must not become the product being monetized**.
+
+At the same time, this principle does **not** require every service surrounding youth competition to be free.
+
+Youth/player access and organizer/business services may have separate economic models.
+
+Potential youth participation subsidies/free access can support:
+
+* sport and health;
+* community participation;
+* family engagement;
+* Sebel awareness and legitimate traffic.
+
+However:
+
+* do not hard-code an age such as 7 or 9 as the permanent business boundary;
+* the qualifying youth threshold must eventually be configurable;
+* sponsorship/subsidy may be explored but must not be assumed to exist, especially for early leagues;
+* Sebel's economic sustainability must still be considered if youth usage grows substantially.
+
+Keep these concepts architecturally distinct:
+
+* age/privacy rules;
+* competition eligibility rules;
+* pricing/subsidy rules.
+
+The exact youth age threshold, pricing model, subsidy model, sponsor model, legal requirements, and full minors policy remain **future product/business work**.
+
+This product-level finding must not be interpreted as Stage 3 implementation authorization.
+
 ---
 
 ## Deferred / not yet decided
