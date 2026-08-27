@@ -2,7 +2,7 @@
 
 ## Status
 
-**Decision discovery in progress. Implementation not authorized.**
+**Decision discovery complete. Implementation not authorized.**
 
 This document is the durable checkpoint for approved Roster MVP Stage 3 product/design decisions.
 
@@ -1383,6 +1383,324 @@ The roster audit trail is internal/system-only in Stage 3 MVP.
 Capture the approved audit information, but do not add an organizer-facing audit-history UI in this stage.
 
 A future product requirement may expose appropriate audit information later.
+
+### Decision 97 — One sports-first Plantilla design for public and organizer states
+
+`Team → Plantilla` uses fundamentally the same sports-first roster design for both public visitors and authorized organizers.
+
+Do not create a separate admin-dashboard-style roster UI for organizers.
+
+Public visitors see the roster's sporting information.
+
+Authorized organizers see the same roster experience with management capabilities layered onto it.
+
+Conceptually:
+
+Public:
+
+* jersey/player number;
+* player name;
+* compact sport-appropriate statistics.
+
+Organizer:
+
+* same sports-first roster;
+* `Añadir jugador`;
+* compact `⋯` row actions;
+* `Ver inactivos` when applicable.
+
+This provides one coherent responsive design target for Stage 3B and the later v0.app design brief.
+
+### Decision 98 — Player name remains navigational
+
+The player's name in `Team → Plantilla` remains clickable/tappable and navigates to Sebel's existing `Jugador` player/profile surface when the route exists.
+
+Roster management must not replace the normal sports/discovery navigation behavior.
+
+Organizer management remains separate through the approved `⋯` action menu.
+
+### Decision 99 — Active-player row visual hierarchy
+
+The active-player row uses a sports-first visual hierarchy.
+
+Priority:
+
+1. player name — primary identity;
+2. jersey/player number — prominent and quickly scannable;
+3. compact sport-appropriate statistics — secondary;
+4. organizer `⋯` management affordance — available only when authorized.
+
+The exact typography, spacing, sizing, and CSS are not decided here.
+
+This decision establishes visual information hierarchy only.
+
+### Decision 100 — Inactive rows are subdued, not deleted-looking
+
+Inactive fichas under `Ver inactivos` remain recognizable historical roster records.
+
+Use a compact row design that is visually subdued compared with active players.
+
+Do **not** use strikethrough or other presentation implying that the player/history was deleted.
+
+Retain useful identification such as:
+
+* player name;
+* last jersey/player number.
+
+Lifecycle context such as `Inactivo` and deactivation date may appear as secondary information.
+
+### Decision 101 — Use absolute deactivation dates
+
+When showing deactivation information in `Ver inactivos`, use a stable human-readable absolute date rather than relative time.
+
+Example:
+
+`Inactivo · Desactivado 20 ago 2026`
+
+Avoid relying on relative labels such as:
+
+`hace 7 días`
+
+for this lifecycle context.
+
+The exact locale/date-format implementation may follow Sebel's existing formatting conventions.
+
+### Decision 102 — Reactivation returns to active Plantilla
+
+After successful reactivation:
+
+* return the organizer to the active `Team → Plantilla`;
+* immediately show the reactivated player in the active roster;
+* show lightweight success feedback such as `Jugador reactivado`.
+
+Do not leave the organizer stranded in `Ver inactivos` after a successful reactivation.
+
+### Decision 103 — Deactivation remains on active Plantilla
+
+After successful deactivation:
+
+* remain on the active `Team → Plantilla`;
+* immediately remove the deactivated ficha from the active roster display;
+* show lightweight success feedback such as `Jugador desactivado`;
+* preserve the ficha under `Ver inactivos`.
+
+Do not automatically navigate the organizer into the inactive roster after deactivation.
+
+### Decision 104 — Edit reuses Add Player responsive form pattern
+
+`Editar jugador` reuses the same responsive interaction/component pattern as `Añadir jugador`.
+
+Use:
+
+* desktop: modal;
+* mobile: bottom sheet.
+
+Edit mode opens with the current values prefilled.
+
+The underlying form structure should be shared where practical.
+
+Primary actions remain:
+
+Add:
+`Añadir jugador`
+
+Edit:
+`Guardar cambios`
+
+This extends Decisions 23, 24, and 84.
+
+### Decision 105 — Responsive lifecycle confirmation UI
+
+Deactivation and reactivation confirmations use Sebel's responsive confirmation interaction rather than browser-native confirmation dialogs.
+
+Use:
+
+* desktop: confirmation modal;
+* mobile: confirmation bottom sheet.
+
+Use the explicit lifecycle action labels established by Decision 85.
+
+For deactivation, the confirmation must explain that:
+
+* the ficha/player will no longer be available for future matches for that team;
+* historical matches and statistics remain preserved.
+
+Do not use browser-native `confirm()` as the intended Stage 3 UX.
+
+### Decision 106 — Show the full active Plantilla
+
+For Stage 3 MVP, Team → Plantilla shows the full active roster.
+
+Do not introduce:
+
+- pagination;
+- virtualization;
+- Ver más / Load more behavior
+
+for the active roster in this stage.
+
+The approved compact-row design should make the complete roster practical to scan.
+
+If future real-world roster sizes or performance demonstrate a need, roster pagination/virtualization may be evaluated later.
+
+### Decision 107 — Mobile uses compact roster rows, not large player cards
+
+On mobile, Plantilla remains a compact roster/list experience.
+
+Do not turn every player into a large individual card.
+
+The exact responsive composition may be explored during design, but it must prioritize:
+
+- efficient vertical use;
+- fast roster scanning;
+- player identity;
+- jersey/player number;
+- secondary statistics;
+- organizer action affordance when authorized.
+
+This extends the sports-first and compact-row direction already established.
+
+### Decision 108 — Desktop remains a sports roster, not an admin table
+
+On desktop, Plantilla also remains visually a sports roster/list.
+
+Do not redesign it as a traditional spreadsheet/admin table with prominent column headers such as:
+
+Número | Jugador | PTS | AST | ...
+
+Implementation may use grid/alignment techniques internally, but the visible product experience must remain sports-first rather than dashboard/admin-table-first.
+
+### Decision 109 — Reuse existing sport-specific statistics
+
+Stage 3 roster management does not define a new universal player-statistics model.
+
+Plantilla should preserve/reuse the sport-appropriate player statistics Sebel already provides.
+
+Statistics remain secondary to:
+
+- player identity;
+- jersey/player number.
+
+The Stage 3 implementation and v0 design must not invent fictional/new metrics merely to fill the roster UI.
+
+Any future statistics redesign is separate work.
+
+### Decision 110 — v0 brief must cover the responsive system and important states
+
+The Stage 3B v0.app design brief should request a coherent responsive Plantilla system covering both mobile and desktop.
+
+At minimum, the design exploration must account for:
+
+- active Plantilla with players;
+- zero-player empty state;
+- authorized organizer controls;
+- Add Player interaction;
+- Edit Player interaction;
+- inactive roster / Ver inactivos;
+- deactivate confirmation;
+- reactivate confirmation.
+
+The purpose is to use scarce v0 design effort efficiently by evaluating the important responsive states together rather than discovering them piecemeal across multiple requests.
+
+### Decision 111 — v0 must not redesign the whole Team page
+
+The Stage 3B v0.app task is scoped to:
+
+Team → Plantilla
+
+and its roster-management interactions.
+
+v0 must not treat this as authorization to redesign the complete Team page.
+
+The Plantilla design must fit within Sebel's existing Team experience and established product/visual direction.
+
+Broader Team-page redesign remains outside this Stage 3 task unless separately authorized.
+
+### Decision 112 — v0 is a design reference, not implementation authority
+
+v0 acts as a design/reference agent for Stage 3B.
+
+It may propose or refine:
+
+- layout;
+- responsive composition;
+- information hierarchy;
+- interaction presentation;
+- modal/bottom-sheet design;
+- visual polish.
+
+v0 must not override or invent authoritative Sebel behavior.
+
+The following remain authoritative over v0 output:
+
+- repository requirements/specifications;
+- existing Sebel routes and real data;
+- approved Stage 3 decisions;
+- roster/identity business rules;
+- permissions;
+- lifecycle rules;
+- identity-linking rules;
+- architecture boundaries.
+
+Generated v0 code is not automatically authoritative production code.
+
+Useful visual/design ideas may later be deliberately ported into the real Sebel implementation by the execution agent.
+
+### Decision 113 — Include duplicate-candidate identity resolution in the v0 design scope
+
+The Stage 3B v0.app design brief must include the approved duplicate-candidate / identity-resolution interaction as part of the responsive Add/Edit Player interaction system.
+
+This is a presentation/design requirement only.
+
+v0 may explore how the interaction is presented on:
+
+- desktop;
+- mobile;
+- modal/bottom-sheet flows;
+- candidate comparison/selection states.
+
+The authoritative identity behavior remains defined by the existing Stage 3 decisions.
+
+v0 must not invent or change:
+
+- duplicate-matching rules;
+- matching algorithms;
+- automatic identity merging;
+- autonomous same-person decisions;
+- candidate disclosure/privacy rules;
+- persona-linking rules;
+- same-person/different-person authorization;
+- additional personal data to display.
+
+The design must use only the candidate context and organizer-authorized choices already approved in the Stage 3 decision artifact.
+
+The organizer remains the authority for the same-person / different-person resolution established by the existing decisions.
+
+This extends Decision 110's minimum v0 state set.
+
+---
+
+## Stage 3 decision-discovery closure
+
+Decision discovery closed at Decision 113.
+
+A read-only readiness/gap audit was performed after Decisions 1–112.
+
+The audit found no blocking gaps.
+
+Stage 3A implementation-definition readiness was READY.
+
+Stage 3B architecture readiness was READY.
+
+Stage 3B v0-brief readiness was READY after resolving the duplicate-resolution design-scope question through Decision 113.
+
+The minimum-necessary-decisions principle was used to stop further speculative decision creation.
+
+Stage 3A and Stage 3B implementation remain unauthorized.
+
+Stage 3B implementation remains sequenced after a successful Stage 3A implementation/validation checkpoint.
+
+This closure note does not represent the readiness audit itself as implementation validation.
 
 ---
 
