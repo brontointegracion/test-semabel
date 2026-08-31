@@ -1,6 +1,6 @@
 # v0 Brief — Sebel Team → Plantilla (Roster Management)
 
-**Status: Draft for Master Tutor review — do not submit to v0 yet.**
+**Status: Submitted to v0. Resulting prototype manually reviewed by the Master Tutor — result PASS, as a design/interaction reference only.** See "Stage 3B v0 prototype — manual design review" in `docs/roster/ROSTER_MVP_STAGE3_DECISIONS.md` for the review record. This brief and any v0 output remain non-authoritative for business logic; Stage 3 implementation remains unauthorized.
 
 **Source checkpoint:** `616f0da — checkpoint complete roster MVP stage 3 decision discovery`
 

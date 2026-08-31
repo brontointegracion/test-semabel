@@ -1704,6 +1704,34 @@ This closure note does not represent the readiness audit itself as implementatio
 
 ---
 
+## Stage 3B v0 prototype — manual design review
+
+The Stage 3B v0.app brief (`docs/roster/ROSTER_MVP_STAGE3_V0_BRIEF.md`, derived from Decisions 1–113 above) was submitted to v0. The resulting interactive prototype was manually explored and reviewed by the Master Tutor against all ten required brief states, across mobile and desktop.
+
+**Result: PASS**, as a design/interaction reference only.
+
+Accepted design characteristics:
+
+* sports roster/list rather than admin spreadsheet;
+* same underlying roster presentation for visitor and organizer;
+* organizer controls layered onto the organizer view;
+* compact mobile player rows;
+* restrained desktop roster width/composition;
+* mobile forms/confirmations use bottom-sheet treatment;
+* desktop forms/confirmations use centered modal treatment;
+* player name is primary; jersey number prominent; sport stats secondary;
+* organizer row actions remain secondary;
+* inactive players are preserved and visually treated as inactive, not deleted;
+* empty roster has distinct visitor and organizer presentation;
+* organizer-only inactive-player access remains secondary/contextual;
+* lightweight success feedback after lifecycle actions.
+
+This PASS does **not** authorize implementation and does **not** make v0 demo business logic authoritative. Decisions 1–113, Sebel's real data model, architecture, identity/privacy/lifecycle rules, and mutation-time validation remain authoritative over anything generated or demonstrated by v0, consistent with Decisions 112 and 113.
+
+Stage 3A and Stage 3B implementation remain unauthorized. Stage 3B implementation remains sequenced after a successful Stage 3A implementation/validation checkpoint, per Decision 20 and Decision 41.
+
+---
+
 ## Architecture clarification — audit events are not current state
 
 Keep the distinction explicit:
@@ -1785,7 +1813,6 @@ The following are explicitly not resolved by this checkpoint unless added later:
 * Delegated coach/team-manager permissions.
 * Competition-specific roster-size limits.
 * Full visual redesign of the Team or NuevaLiga pages.
-* Final v0.app visual brief for Stage 3.
 * Exact implementation architecture/files for Stage 3.
 * Stage 3 implementation authorization.
 
