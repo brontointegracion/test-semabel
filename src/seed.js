@@ -205,13 +205,13 @@ export async function sembrarSiHaceFalta() {
         do { d = 1 + Math.floor(Math.random() * 30) } while (dorsales.has(d))
         dorsales.add(d)
         const nombre = tomarNombre()
-        const { nombrePila, apellido } = partirNombre(nombre)
+        const { nombrePila, apellido1, apellido2 } = partirNombre(nombre)
         jugadores.push({
           id: uid(), codigo: codigoUnico(), ligaId: liga.id, equipoId: eq.id,
           // personaId es el señor; la ficha es dónde está inscrito. Uno puede
           // tener varias fichas: su liga, y un torneo al que lo convocaron.
           personaId: uid(),
-          nombre, nombrePila, apellido, dorsal: d, reclamado: false, activo: true,
+          nombre, nombrePila, apellido1, apellido2, dorsal: d, reclamado: false, activo: true,
         })
       }
     }
@@ -465,7 +465,7 @@ async function sembrarTorneo(canchas) {
       equipoId: equipo.id,
       // La misma persona que ya juega en su liga: su récord no empieza de cero.
       personaId: j.personaId,
-      nombre: j.nombre, nombrePila: j.nombrePila, apellido: j.apellido,
+      nombre: j.nombre, nombrePila: j.nombrePila, apellido1: j.apellido1, apellido2: j.apellido2,
       dorsal: 4 + i,
       reclamado: false, activo: true,
       refuerzo,

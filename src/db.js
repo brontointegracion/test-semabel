@@ -65,7 +65,23 @@ db.version(7).stores({
   if (j.nombrePila === undefined) {
     const partido = partirNombre(j.nombre)
     j.nombrePila = partido.nombrePila
-    j.apellido = partido.apellido
+    j.apellido = partido.apellido1
+  }
+}))
+
+// apellido se separa en apellido1 (obligatorio) y apellido2 (opcional) — ver
+// docs/roster/ROSTER_MVP_STAGE3_DECISIONS.md, Decisión 19. El índice no
+// cambia: igual que apellido antes, apellido1/apellido2 son propiedades
+// simples que nunca se consultan con .where(). apellido se copia tal cual a
+// apellido1 — nunca se vuelve a partir desde nombre, para no perder una
+// corrección que ya hubiera hecho el organizador — y personaId no se toca.
+db.version(8).stores({
+  jugadores: 'id, ligaId, equipoId, codigo, personaId',
+}).upgrade((tx) => tx.table('jugadores').toCollection().modify((j) => {
+  if (j.apellido1 === undefined) {
+    j.apellido1 = j.apellido
+    j.apellido2 = ''
+    delete j.apellido
   }
 }))
 
