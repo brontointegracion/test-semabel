@@ -85,6 +85,15 @@ db.version(8).stores({
   }
 }))
 
+// Auditoría de ciclo de vida de fichas — ver docs/roster/ROSTER_MVP_STAGE3_DECISIONS.md,
+// Decisiones 93–96. Tabla nueva y vacía: no hace falta upgrade(), no toca ninguna
+// tabla existente, y no requiere resembrar (no se toca SEMILLA por esto).
+// fichaId es la única propiedad que hoy se consulta con .where(); tipo/ts/actorId
+// son simples y no se indexan mientras la auditoría siga siendo interna (Decisión 96).
+db.version(9).stores({
+  auditoria: 'id, fichaId',
+})
+
 export const uid = () => Math.random().toString(36).slice(2, 10)
 
 export async function resetear() {

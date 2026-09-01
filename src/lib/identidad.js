@@ -11,9 +11,16 @@
 // docs/roster/ROSTER_MVP_STAGE3_DECISIONS.md, Decisión 19 (apellido1/apellido2).
 // ---------------------------------------------------------------------------
 
-/** Compone el nombre completo tal como lo espera todo el código existente. */
-export function nombreCompleto(nombrePila, apellido) {
-  return [nombrePila, apellido].filter(Boolean).join(' ').trim()
+/**
+ * Compone el nombre completo tal como lo espera todo el código existente.
+ *
+ * jugador.nombre es hoy un campo derivado/compatibilidad, no autoritativo —
+ * ver docs/roster/ROSTER_MVP_STAGE3_DECISIONS.md, Decisión 114. Cada vez que
+ * Stage 3B cambia nombrePila/apellido1/apellido2, debe recomponer jugador.nombre
+ * llamando esta función con los tres campos.
+ */
+export function nombreCompleto(nombrePila, apellido1, apellido2) {
+  return [nombrePila, apellido1, apellido2].filter(Boolean).join(' ').trim()
 }
 
 /**
