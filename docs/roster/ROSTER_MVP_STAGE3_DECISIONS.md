@@ -1841,3 +1841,23 @@ Real Sebel data, behavior, routes, permissions, and identity rules remain author
 A replacement Master Tutor must be able to recover these decisions from this document without depending on previous ChatGPT conversation history.
 
 If repository implementation, another durable artifact, and this decision document disagree, report the inconsistency before continuing.
+
+---
+
+## Post-closure addition
+
+Decision discovery had closed at Decision 113. This addition was made after the Stage 3B readiness/execution-scope analysis identified one genuine, load-bearing gap — what Stage 3B Add/Edit Player should write to `jugador.nombre` now that the authoritative name model is `nombrePila` + `apellido1` + optional `apellido2` — and the Master Tutor and user resolved it.
+
+### Decision 114 — jugador.nombre is a temporary derived compatibility field
+
+`nombrePila`, `apellido1`, and `apellido2` are the authoritative structured player-name fields.
+
+`jugador.nombre` remains persisted, but only as a **derived compatibility/display field**, kept because multiple existing Sebel screens still read it directly for display.
+
+Whenever Stage 3B Add/Edit changes any structured name field (`nombrePila`, `apellido1`, or `apellido2`), `jugador.nombre` must be regenerated from those authoritative structured fields.
+
+`jugador.nombre` must **not** be treated as an independently authoritative identity field, and must never be edited directly as its own source of truth.
+
+This compatibility strategy is intentionally temporary, adopted specifically to avoid a broad cross-application refactor inside Stage 3B.
+
+A later technical-debt-tracked refactor must migrate all remaining `jugador.nombre` display consumers to a shared structured-name/display-name helper, and only then may the persisted compatibility field be safely retired. That refactor is explicitly deferred outside Stage 3B.
