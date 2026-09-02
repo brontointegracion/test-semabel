@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { cronicaDePartido, resumenDeJornada } from './lib/cronica'
+import { rosterActivo } from './lib/roster'
 
 const porId = (filas) => Object.fromEntries(filas.map((f) => [f.id, f]))
 
@@ -260,6 +261,15 @@ export function useEquipo(codigo) {
     }
   }, [codigo])
 }
+
+/**
+ * Plantilla activa de un equipo — Decisiones 15/30: lectura separada de
+ * useEquipo(), que sigue devolviendo todas las fichas (activas e inactivas)
+ * para que estadísticas/resultados no pierdan historial de jugadores
+ * desactivados.
+ */
+export const useRosterActivo = (equipoId) =>
+  useLiveQuery(() => (equipoId ? rosterActivo(equipoId) : []), [equipoId], [])
 
 /** Lo que sigue quien mira: próximos partidos y últimos resultados. */
 export function useLoQueSigo() {

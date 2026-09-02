@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router-dom'
-import { useEquipo, useSiguiendo } from '../datos'
+import { useEquipo, useSiguiendo, useRosterActivo } from '../datos'
 import { tablaPosiciones, marcadorEquipo, estadisticaJugadores } from '../lib/marcador'
 import { seguirEquipo, sigueEquipo } from '../lib/seguir'
 import { codigoDe, urlLiga, urlPartido, urlJugador, urlCancha } from '../lib/enlaces'
@@ -16,6 +16,7 @@ export default function Equipo() {
   const { slug } = useParams()
   const d = useEquipo(codigoDe(slug))
   const siguiendo = useSiguiendo()
+  const plantillaActiva = useRosterActivo(d?.equipo?.id)
 
   useMeta({
     titulo: d && `${d.equipo.nombre}: resultados, plantilla y próximo partido`,
@@ -160,7 +161,7 @@ export default function Equipo() {
         </p>
       )}
       <div className="lista">
-        {jugadores.map((j) => {
+        {plantillaActiva.map((j) => {
           const s = stats.find((x) => x.jugador.id === j.id)
           return (
             <Link key={j.id} to={urlJugador(j)} className="jugador-fila">
@@ -179,6 +180,7 @@ export default function Equipo() {
             </Link>
           )
         })}
+        {!plantillaActiva.length && <Vacio>Todavía no hay jugadores en este equipo.</Vacio>}
       </div>
 
       <h2 className="seccion">Resultados</h2>
