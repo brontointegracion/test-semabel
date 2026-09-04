@@ -1,10 +1,12 @@
+import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { useEquipo, useSiguiendo, useRosterActivo } from '../datos'
+import { useEquipo, useSesion, useSiguiendo, useRosterActivo, useRosterInactivo } from '../datos'
+import { esDuenoDe } from '../lib/sesion'
 import { tablaPosiciones, marcadorEquipo, estadisticaJugadores } from '../lib/marcador'
 import { seguirEquipo, sigueEquipo } from '../lib/seguir'
 import { codigoDe, urlLiga, urlPartido, urlJugador, urlCancha } from '../lib/enlaces'
 import { useMeta } from '../lib/meta'
-import { Topbar, Escudo, Vacio, RelojVivo, fechaCorta, hora, diaRelativo } from '../ui'
+import { Topbar, Escudo, Vacio, RelojVivo, MenuJugador, fechaCorta, hora, diaRelativo } from '../ui'
 
 /**
  * La página del equipo.
@@ -15,8 +17,11 @@ import { Topbar, Escudo, Vacio, RelojVivo, fechaCorta, hora, diaRelativo } from 
 export default function Equipo() {
   const { slug } = useParams()
   const d = useEquipo(codigoDe(slug))
+  const sesion = useSesion()
   const siguiendo = useSiguiendo()
   const plantillaActiva = useRosterActivo(d?.equipo?.id)
+  const inactivos = useRosterInactivo(d?.equipo?.id)
+  const [menuAbierto, setMenuAbierto] = useState(null)
 
   useMeta({
     titulo: d && `${d.equipo.nombre}: resultados, plantilla y próximo partido`,
@@ -32,6 +37,10 @@ export default function Equipo() {
     equiposPorId, canchasPorId, eventosPorPartido,
     partidosLiga, equiposLiga, eventosLiga,
   } = d
+
+  // Decisión 62/97: el organizador ve la misma Plantilla, con controles de
+  // gestión encima — no una página de administración aparte.
+  const esOrganizadorDelEquipo = esDuenoDe(sesion, liga)
 
   const tabla = tablaPosiciones({
     equipos: equiposLiga,
@@ -153,7 +162,14 @@ export default function Equipo() {
         </>
       )}
 
-      <h2 className="seccion">{liga?.esTorneo ? 'Convocatoria' : 'Plantilla'}</h2>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, margin: '26px 0 10px' }}>
+        <h2 className="seccion" style={{ margin: 0 }}>{liga?.esTorneo ? 'Convocatoria' : 'Plantilla'}</h2>
+        {esOrganizadorDelEquipo && (
+          <button className="btn fantasma" style={{ width: 'auto', padding: '7px 12px', fontSize: '0.82rem' }}>
+            + Añadir jugador
+          </button>
+        )}
+      </div>
       {liga?.esTorneo && (
         <p className="sub" style={{ marginTop: -6, marginBottom: 10 }}>
           Para un torneo no viaja el equipo: viajan los que pueden. El resto se completa con
@@ -164,24 +180,51 @@ export default function Equipo() {
         {plantillaActiva.map((j) => {
           const s = stats.find((x) => x.jugador.id === j.id)
           return (
-            <Link key={j.id} to={urlJugador(j)} className="jugador-fila">
-              <div className="dorsal">{j.dorsal}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="nombre" style={{ fontWeight: 600 }}>{j.nombre}</div>
-                <div className="sub" style={{ fontSize: '0.74rem' }}>
-                  {j.refuerzo && <span className="pill acento" style={{ marginRight: 6 }}>Refuerzo</span>}
-                  {s?.partidos ? `${s.promedio.toFixed(1)} pts por juego · ${s.faltas} faltas` : 'Sin partidos'}
-                  {j.deEquipo && <> · de {j.deEquipo}</>}
+            <div key={j.id} className="jugador-fila">
+              <Link to={urlJugador(j)} style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                <div className="dorsal">{j.dorsal}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="nombre" style={{ fontWeight: 600 }}>{j.nombre}</div>
+                  <div className="sub" style={{ fontSize: '0.74rem' }}>
+                    {j.refuerzo && <span className="pill acento" style={{ marginRight: 6 }}>Refuerzo</span>}
+                    {s?.partidos ? `${s.promedio.toFixed(1)} pts por juego · ${s.faltas} faltas` : 'Sin partidos'}
+                    {j.deEquipo && <> · de {j.deEquipo}</>}
+                  </div>
                 </div>
-              </div>
-              {s?.partidos > 0 && (
-                <div style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{s.puntos}</div>
+                {s?.partidos > 0 && (
+                  <div style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{s.puntos}</div>
+                )}
+              </Link>
+              {esOrganizadorDelEquipo && (
+                <MenuJugador
+                  abierto={menuAbierto === j.id}
+                  onAbrir={() => setMenuAbierto(j.id)}
+                  onCerrar={() => setMenuAbierto(null)}
+                  onEditar={() => setMenuAbierto(null)}
+                  onDesactivar={() => setMenuAbierto(null)}
+                />
               )}
-            </Link>
+            </div>
           )
         })}
-        {!plantillaActiva.length && <Vacio>Todavía no hay jugadores en este equipo.</Vacio>}
+        {!plantillaActiva.length && (
+          <Vacio>
+            Todavía no hay jugadores en este equipo.
+            {esOrganizadorDelEquipo && (
+              <div style={{ marginTop: 10 }}>
+                <button className="btn fantasma" style={{ width: 'auto', padding: '7px 12px', fontSize: '0.82rem' }}>
+                  Añadir primer jugador
+                </button>
+              </div>
+            )}
+          </Vacio>
+        )}
       </div>
+      {esOrganizadorDelEquipo && inactivos.length > 0 && (
+        <button className="btn fantasma" style={{ width: 'auto', padding: '7px 12px', fontSize: '0.82rem', marginTop: 8 }}>
+          Ver inactivos
+        </button>
+      )}
 
       <h2 className="seccion">Resultados</h2>
       <div className="lista">

@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { cronicaDePartido, resumenDeJornada } from './lib/cronica'
-import { rosterActivo } from './lib/roster'
+import { rosterActivo, rosterInactivo } from './lib/roster'
 
 const porId = (filas) => Object.fromEntries(filas.map((f) => [f.id, f]))
 
@@ -270,6 +270,14 @@ export function useEquipo(codigo) {
  */
 export const useRosterActivo = (equipoId) =>
   useLiveQuery(() => (equipoId ? rosterActivo(equipoId) : []), [equipoId], [])
+
+/**
+ * Fichas inactivas de un equipo. Por ahora la UI solo la usa para decidir si
+ * "Ver inactivos" debe aparecer (Decisión 90) — el panel de inactivos en sí
+ * todavía no existe.
+ */
+export const useRosterInactivo = (equipoId) =>
+  useLiveQuery(() => (equipoId ? rosterInactivo(equipoId) : []), [equipoId], [])
 
 /** Lo que sigue quien mira: próximos partidos y últimos resultados. */
 export function useLoQueSigo() {

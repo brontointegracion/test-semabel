@@ -986,6 +986,30 @@ td.pts { font-weight: 800; color: var(--acento-ink); }
 
 .jugador-fila .suma b { color: var(--acento-ink); }
 
+.menu-jugador { position: relative; flex: none; }
+
+.menu-jugador-boton {
+  width: 32px; height: 32px; border-radius: 9px;
+  border: 1px solid var(--line-soft); background: var(--surface);
+  color: var(--ink-mute); font-size: 1.1rem; font-weight: 700; line-height: 1;
+  cursor: pointer; display: grid; place-items: center;
+}
+
+.menu-jugador-lista {
+  position: absolute; top: calc(100% + 4px); right: 0; z-index: 5;
+  min-width: 170px; padding: 4px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
+  display: flex; flex-direction: column;
+}
+
+.menu-jugador-lista button {
+  text-align: left; padding: 9px 10px; border-radius: 8px;
+  background: transparent; border: none; font-size: 0.85rem; color: var(--ink);
+  cursor: pointer;
+}
+
+.menu-jugador-lista button:hover { background: var(--surface-2); }
+
 .anota { display: flex; gap: 5px; }
 
 .anota button {

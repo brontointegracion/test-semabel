@@ -113,6 +113,40 @@ export function Vacio({ children }) {
 }
 
 /**
+ * Menú de acciones del organizador sobre una fila de Plantilla (Decisión 88).
+ * Solo abre/cierra: las acciones todavía no mutan nada — eso llega en un
+ * slice aparte, cuando exista el formulario de Editar y la confirmación de
+ * Desactivar.
+ */
+export function MenuJugador({ abierto, onAbrir, onCerrar, onEditar, onDesactivar }) {
+  useEffect(() => {
+    if (!abierto) return
+    document.addEventListener('pointerdown', onCerrar)
+    return () => document.removeEventListener('pointerdown', onCerrar)
+  }, [abierto, onCerrar])
+
+  return (
+    <div className="menu-jugador">
+      <button
+        className="menu-jugador-boton"
+        aria-label="Acciones del jugador"
+        aria-haspopup="menu"
+        aria-expanded={abierto}
+        onClick={abierto ? onCerrar : onAbrir}
+      >
+        ⋯
+      </button>
+      {abierto && (
+        <div className="menu-jugador-lista" role="menu">
+          <button role="menuitem" onClick={onEditar}>Editar jugador</button>
+          <button role="menuitem" onClick={onDesactivar}>Desactivar jugador</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
  * Período y cuenta regresiva de un partido en curso.
  *
  * Se refresca solo, y únicamente mientras el reloj corre: si está detenido no
