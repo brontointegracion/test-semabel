@@ -6,7 +6,8 @@ import { tablaPosiciones, marcadorEquipo, estadisticaJugadores } from '../lib/ma
 import { seguirEquipo, sigueEquipo } from '../lib/seguir'
 import { codigoDe, urlLiga, urlPartido, urlJugador, urlCancha } from '../lib/enlaces'
 import { useMeta } from '../lib/meta'
-import { Topbar, Escudo, Vacio, RelojVivo, MenuJugador, fechaCorta, hora, diaRelativo } from '../ui'
+import { Topbar, Escudo, Vacio, RelojVivo, MenuJugador, Toast, fechaCorta, hora, diaRelativo } from '../ui'
+import { FormularioJugador } from '../plantilla'
 
 /**
  * La página del equipo.
@@ -22,6 +23,8 @@ export default function Equipo() {
   const plantillaActiva = useRosterActivo(d?.equipo?.id)
   const inactivos = useRosterInactivo(d?.equipo?.id)
   const [menuAbierto, setMenuAbierto] = useState(null)
+  const [formularioAbierto, setFormularioAbierto] = useState(false)
+  const [aviso, setAviso] = useState(null)
 
   useMeta({
     titulo: d && `${d.equipo.nombre}: resultados, plantilla y próximo partido`,
@@ -165,7 +168,11 @@ export default function Equipo() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, margin: '26px 0 10px' }}>
         <h2 className="seccion" style={{ margin: 0 }}>{liga?.esTorneo ? 'Convocatoria' : 'Plantilla'}</h2>
         {esOrganizadorDelEquipo && (
-          <button className="btn fantasma" style={{ width: 'auto', padding: '7px 12px', fontSize: '0.82rem' }}>
+          <button
+            className="btn fantasma"
+            style={{ width: 'auto', padding: '7px 12px', fontSize: '0.82rem' }}
+            onClick={() => setFormularioAbierto(true)}
+          >
             + Añadir jugador
           </button>
         )}
@@ -212,7 +219,11 @@ export default function Equipo() {
             Todavía no hay jugadores en este equipo.
             {esOrganizadorDelEquipo && (
               <div style={{ marginTop: 10 }}>
-                <button className="btn fantasma" style={{ width: 'auto', padding: '7px 12px', fontSize: '0.82rem' }}>
+                <button
+                  className="btn fantasma"
+                  style={{ width: 'auto', padding: '7px 12px', fontSize: '0.82rem' }}
+                  onClick={() => setFormularioAbierto(true)}
+                >
                   Añadir primer jugador
                 </button>
               </div>
@@ -254,6 +265,17 @@ export default function Equipo() {
         })}
         {!jugados.length && <Vacio>Todavía no ha jugado.</Vacio>}
       </div>
+
+      {formularioAbierto && (
+        <FormularioJugador
+          sesion={sesion}
+          liga={liga}
+          equipoId={equipo.id}
+          onCerrar={() => setFormularioAbierto(false)}
+          onExito={setAviso}
+        />
+      )}
+      <Toast mensaje={aviso} onFin={() => setAviso(null)} />
     </>
   )
 }

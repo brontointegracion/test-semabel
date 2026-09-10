@@ -147,6 +147,64 @@ export function MenuJugador({ abierto, onAbrir, onCerrar, onEditar, onDesactivar
 }
 
 /**
+ * Contenedor responsivo compartido por Añadir/Editar jugador y las
+ * confirmaciones de ciclo de vida (Decisiones 23, 104, 105): modal en
+ * escritorio, hoja inferior en móvil, misma marcación en ambos casos.
+ *
+ * Solo presenta. Quien lo usa decide qué hacer con un intento de cierre
+ * (cerrar de una vez, o preguntar primero) — por eso el callback se llama
+ * onSolicitarCierre y no onCerrar.
+ */
+export function Hoja({ abierta, titulo, onSolicitarCierre, children }) {
+  useEffect(() => {
+    if (!abierta) return
+    const antes = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onTecla = (e) => { if (e.key === 'Escape') onSolicitarCierre() }
+    document.addEventListener('keydown', onTecla)
+    return () => {
+      document.body.style.overflow = antes
+      document.removeEventListener('keydown', onTecla)
+    }
+  }, [abierta, onSolicitarCierre])
+
+  if (!abierta) return null
+
+  return (
+    <div className="hoja-fondo" onClick={onSolicitarCierre}>
+      <div
+        className="hoja"
+        role="dialog"
+        aria-modal="true"
+        aria-label={titulo}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="hoja-cabecera">
+          <h2>{titulo}</h2>
+          <button type="button" className="hoja-cerrar" aria-label="Cerrar" onClick={onSolicitarCierre}>×</button>
+        </div>
+        <div className="hoja-cuerpo">{children}</div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Confirmación breve y no bloqueante tras una mutación exitosa (Decisión 47).
+ * Se retira sola; no requiere que el organizador la descarte.
+ */
+export function Toast({ mensaje, onFin }) {
+  useEffect(() => {
+    if (!mensaje) return
+    const t = setTimeout(onFin, 2600)
+    return () => clearTimeout(t)
+  }, [mensaje, onFin])
+
+  if (!mensaje) return null
+  return <div className="toast" role="status">{mensaje}</div>
+}
+
+/**
  * Período y cuenta regresiva de un partido en curso.
  *
  * Se refresca solo, y únicamente mientras el reloj corre: si está detenido no

@@ -1079,6 +1079,58 @@ td.pts { font-weight: 800; color: var(--acento-ink); }
   color: var(--ink); font-size: 1rem; width: 100%;
 }
 
+.campo-error { font-size: 0.76rem; color: var(--acento-ink); }
+
+/* ---- hoja / modal (Decisiones 23, 104, 105) ---- */
+
+.hoja-fondo {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(21, 21, 26, 0.45);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+
+.hoja {
+  background: var(--paper);
+  width: 100%;
+  max-height: 88vh;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+.hoja-cabecera {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 18px; border-bottom: 1px solid var(--line-soft);
+  flex: none;
+}
+
+.hoja-cabecera h2 { margin: 0; font-size: 1.05rem; font-weight: 700; }
+
+.hoja-cerrar {
+  border: none; background: transparent; color: var(--ink-mute);
+  font-size: 1.5rem; line-height: 1; cursor: pointer; padding: 4px 6px;
+}
+
+.hoja-cuerpo { padding: 18px; overflow-y: auto; }
+
+@media (min-width: 900px) {
+  .hoja-fondo { align-items: center; padding: 24px; }
+  .hoja { max-width: 460px; border-radius: var(--r-lg); max-height: 84vh; }
+}
+
+/* ---- toast (Decisión 47) ---- */
+
+.toast {
+  position: fixed; left: 50%; bottom: calc(var(--tab-h) + 16px);
+  transform: translateX(-50%);
+  z-index: 110;
+  background: var(--ink); color: #fff;
+  padding: 11px 18px; border-radius: 999px;
+  font-size: 0.86rem; font-weight: 600;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  white-space: nowrap;
+}
+
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 
 .chip {
