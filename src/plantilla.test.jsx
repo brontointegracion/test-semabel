@@ -30,8 +30,14 @@ function borrarBd() {
 async function cargar() {
   const dbMod = await import('./db.js')
   const plantillaMod = await import('./plantilla.jsx')
+  const rosterMod = await import('./lib/roster.js')
   await dbMod.db.jugadores.toArray()
-  return { db: dbMod.db, FormularioJugador: plantillaMod.FormularioJugador }
+  return {
+    db: dbMod.db,
+    FormularioJugador: plantillaMod.FormularioJugador,
+    ConfirmarDesactivar: plantillaMod.ConfirmarDesactivar,
+    agregarJugador: rosterMod.agregarJugador,
+  }
 }
 
 beforeEach(async () => {
@@ -45,6 +51,7 @@ afterEach(async () => {
 })
 
 const sesionDueno = { rol: 'organizador', cuentaId: 'yo' }
+const sesionOtro = { rol: 'organizador', cuentaId: 'otro' }
 
 async function sembrarLiga(db) {
   const liga = { id: 'liga1', codigo: '1001', estado: 'publicada', organizadorId: 'yo' }
@@ -182,5 +189,96 @@ describe('FormularioJugador — protección de cambios sin guardar (Decisiones 6
 
     await waitFor(() => expect(onCerrar).toHaveBeenCalled())
     expect(screen.queryByText('Tienes cambios sin guardar. ¿Qué deseas hacer?')).toBeNull()
+  })
+})
+
+describe('ConfirmarDesactivar (Stage 3B, Slice 5 — Decisiones 8, 25, 85, 105)', () => {
+  async function sembrarJugadorActivo(db, agregarJugador, liga, equipoId) {
+    const r = await agregarJugador({ sesion: sesionDueno, liga, equipoId, campos: camposBase })
+    expect(r.tipo).toBe('creado')
+    return r.ficha
+  }
+
+  it('identifica al jugador y cancelar no muta nada', async () => {
+    const { db, ConfirmarDesactivar, agregarJugador } = await cargar()
+    const { liga, equipoA } = await sembrarLiga(db)
+    const ficha = await sembrarJugadorActivo(db, agregarJugador, liga, equipoA.id)
+    const onCerrar = vi.fn()
+    const onExito = vi.fn()
+    const user = userEvent.setup()
+
+    render(
+      <MemoryRouter>
+        <ConfirmarDesactivar sesion={sesionDueno} liga={liga} ficha={ficha} onCerrar={onCerrar} onExito={onExito} />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText(`#${ficha.dorsal} ${ficha.nombre}`, { exact: false })).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }))
+
+    expect(onExito).not.toHaveBeenCalled()
+    expect(onCerrar).toHaveBeenCalled()
+    const enBd = await db.jugadores.get(ficha.id)
+    expect(enBd.activo).not.toBe(false)
+  })
+
+  it('confirmar desactiva vía la operación real: desaparece de rosterActivo, se conserva la ficha, y libera el número', async () => {
+    const { db, ConfirmarDesactivar, agregarJugador } = await cargar()
+    const { rosterActivo } = await import('./lib/roster.js')
+    const { liga, equipoA } = await sembrarLiga(db)
+    const ficha = await sembrarJugadorActivo(db, agregarJugador, liga, equipoA.id)
+    const onCerrar = vi.fn()
+    const onExito = vi.fn()
+    const user = userEvent.setup()
+
+    render(
+      <MemoryRouter>
+        <ConfirmarDesactivar sesion={sesionDueno} liga={liga} ficha={ficha} onCerrar={onCerrar} onExito={onExito} />
+      </MemoryRouter>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Desactivar jugador' }))
+
+    await waitFor(() => expect(onExito).toHaveBeenCalledWith('Jugador desactivado'))
+    expect(onCerrar).toHaveBeenCalled()
+
+    // La ficha se conserva — no se borra — pero ya no aparece en la plantilla activa.
+    const enBd = await db.jugadores.get(ficha.id)
+    expect(enBd).toBeTruthy()
+    expect(enBd.activo).toBe(false)
+    expect(enBd.desactivadoEn).toBeTruthy()
+    const activos = await rosterActivo(equipoA.id)
+    expect(activos.find((j) => j.id === ficha.id)).toBeUndefined()
+
+    // El número queda disponible para otro jugador activo del mismo equipo.
+    const otro = await agregarJugador({
+      sesion: sesionDueno, liga, equipoId: equipoA.id,
+      campos: { nombrePila: 'Ana', apellido1: 'Julia', apellido2: 'Rodríguez', dorsal: ficha.dorsal },
+    })
+    expect(otro.tipo).toBe('creado')
+  })
+
+  it('rechaza la desactivación si la sesión no es la organizadora dueña, y no muta nada', async () => {
+    const { db, ConfirmarDesactivar, agregarJugador } = await cargar()
+    const { liga, equipoA } = await sembrarLiga(db)
+    const ficha = await sembrarJugadorActivo(db, agregarJugador, liga, equipoA.id)
+    const onCerrar = vi.fn()
+    const onExito = vi.fn()
+    const user = userEvent.setup()
+
+    render(
+      <MemoryRouter>
+        <ConfirmarDesactivar sesion={sesionOtro} liga={liga} ficha={ficha} onCerrar={onCerrar} onExito={onExito} />
+      </MemoryRouter>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Desactivar jugador' }))
+
+    expect(await screen.findByText('No autorizado para modificar la plantilla de este equipo.')).toBeTruthy()
+    expect(onExito).not.toHaveBeenCalled()
+    expect(onCerrar).not.toHaveBeenCalled()
+    const enBd = await db.jugadores.get(ficha.id)
+    expect(enBd.activo).not.toBe(false)
   })
 })

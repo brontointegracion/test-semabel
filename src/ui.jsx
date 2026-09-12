@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useSesion } from './datos'
 import { entrar, salir, esOrganizador } from './lib/sesion'
@@ -119,14 +119,24 @@ export function Vacio({ children }) {
  * Desactivar.
  */
 export function MenuJugador({ abierto, onAbrir, onCerrar, onEditar, onDesactivar }) {
+  const raiz = useRef(null)
+
+  // El pointerdown de un clic en un ítem del menú también llega aquí (burbujea
+  // hasta document antes de que React dispare el click): si no se descarta,
+  // cierra el menú y desmonta el botón antes de que su propio onClick llegue
+  // a ejecutarse. Por eso se ignora todo pointerdown que ocurra dentro del menú.
   useEffect(() => {
     if (!abierto) return
-    document.addEventListener('pointerdown', onCerrar)
-    return () => document.removeEventListener('pointerdown', onCerrar)
+    const cerrarFuera = (e) => {
+      if (raiz.current?.contains(e.target)) return
+      onCerrar()
+    }
+    document.addEventListener('pointerdown', cerrarFuera)
+    return () => document.removeEventListener('pointerdown', cerrarFuera)
   }, [abierto, onCerrar])
 
   return (
-    <div className="menu-jugador">
+    <div className="menu-jugador" ref={raiz}>
       <button
         className="menu-jugador-boton"
         aria-label="Acciones del jugador"

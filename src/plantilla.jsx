@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Hoja } from './ui'
-import { agregarJugador, validarCamposJugador } from './lib/roster'
+import { agregarJugador, desactivarJugador, validarCamposJugador } from './lib/roster'
 import { urlJugador } from './lib/enlaces'
 
 const CAMPOS_VACIOS = { nombrePila: '', apellido1: '', apellido2: '', dorsal: '', fechaNacimiento: '' }
@@ -255,6 +255,52 @@ export function FormularioJugador({ sesion, liga, equipoId, onCerrar, onExito })
           </div>
         </div>
       )}
+    </Hoja>
+  )
+}
+
+/**
+ * Confirmar desactivar jugador (Stage 3B, Slice 5 — Decisiones 8, 25, 85, 105).
+ *
+ * Solo confirma y llama desactivarJugador(): la regla de negocio (releer el
+ * estado dentro de la transacción, liberar el número, registrar auditoría)
+ * vive enteramente en roster.js (Decisiones 29/30/63). Un error real del
+ * dominio (permiso, ficha ya inactiva) se muestra tal cual — nunca se oculta
+ * ni se sustituye por una mutación local de la UI.
+ */
+export function ConfirmarDesactivar({ sesion, liga, ficha, onCerrar, onExito }) {
+  const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState(null)
+
+  async function confirmar() {
+    setGuardando(true)
+    setError(null)
+    try {
+      await desactivarJugador({ sesion, liga, ficha })
+      onExito('Jugador desactivado')
+      onCerrar()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  return (
+    <Hoja abierta titulo="Desactivar jugador" onSolicitarCierre={onCerrar}>
+      <p style={{ margin: '0 0 12px' }}>
+        <strong>#{ficha.dorsal ?? '—'} {ficha.nombre}</strong> ya no estará disponible para futuros partidos
+        de este equipo. Los partidos y estadísticas anteriores se conservan.
+      </p>
+      {error && <p className="campo-error" style={{ marginBottom: 12 }}>{error}</p>}
+      <div className="btn-fila">
+        <button type="button" className="btn fantasma" onClick={onCerrar} disabled={guardando}>
+          Cancelar
+        </button>
+        <button type="button" className="btn" onClick={confirmar} disabled={guardando}>
+          {guardando ? 'Desactivando…' : 'Desactivar jugador'}
+        </button>
+      </div>
     </Hoja>
   )
 }

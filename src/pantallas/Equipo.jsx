@@ -7,7 +7,7 @@ import { seguirEquipo, sigueEquipo } from '../lib/seguir'
 import { codigoDe, urlLiga, urlPartido, urlJugador, urlCancha } from '../lib/enlaces'
 import { useMeta } from '../lib/meta'
 import { Topbar, Escudo, Vacio, RelojVivo, MenuJugador, Toast, fechaCorta, hora, diaRelativo } from '../ui'
-import { FormularioJugador } from '../plantilla'
+import { FormularioJugador, ConfirmarDesactivar } from '../plantilla'
 
 /**
  * La página del equipo.
@@ -24,6 +24,7 @@ export default function Equipo() {
   const inactivos = useRosterInactivo(d?.equipo?.id)
   const [menuAbierto, setMenuAbierto] = useState(null)
   const [formularioAbierto, setFormularioAbierto] = useState(false)
+  const [aDesactivar, setADesactivar] = useState(null)
   const [aviso, setAviso] = useState(null)
 
   useMeta({
@@ -208,7 +209,7 @@ export default function Equipo() {
                   onAbrir={() => setMenuAbierto(j.id)}
                   onCerrar={() => setMenuAbierto(null)}
                   onEditar={() => setMenuAbierto(null)}
-                  onDesactivar={() => setMenuAbierto(null)}
+                  onDesactivar={() => { setMenuAbierto(null); setADesactivar(j) }}
                 />
               )}
             </div>
@@ -272,6 +273,15 @@ export default function Equipo() {
           liga={liga}
           equipoId={equipo.id}
           onCerrar={() => setFormularioAbierto(false)}
+          onExito={setAviso}
+        />
+      )}
+      {aDesactivar && (
+        <ConfirmarDesactivar
+          sesion={sesion}
+          liga={liga}
+          ficha={aDesactivar}
+          onCerrar={() => setADesactivar(null)}
           onExito={setAviso}
         />
       )}
