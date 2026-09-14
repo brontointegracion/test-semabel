@@ -37,6 +37,7 @@ async function cargar() {
     FormularioJugador: plantillaMod.FormularioJugador,
     ConfirmarDesactivar: plantillaMod.ConfirmarDesactivar,
     agregarJugador: rosterMod.agregarJugador,
+    editarJugador: rosterMod.editarJugador,
   }
 }
 
@@ -62,10 +63,17 @@ async function sembrarLiga(db) {
   return { liga, equipoA, equipoB }
 }
 
-function renderFormulario(FormularioJugador, { liga, equipoId, onCerrar = vi.fn(), onExito = vi.fn() }) {
+function renderFormulario(FormularioJugador, { liga, equipoId, ficha, onCerrar = vi.fn(), onExito = vi.fn() }) {
   render(
     <MemoryRouter>
-      <FormularioJugador sesion={sesionDueno} liga={liga} equipoId={equipoId} onCerrar={onCerrar} onExito={onExito} />
+      <FormularioJugador
+        sesion={sesionDueno}
+        liga={liga}
+        equipoId={equipoId}
+        ficha={ficha}
+        onCerrar={onCerrar}
+        onExito={onExito}
+      />
     </MemoryRouter>,
   )
   return { onCerrar, onExito }
@@ -189,6 +197,165 @@ describe('FormularioJugador — protección de cambios sin guardar (Decisiones 6
 
     await waitFor(() => expect(onCerrar).toHaveBeenCalled())
     expect(screen.queryByText('Tienes cambios sin guardar. ¿Qué deseas hacer?')).toBeNull()
+  })
+})
+
+describe('FormularioJugador — modo Editar (Stage 3B, Slice 6 — Decisiones 7, 24, 55–57, 63, 68, 84, 104)', () => {
+  async function sembrarJugadorActivo(db, agregarJugador, liga, equipoId, campos = camposBase) {
+    const r = await agregarJugador({ sesion: sesionDueno, liga, equipoId, campos })
+    expect(r.tipo).toBe('creado')
+    return r.ficha
+  }
+
+  it('abre prellenado con los valores actuales de la ficha, y el botón dice "Guardar cambios"', async () => {
+    const { db, FormularioJugador, agregarJugador } = await cargar()
+    const { liga, equipoA } = await sembrarLiga(db)
+    const ficha = await sembrarJugadorActivo(db, agregarJugador, liga, equipoA.id, {
+      ...camposBase, fechaNacimiento: '2000-05-15',
+    })
+
+    renderFormulario(FormularioJugador, { liga, equipoId: equipoA.id, ficha })
+
+    expect(screen.getByLabelText('Nombre *').value).toBe('Miguel')
+    expect(screen.getByLabelText('Primer apellido *').value).toBe('Sam')
+    expect(screen.getByLabelText('Segundo apellido').value).toBe('Robles')
+    expect(screen.getByLabelText('Número *').value).toBe('10')
+    expect(screen.getByLabelText('Fecha de nacimiento').value).toBe('2000-05-15')
+    expect(screen.getByRole('button', { name: 'Guardar cambios' })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: 'Editar jugador' })).toBeTruthy()
+  })
+
+  it('cerrar sin tocar nada no pide confirmar', async () => {
+    const { db, FormularioJugador, agregarJugador } = await cargar()
+    const { liga, equipoA } = await sembrarLiga(db)
+    const ficha = await sembrarJugadorActivo(db, agregarJugador, liga, equipoA.id)
+    const user = userEvent.setup()
+    const { onCerrar } = renderFormulario(FormularioJugador, { liga, equipoId: equipoA.id, ficha })
+
+    await user.click(screen.getByRole('button', { name: 'Cerrar' }))
+
+    await waitFor(() => expect(onCerrar).toHaveBeenCalled())
+    expect(screen.queryByText('Tienes cambios sin guardar. ¿Qué deseas hacer?')).toBeNull()
+  })
+
+  it('cambiar un valor y cerrar dispara la protección de cambios sin guardar (Decisión 68)', async () => {
+    const { db, FormularioJugador, agregarJugador } = await cargar()
+    const { liga, equipoA } = await sembrarLiga(db)
+    const ficha = await sembrarJugadorActivo(db, agregarJugador, liga, equipoA.id)
+    const user = userEvent.setup()
+    const { onCerrar } = renderFormulario(FormularioJugador, { liga, equipoId: equipoA.id, ficha })
+
+    await user.clear(screen.getByLabelText('Número *'))
+    await user.type(screen.getByLabelText('Número *'), '11')
+    await user.click(screen.getByRole('button', { name: 'Cerrar' }))
+
+    expect(await screen.findByText('Tienes cambios sin guardar. ¿Qué deseas hacer?')).toBeTruthy()
+    expect(onCerrar).not.toHaveBeenCalled()
+  })
+
+  it('guardar cambios llama a la operación real editarJugador, persiste, y avisa éxito', async () => {
+    const { db, FormularioJugador, agregarJugador } = await cargar()
+    const { liga, equipoA } = await sembrarLiga(db)
+    const ficha = await sembrarJugadorActivo(db, agregarJugador, liga, equipoA.id)
+    const user = userEvent.setup()
+    const { onCerrar, onExito } = renderFormulario(FormularioJugador, { liga, equipoId: equipoA.id, ficha })
+
+    await user.clear(screen.getByLabelText('Segundo apellido'))
+    await user.type(screen.getByLabelText('Segundo apellido'), 'Robles Vega')
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+
+    await waitFor(() => expect(onExito).toHaveBeenCalledWith('Jugador actualizado'))
+    expect(onCerrar).toHaveBeenCalled()
+
+    const enBd = await db.jugadores.get(ficha.id)
+    expect(enBd.apellido2).toBe('Robles Vega')
+    expect(enBd.nombre).toBe('Miguel Sam Robles Vega')
+    expect(enBd.personaId).toBe(ficha.personaId)
+  })
+
+  it('editar solo el número no dispara la resolución de duplicados por nombre (Decisión 7)', async () => {
+    const { db, FormularioJugador, agregarJugador } = await cargar()
+    const { liga, equipoA, equipoB } = await sembrarLiga(db)
+    // Otro jugador con el mismo nombre ya existe en la liga (otro equipo).
+    await sembrarJugadorActivo(db, agregarJugador, liga, equipoB.id)
+    const ficha = await sembrarJugadorActivo(db, agregarJugador, liga, equipoA.id, {
+      ...camposBase, apellido1: 'Distinto', dorsal: 20,
+    })
+    const user = userEvent.setup()
+    const { onExito } = renderFormulario(FormularioJugador, { liga, equipoId: equipoA.id, ficha })
+
+    await user.clear(screen.getByLabelText('Número *'))
+    await user.type(screen.getByLabelText('Número *'), '21')
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+
+    // Va directo a éxito: nunca pasa por la pantalla de candidatos.
+    await waitFor(() => expect(onExito).toHaveBeenCalledWith('Jugador actualizado'))
+    expect(screen.queryByText('Encontramos un jugador con el mismo nombre.')).toBeNull()
+    const enBd = await db.jugadores.get(ficha.id)
+    expect(enBd.dorsal).toBe(21)
+  })
+
+  it('editar el nombre a uno que coincide con otro dispara la resolución de identidad, y guardar no cambia personaId (Decisiones 7, 57)', async () => {
+    const { db, FormularioJugador, agregarJugador } = await cargar()
+    const { liga, equipoA, equipoB } = await sembrarLiga(db)
+    const otro = await sembrarJugadorActivo(db, agregarJugador, liga, equipoB.id)
+    const ficha = await sembrarJugadorActivo(db, agregarJugador, liga, equipoA.id, {
+      ...camposBase, apellido1: 'Distinto', dorsal: 20,
+    })
+    const user = userEvent.setup()
+    const { onExito } = renderFormulario(FormularioJugador, { liga, equipoId: equipoA.id, ficha })
+
+    await user.clear(screen.getByLabelText('Primer apellido *'))
+    await user.type(screen.getByLabelText('Primer apellido *'), 'Sam')
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+
+    expect(await screen.findByText('Encontramos un jugador con el mismo nombre.')).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Es la misma persona' }))
+
+    await waitFor(() => expect(onExito).toHaveBeenCalledWith('Jugador actualizado'))
+    const enBd = await db.jugadores.get(ficha.id)
+    expect(enBd.apellido1).toBe('Sam')
+    // Editar nunca reasigna personaId (Decisión 57), incluso confirmando "misma persona".
+    expect(enBd.personaId).toBe(ficha.personaId)
+    expect(enBd.personaId).not.toBe(otro.personaId)
+  })
+
+  it('puede borrar una fecha de nacimiento previamente registrada (Decisión 56)', async () => {
+    const { db, FormularioJugador, agregarJugador } = await cargar()
+    const { liga, equipoA } = await sembrarLiga(db)
+    const ficha = await sembrarJugadorActivo(db, agregarJugador, liga, equipoA.id, {
+      ...camposBase, fechaNacimiento: '2000-05-15',
+    })
+    const user = userEvent.setup()
+    const { onExito } = renderFormulario(FormularioJugador, { liga, equipoId: equipoA.id, ficha })
+
+    await user.clear(screen.getByLabelText('Fecha de nacimiento'))
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+
+    await waitFor(() => expect(onExito).toHaveBeenCalledWith('Jugador actualizado'))
+    const enBd = await db.jugadores.get(ficha.id)
+    expect(enBd.fechaNacimiento).toBeUndefined()
+  })
+
+  it('un conflicto de número al guardar preserva los datos escritos (Decisión 63)', async () => {
+    const { db, FormularioJugador, agregarJugador } = await cargar()
+    const { liga, equipoA } = await sembrarLiga(db)
+    await sembrarJugadorActivo(db, agregarJugador, liga, equipoA.id, { ...camposBase, dorsal: 5 })
+    const ficha = await sembrarJugadorActivo(db, agregarJugador, liga, equipoA.id, {
+      ...camposBase, apellido1: 'Distinto', dorsal: 20,
+    })
+    const user = userEvent.setup()
+    renderFormulario(FormularioJugador, { liga, equipoId: equipoA.id, ficha })
+
+    await user.clear(screen.getByLabelText('Número *'))
+    await user.type(screen.getByLabelText('Número *'), '5')
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+
+    expect(await screen.findByText('Ese número ya lo tiene otro jugador activo de este equipo.')).toBeTruthy()
+    // El formulario sigue abierto con lo que el organizador ya había escrito.
+    expect(screen.getByLabelText('Número *').value).toBe('5')
+    const enBd = await db.jugadores.get(ficha.id)
+    expect(enBd.dorsal).toBe(20)
   })
 })
 

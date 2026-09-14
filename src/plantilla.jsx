@@ -1,26 +1,46 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Hoja } from './ui'
-import { agregarJugador, desactivarJugador, validarCamposJugador } from './lib/roster'
+import { agregarJugador, editarJugador, desactivarJugador, validarCamposJugador } from './lib/roster'
 import { urlJugador } from './lib/enlaces'
 
 const CAMPOS_VACIOS = { nombrePila: '', apellido1: '', apellido2: '', dorsal: '', fechaNacimiento: '' }
 
+// Decisión 24/104: Editar reusa este mismo formulario, prellenado desde la
+// ficha seleccionada. dorsal se vuelve string aquí porque el input numérico
+// del formulario siempre trabaja con string (igual que CAMPOS_VACIOS).
+function camposDeFicha(ficha) {
+  return {
+    nombrePila: ficha.nombrePila ?? '',
+    apellido1: ficha.apellido1 ?? '',
+    apellido2: ficha.apellido2 ?? '',
+    dorsal: ficha.dorsal === undefined || ficha.dorsal === null ? '' : String(ficha.dorsal),
+    fechaNacimiento: ficha.fechaNacimiento ?? '',
+  }
+}
+
 const hoyISO = () => new Date().toISOString().slice(0, 10)
 
 /**
- * Añadir jugador, de punta a punta (Stage 3B, Slice 4).
+ * Añadir/Editar jugador, de punta a punta (Stage 3B, Slices 4 y 6).
  *
- * Toda la regla de negocio vive en agregarJugador() (Decisiones 29/30/63):
- * este componente solo junta los campos, llama la operación, y muestra el
- * resultado que ella devuelve — nunca decide por su cuenta si un duplicado
- * es la misma persona, si un número está libre, o si el organizador tiene
- * permiso para modificar la plantilla. La validación de campo en vivo
- * (Decisión 83) reusa validarCamposJugador tal cual la usa la operación,
- * en vez de reimplementar las reglas aquí.
+ * Toda la regla de negocio vive en agregarJugador()/editarJugador()
+ * (Decisiones 29/30/63): este componente solo junta los campos, llama la
+ * operación que corresponda según si recibió una `ficha` (editar) o no
+ * (añadir), y muestra el resultado que ella devuelve — nunca decide por su
+ * cuenta si un duplicado es la misma persona, si un número está libre, o si
+ * el organizador tiene permiso para modificar la plantilla. La validación de
+ * campo en vivo (Decisión 83) reusa validarCamposJugador tal cual la usa la
+ * operación, en vez de reimplementar las reglas aquí.
+ *
+ * Editar nunca reasigna personaId (Decisión 57): resolucionIdentidad ante un
+ * nombre coincidente es solo la confirmación explícita del organizador para
+ * continuar, igual que en Añadir — editarJugador() ignora su contenido y solo
+ * usa que esté presente.
  */
-export function FormularioJugador({ sesion, liga, equipoId, onCerrar, onExito }) {
-  const [campos, setCampos] = useState(CAMPOS_VACIOS)
+export function FormularioJugador({ sesion, liga, equipoId, ficha, onCerrar, onExito }) {
+  const baseline = ficha ? camposDeFicha(ficha) : CAMPOS_VACIOS
+  const [campos, setCampos] = useState(baseline)
   const [tocados, setTocados] = useState({})
   const [errores, setErrores] = useState({})
   const [guardando, setGuardando] = useState(false)
@@ -31,7 +51,10 @@ export function FormularioJugador({ sesion, liga, equipoId, onCerrar, onExito })
   const [yaActivo, setYaActivo] = useState(null)
   const [resolucion, setResolucion] = useState(null)
 
-  const sucio = Object.values(campos).some((v) => v !== '')
+  // Decisión 68: en Añadir, sucio compara contra el formulario vacío; en
+  // Editar, contra los valores originales de la ficha (Slice 6) — no contra
+  // el formulario vacío, que siempre marcaría "sucio" un formulario prellenado.
+  const sucio = Object.keys(baseline).some((k) => campos[k] !== baseline[k])
 
   const cambiarCampo = (campo, valor) => {
     const siguientes = { ...campos, [campo]: valor }
@@ -64,7 +87,9 @@ export function FormularioJugador({ sesion, liga, equipoId, onCerrar, onExito })
     if (guardando) return
     setGuardando(true)
     try {
-      const resultado = await agregarJugador({ sesion, liga, equipoId, campos, resolucionIdentidad })
+      const resultado = ficha
+        ? await editarJugador({ sesion, liga, ficha, campos, resolucionIdentidad })
+        : await agregarJugador({ sesion, liga, equipoId, campos, resolucionIdentidad })
       if (resultado.tipo === 'invalido') {
         setTocados({ nombrePila: true, apellido1: true, apellido2: true, dorsal: true, fechaNacimiento: true })
         setErrores(resultado.errores)
@@ -83,6 +108,11 @@ export function FormularioJugador({ sesion, liga, equipoId, onCerrar, onExito })
       } else if (resultado.tipo === 'creado') {
         onExito('Jugador añadido')
         setPaso('exito')
+      } else if (resultado.tipo === 'editado') {
+        // Editar no ofrece "Añadir otro" (Decisión 64 es propia de Añadir):
+        // cierra directamente, igual que ConfirmarDesactivar tras confirmar.
+        onExito('Jugador actualizado')
+        onCerrar()
       }
     } finally {
       setGuardando(false)
@@ -105,7 +135,7 @@ export function FormularioJugador({ sesion, liga, equipoId, onCerrar, onExito })
   }
 
   return (
-    <Hoja abierta titulo="Añadir jugador" onSolicitarCierre={pedirCerrar}>
+    <Hoja abierta titulo={ficha ? 'Editar jugador' : 'Añadir jugador'} onSolicitarCierre={pedirCerrar}>
       {paso === 'confirmar-cierre' && (
         <div className="aviso alerta">
           <div style={{ flex: 1 }}>
@@ -190,7 +220,7 @@ export function FormularioJugador({ sesion, liga, equipoId, onCerrar, onExito })
           </div>
 
           <button className="btn" type="submit" disabled={guardando}>
-            {guardando ? 'Guardando…' : 'Añadir jugador'}
+            {guardando ? 'Guardando…' : ficha ? 'Guardar cambios' : 'Añadir jugador'}
           </button>
         </form>
       )}

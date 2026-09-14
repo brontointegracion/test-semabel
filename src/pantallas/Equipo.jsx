@@ -24,6 +24,7 @@ export default function Equipo() {
   const inactivos = useRosterInactivo(d?.equipo?.id)
   const [menuAbierto, setMenuAbierto] = useState(null)
   const [formularioAbierto, setFormularioAbierto] = useState(false)
+  const [aEditar, setAEditar] = useState(null)
   const [aDesactivar, setADesactivar] = useState(null)
   const [aviso, setAviso] = useState(null)
 
@@ -208,7 +209,7 @@ export default function Equipo() {
                   abierto={menuAbierto === j.id}
                   onAbrir={() => setMenuAbierto(j.id)}
                   onCerrar={() => setMenuAbierto(null)}
-                  onEditar={() => setMenuAbierto(null)}
+                  onEditar={() => { setMenuAbierto(null); setAEditar(j) }}
                   onDesactivar={() => { setMenuAbierto(null); setADesactivar(j) }}
                 />
               )}
@@ -273,6 +274,16 @@ export default function Equipo() {
           liga={liga}
           equipoId={equipo.id}
           onCerrar={() => setFormularioAbierto(false)}
+          onExito={setAviso}
+        />
+      )}
+      {aEditar && (
+        <FormularioJugador
+          sesion={sesion}
+          liga={liga}
+          equipoId={equipo.id}
+          ficha={aEditar}
+          onCerrar={() => setAEditar(null)}
           onExito={setAviso}
         />
       )}

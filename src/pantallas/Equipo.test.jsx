@@ -106,3 +106,61 @@ describe('Equipo — organizador desactiva jugador vía el menú ⋯ (Stage 3B, 
     expect(screen.queryByRole('button', { name: 'Acciones del jugador' })).toBeNull()
   })
 })
+
+describe('Equipo — organizador edita jugador vía el menú ⋯ (Stage 3B, Slice 6)', () => {
+  it('abrir el menú y hacer clic en "Editar jugador" abre el formulario real prellenado', async () => {
+    const { db, Equipo, agregarJugador } = await cargar()
+    const { equipo, ficha } = await sembrarEquipoConJugador(db, agregarJugador)
+    const user = userEvent.setup()
+
+    renderEquipo(Equipo, equipo.codigo)
+
+    await screen.findByText(ficha.nombre)
+
+    await user.click(screen.getByRole('button', { name: 'Acciones del jugador' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Editar jugador' }))
+
+    const dialogo = await screen.findByRole('dialog', { name: 'Editar jugador' })
+    expect(within(dialogo).getByLabelText('Nombre *').value).toBe(ficha.nombrePila)
+    expect(within(dialogo).getByLabelText('Primer apellido *').value).toBe(ficha.apellido1)
+    expect(within(dialogo).getByLabelText('Número *').value).toBe(String(ficha.dorsal))
+  })
+
+  it('guardar un cambio real actualiza la fila de la plantilla activa sin recargar (Decisión 63)', async () => {
+    const { db, Equipo, agregarJugador } = await cargar()
+    const { equipo, ficha } = await sembrarEquipoConJugador(db, agregarJugador)
+    const user = userEvent.setup()
+
+    renderEquipo(Equipo, equipo.codigo)
+
+    await screen.findByText(ficha.nombre)
+    await user.click(screen.getByRole('button', { name: 'Acciones del jugador' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Editar jugador' }))
+
+    const dialogo = await screen.findByRole('dialog', { name: 'Editar jugador' })
+    const numero = within(dialogo).getByLabelText('Número *')
+    await user.clear(numero)
+    await user.type(numero, '77')
+    await user.click(within(dialogo).getByRole('button', { name: 'Guardar cambios' }))
+
+    // La ficha real muestra el nuevo dorsal en Plantilla, sin recargar la página:
+    // useRosterActivo() es una consulta viva sobre la misma base real.
+    await screen.findByText('Jugador actualizado')
+    await screen.findByText('77')
+    expect(screen.queryByRole('dialog', { name: 'Editar jugador' })).toBeNull()
+    const enBd = await db.jugadores.get(ficha.id)
+    expect(enBd.dorsal).toBe(77)
+  })
+
+  it('un visitante sin sesión de organizador no puede acceder a Editar jugador', async () => {
+    const { db, Equipo, agregarJugador } = await cargar()
+    const { equipo, ficha } = await sembrarEquipoConJugador(db, agregarJugador)
+    await db.meta.put({ id: 'sesion', rol: 'invitado' })
+
+    renderEquipo(Equipo, equipo.codigo)
+
+    await screen.findByText(ficha.nombre)
+    expect(screen.queryByRole('button', { name: 'Acciones del jugador' })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Editar jugador' })).toBeNull()
+  })
+})
