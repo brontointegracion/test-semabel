@@ -6,8 +6,8 @@ import { tablaPosiciones, marcadorEquipo, estadisticaJugadores } from '../lib/ma
 import { seguirEquipo, sigueEquipo } from '../lib/seguir'
 import { codigoDe, urlLiga, urlPartido, urlJugador, urlCancha } from '../lib/enlaces'
 import { useMeta } from '../lib/meta'
-import { Topbar, Escudo, Vacio, RelojVivo, MenuJugador, Toast, fechaCorta, hora, diaRelativo } from '../ui'
-import { FormularioJugador, ConfirmarDesactivar } from '../plantilla'
+import { Topbar, Escudo, Vacio, RelojVivo, MenuJugador, Toast, fechaCorta, fechaLarga, hora, diaRelativo } from '../ui'
+import { FormularioJugador, ConfirmarDesactivar, ConfirmarReactivar } from '../plantilla'
 
 /**
  * La página del equipo.
@@ -26,6 +26,8 @@ export default function Equipo() {
   const [formularioAbierto, setFormularioAbierto] = useState(false)
   const [aEditar, setAEditar] = useState(null)
   const [aDesactivar, setADesactivar] = useState(null)
+  const [aReactivar, setAReactivar] = useState(null)
+  const [verInactivos, setVerInactivos] = useState(false)
   const [aviso, setAviso] = useState(null)
 
   useMeta({
@@ -185,58 +187,100 @@ export default function Equipo() {
           refuerzos de otros equipos, y por eso esta lista es propia del torneo.
         </p>
       )}
-      <div className="lista">
-        {plantillaActiva.map((j) => {
-          const s = stats.find((x) => x.jugador.id === j.id)
-          return (
-            <div key={j.id} className="jugador-fila">
-              <Link to={urlJugador(j)} style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
-                <div className="dorsal">{j.dorsal}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="nombre" style={{ fontWeight: 600 }}>{j.nombre}</div>
-                  <div className="sub" style={{ fontSize: '0.74rem' }}>
-                    {j.refuerzo && <span className="pill acento" style={{ marginRight: 6 }}>Refuerzo</span>}
-                    {s?.partidos ? `${s.promedio.toFixed(1)} pts por juego · ${s.faltas} faltas` : 'Sin partidos'}
-                    {j.deEquipo && <> · de {j.deEquipo}</>}
+      {!verInactivos && (
+        <div className="lista">
+          {plantillaActiva.map((j) => {
+            const s = stats.find((x) => x.jugador.id === j.id)
+            return (
+              <div key={j.id} className="jugador-fila">
+                <Link to={urlJugador(j)} style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                  <div className="dorsal">{j.dorsal}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="nombre" style={{ fontWeight: 600 }}>{j.nombre}</div>
+                    <div className="sub" style={{ fontSize: '0.74rem' }}>
+                      {j.refuerzo && <span className="pill acento" style={{ marginRight: 6 }}>Refuerzo</span>}
+                      {s?.partidos ? `${s.promedio.toFixed(1)} pts por juego · ${s.faltas} faltas` : 'Sin partidos'}
+                      {j.deEquipo && <> · de {j.deEquipo}</>}
+                    </div>
+                  </div>
+                  {s?.partidos > 0 && (
+                    <div style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{s.puntos}</div>
+                  )}
+                </Link>
+                {esOrganizadorDelEquipo && (
+                  <MenuJugador
+                    abierto={menuAbierto === j.id}
+                    onAbrir={() => setMenuAbierto(j.id)}
+                    onCerrar={() => setMenuAbierto(null)}
+                    onEditar={() => { setMenuAbierto(null); setAEditar(j) }}
+                    onDesactivar={() => { setMenuAbierto(null); setADesactivar(j) }}
+                  />
+                )}
+              </div>
+            )
+          })}
+          {!plantillaActiva.length && (
+            <Vacio>
+              Todavía no hay jugadores en este equipo.
+              {esOrganizadorDelEquipo && (
+                <div style={{ marginTop: 10 }}>
+                  <button
+                    className="btn fantasma"
+                    style={{ width: 'auto', padding: '7px 12px', fontSize: '0.82rem' }}
+                    onClick={() => setFormularioAbierto(true)}
+                  >
+                    Añadir primer jugador
+                  </button>
+                </div>
+              )}
+            </Vacio>
+          )}
+        </div>
+      )}
+      {esOrganizadorDelEquipo && !verInactivos && inactivos.length > 0 && (
+        <button
+          className="btn fantasma"
+          style={{ width: 'auto', padding: '7px 12px', fontSize: '0.82rem', marginTop: 8 }}
+          onClick={() => setVerInactivos(true)}
+        >
+          Ver inactivos
+        </button>
+      )}
+      {esOrganizadorDelEquipo && verInactivos && (
+        <>
+          <button
+            className="btn fantasma"
+            style={{ width: 'auto', padding: '7px 12px', fontSize: '0.82rem', marginBottom: 10 }}
+            onClick={() => setVerInactivos(false)}
+          >
+            ← Volver a la plantilla activa
+          </button>
+          <div className="lista">
+            {inactivos.map((j) => (
+              <div key={j.id} className="jugador-fila inactivo">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                  <div className="dorsal">{j.dorsal ?? '—'}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="nombre" style={{ fontWeight: 600 }}>{j.nombre}</div>
+                    <div className="sub" style={{ fontSize: '0.74rem' }}>
+                      <span className="pill">Inactivo</span>
+                      {j.desactivadoEn && <> · Desde {fechaLarga(j.desactivadoEn)}</>}
+                    </div>
                   </div>
                 </div>
-                {s?.partidos > 0 && (
-                  <div style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{s.puntos}</div>
-                )}
-              </Link>
-              {esOrganizadorDelEquipo && (
                 <MenuJugador
                   abierto={menuAbierto === j.id}
                   onAbrir={() => setMenuAbierto(j.id)}
                   onCerrar={() => setMenuAbierto(null)}
                   onEditar={() => { setMenuAbierto(null); setAEditar(j) }}
-                  onDesactivar={() => { setMenuAbierto(null); setADesactivar(j) }}
+                  inactivo
+                  onReactivar={() => { setMenuAbierto(null); setAReactivar(j) }}
                 />
-              )}
-            </div>
-          )
-        })}
-        {!plantillaActiva.length && (
-          <Vacio>
-            Todavía no hay jugadores en este equipo.
-            {esOrganizadorDelEquipo && (
-              <div style={{ marginTop: 10 }}>
-                <button
-                  className="btn fantasma"
-                  style={{ width: 'auto', padding: '7px 12px', fontSize: '0.82rem' }}
-                  onClick={() => setFormularioAbierto(true)}
-                >
-                  Añadir primer jugador
-                </button>
               </div>
-            )}
-          </Vacio>
-        )}
-      </div>
-      {esOrganizadorDelEquipo && inactivos.length > 0 && (
-        <button className="btn fantasma" style={{ width: 'auto', padding: '7px 12px', fontSize: '0.82rem', marginTop: 8 }}>
-          Ver inactivos
-        </button>
+            ))}
+            {!inactivos.length && <Vacio>No hay jugadores inactivos.</Vacio>}
+          </div>
+        </>
       )}
 
       <h2 className="seccion">Resultados</h2>
@@ -294,6 +338,15 @@ export default function Equipo() {
           ficha={aDesactivar}
           onCerrar={() => setADesactivar(null)}
           onExito={setAviso}
+        />
+      )}
+      {aReactivar && (
+        <ConfirmarReactivar
+          sesion={sesion}
+          liga={liga}
+          ficha={aReactivar}
+          onCerrar={() => setAReactivar(null)}
+          onExito={(mensaje) => { setAviso(mensaje); setVerInactivos(false) }}
         />
       )}
       <Toast mensaje={aviso} onFin={() => setAviso(null)} />

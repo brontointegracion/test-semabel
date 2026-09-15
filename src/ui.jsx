@@ -36,6 +36,12 @@ export const fechaCorta = (iso) => {
   return `${DIAS_CORTO[d.getDay()]} ${d.getDate()} ${MESES[d.getMonth()]}`
 }
 
+// Fecha absoluta con año, para hechos que hay que poder ubicar en el tiempo
+// mucho después de ocurridos (p. ej. cuándo se desactivó una ficha) — a
+// diferencia de fechaCorta(), pensada para partidos recientes/cercanos.
+export const fechaLarga = (iso) =>
+  new Date(iso).toLocaleDateString('es-PA', { day: 'numeric', month: 'long', year: 'numeric' })
+
 export const mismoDia = (a, b) =>
   new Date(a).toDateString() === new Date(b).toDateString()
 
@@ -117,8 +123,12 @@ export function Vacio({ children }) {
  * Solo abre/cierra: las acciones todavía no mutan nada — eso llega en un
  * slice aparte, cuando exista el formulario de Editar y la confirmación de
  * Desactivar.
+ *
+ * Una fila inactiva (Stage 3B, Slice 7) ofrece Reactivar en vez de
+ * Desactivar — nunca ambas — porque la acción activa no aplica a una ficha
+ * que ya está inactiva.
  */
-export function MenuJugador({ abierto, onAbrir, onCerrar, onEditar, onDesactivar }) {
+export function MenuJugador({ abierto, onAbrir, onCerrar, onEditar, onDesactivar, onReactivar, inactivo = false }) {
   const raiz = useRef(null)
 
   // El pointerdown de un clic en un ítem del menú también llega aquí (burbujea
@@ -149,7 +159,9 @@ export function MenuJugador({ abierto, onAbrir, onCerrar, onEditar, onDesactivar
       {abierto && (
         <div className="menu-jugador-lista" role="menu">
           <button role="menuitem" onClick={onEditar}>Editar jugador</button>
-          <button role="menuitem" onClick={onDesactivar}>Desactivar jugador</button>
+          {inactivo
+            ? <button role="menuitem" onClick={onReactivar}>Reactivar jugador</button>
+            : <button role="menuitem" onClick={onDesactivar}>Desactivar jugador</button>}
         </div>
       )}
     </div>

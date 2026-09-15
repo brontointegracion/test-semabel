@@ -36,8 +36,10 @@ async function cargar() {
     db: dbMod.db,
     FormularioJugador: plantillaMod.FormularioJugador,
     ConfirmarDesactivar: plantillaMod.ConfirmarDesactivar,
+    ConfirmarReactivar: plantillaMod.ConfirmarReactivar,
     agregarJugador: rosterMod.agregarJugador,
     editarJugador: rosterMod.editarJugador,
+    desactivarJugador: rosterMod.desactivarJugador,
   }
 }
 
@@ -447,5 +449,170 @@ describe('ConfirmarDesactivar (Stage 3B, Slice 5 — Decisiones 8, 25, 85, 105)'
     expect(onCerrar).not.toHaveBeenCalled()
     const enBd = await db.jugadores.get(ficha.id)
     expect(enBd.activo).not.toBe(false)
+  })
+})
+
+describe('ConfirmarReactivar (Stage 3B, Slice 7 — Decisiones 31, 32, 40, 44, 63)', () => {
+  async function sembrarJugadorInactivo(db, agregarJugador, desactivarJugador, liga, equipoId, campos = camposBase) {
+    const r = await agregarJugador({ sesion: sesionDueno, liga, equipoId, campos })
+    expect(r.tipo).toBe('creado')
+    const d = await desactivarJugador({ sesion: sesionDueno, liga, ficha: r.ficha })
+    expect(d.tipo).toBe('desactivado')
+    return d.ficha
+  }
+
+  function renderReactivar(ConfirmarReactivar, { liga, ficha, onCerrar = vi.fn(), onExito = vi.fn() }) {
+    render(
+      <MemoryRouter>
+        <ConfirmarReactivar sesion={sesionDueno} liga={liga} ficha={ficha} onCerrar={onCerrar} onExito={onExito} />
+      </MemoryRouter>,
+    )
+    return { onCerrar, onExito }
+  }
+
+  it('identifica al jugador y cancelar no muta nada', async () => {
+    const { db, ConfirmarReactivar, agregarJugador, desactivarJugador } = await cargar()
+    const { liga, equipoA } = await sembrarLiga(db)
+    const ficha = await sembrarJugadorInactivo(db, agregarJugador, desactivarJugador, liga, equipoA.id)
+    const user = userEvent.setup()
+    const { onCerrar, onExito } = renderReactivar(ConfirmarReactivar, { liga, ficha })
+
+    expect(screen.getByText(`#${ficha.dorsal} ${ficha.nombre}`, { exact: false })).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }))
+
+    expect(onExito).not.toHaveBeenCalled()
+    expect(onCerrar).toHaveBeenCalled()
+    const enBd = await db.jugadores.get(ficha.id)
+    expect(enBd.activo).toBe(false)
+  })
+
+  it('confirmar reactiva vía la operación real: recupera el número anterior y reaparece en rosterActivo', async () => {
+    const { db, ConfirmarReactivar, agregarJugador, desactivarJugador } = await cargar()
+    const { rosterActivo, rosterInactivo } = await import('./lib/roster.js')
+    const { liga, equipoA } = await sembrarLiga(db)
+    const ficha = await sembrarJugadorInactivo(db, agregarJugador, desactivarJugador, liga, equipoA.id)
+    const user = userEvent.setup()
+    const { onExito, onCerrar } = renderReactivar(ConfirmarReactivar, { liga, ficha })
+
+    await user.click(screen.getByRole('button', { name: 'Reactivar jugador' }))
+
+    await waitFor(() => expect(onExito).toHaveBeenCalledWith('Jugador reactivado'))
+    expect(onCerrar).toHaveBeenCalled()
+
+    const enBd = await db.jugadores.get(ficha.id)
+    expect(enBd.activo).toBe(true)
+    expect(enBd.dorsal).toBe(ficha.dorsal)
+    const activos = await rosterActivo(equipoA.id)
+    expect(activos.find((j) => j.id === ficha.id)).toBeTruthy()
+    const inactivos = await rosterInactivo(equipoA.id)
+    expect(inactivos.find((j) => j.id === ficha.id)).toBeUndefined()
+  })
+
+  it('número anterior ocupado por otro activo: no auto-renumera, pide reemplazo y reintenta con éxito', async () => {
+    const { db, ConfirmarReactivar, agregarJugador, desactivarJugador } = await cargar()
+    const { liga, equipoA } = await sembrarLiga(db)
+    const ficha = await sembrarJugadorInactivo(db, agregarJugador, desactivarJugador, liga, equipoA.id)
+    // Otro jugador activo ahora ocupa el número que tenía la ficha inactiva.
+    const otro = await agregarJugador({
+      sesion: sesionDueno, liga, equipoId: equipoA.id,
+      campos: { nombrePila: 'Ana', apellido1: 'Julia', apellido2: 'Rodríguez', dorsal: ficha.dorsal },
+    })
+    expect(otro.tipo).toBe('creado')
+
+    const user = userEvent.setup()
+    const { onExito } = renderReactivar(ConfirmarReactivar, { liga, ficha })
+
+    await user.click(screen.getByRole('button', { name: 'Reactivar jugador' }))
+
+    expect(await screen.findByText('Ese número ya lo tiene otro jugador activo de este equipo.')).toBeTruthy()
+    // Sigue pidiendo confirmación explícita: no reporta éxito ni cambia el número del otro jugador.
+    expect(onExito).not.toHaveBeenCalled()
+    const otroEnBd = await db.jugadores.get(otro.ficha.id)
+    expect(otroEnBd.dorsal).toBe(ficha.dorsal)
+
+    await user.type(screen.getByLabelText('Número *'), '33')
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }))
+
+    await waitFor(() => expect(onExito).toHaveBeenCalledWith('Jugador reactivado'))
+    const enBd = await db.jugadores.get(ficha.id)
+    expect(enBd.activo).toBe(true)
+    expect(enBd.dorsal).toBe(33)
+  })
+
+  it('ficha sin número usable exige uno explícito antes de reactivar', async () => {
+    const { db, ConfirmarReactivar, agregarJugador, desactivarJugador } = await cargar()
+    const { liga, equipoA } = await sembrarLiga(db)
+    const ficha = await sembrarJugadorInactivo(db, agregarJugador, desactivarJugador, liga, equipoA.id)
+    // Simula una ficha heredada/inconsistente sin dorsal utilizable.
+    await db.jugadores.update(ficha.id, { dorsal: undefined })
+    const fichaSinNumero = await db.jugadores.get(ficha.id)
+
+    const user = userEvent.setup()
+    const { onExito } = renderReactivar(ConfirmarReactivar, { liga, ficha: fichaSinNumero })
+
+    await user.click(screen.getByRole('button', { name: 'Reactivar jugador' }))
+
+    expect(await screen.findByText('El número es obligatorio.')).toBeTruthy()
+    expect(onExito).not.toHaveBeenCalled()
+    expect((await db.jugadores.get(ficha.id)).activo).toBe(false)
+
+    await user.type(screen.getByLabelText('Número *'), '12')
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }))
+
+    await waitFor(() => expect(onExito).toHaveBeenCalledWith('Jugador reactivado'))
+    const enBd = await db.jugadores.get(ficha.id)
+    expect(enBd.activo).toBe(true)
+    expect(enBd.dorsal).toBe(12)
+  })
+
+  it('un número de reemplazo inválido es recuperable: no cierra el flujo ni reporta éxito', async () => {
+    const { db, ConfirmarReactivar, agregarJugador, desactivarJugador } = await cargar()
+    const { liga, equipoA } = await sembrarLiga(db)
+    const ficha = await sembrarJugadorInactivo(db, agregarJugador, desactivarJugador, liga, equipoA.id)
+    const otro = await agregarJugador({
+      sesion: sesionDueno, liga, equipoId: equipoA.id,
+      campos: { nombrePila: 'Ana', apellido1: 'Julia', apellido2: 'Rodríguez', dorsal: ficha.dorsal },
+    })
+    expect(otro.tipo).toBe('creado')
+
+    const user = userEvent.setup()
+    const { onExito, onCerrar } = renderReactivar(ConfirmarReactivar, { liga, ficha })
+
+    await user.click(screen.getByRole('button', { name: 'Reactivar jugador' }))
+    expect(await screen.findByText('Ese número ya lo tiene otro jugador activo de este equipo.')).toBeTruthy()
+
+    await user.type(screen.getByLabelText('Número *'), '150')
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }))
+
+    expect(await screen.findByText('El número debe ser un entero entre 0 y 99.')).toBeTruthy()
+    expect(onExito).not.toHaveBeenCalled()
+    expect(onCerrar).not.toHaveBeenCalled()
+    // El flujo sigue abierto con el número escrito, para corregirlo sin perderlo.
+    expect(screen.getByLabelText('Número *').value).toBe('150')
+    expect((await db.jugadores.get(ficha.id)).activo).toBe(false)
+  })
+
+  it('rechaza la reactivación si la sesión no es la organizadora dueña, y no muta nada', async () => {
+    const { db, ConfirmarReactivar, agregarJugador, desactivarJugador } = await cargar()
+    const { liga, equipoA } = await sembrarLiga(db)
+    const ficha = await sembrarJugadorInactivo(db, agregarJugador, desactivarJugador, liga, equipoA.id)
+    const onExito = vi.fn()
+    const onCerrar = vi.fn()
+    const user = userEvent.setup()
+
+    render(
+      <MemoryRouter>
+        <ConfirmarReactivar sesion={sesionOtro} liga={liga} ficha={ficha} onCerrar={onCerrar} onExito={onExito} />
+      </MemoryRouter>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Reactivar jugador' }))
+
+    expect(await screen.findByText('No autorizado para modificar la plantilla de este equipo.')).toBeTruthy()
+    expect(onExito).not.toHaveBeenCalled()
+    expect(onCerrar).not.toHaveBeenCalled()
+    const enBd = await db.jugadores.get(ficha.id)
+    expect(enBd.activo).toBe(false)
   })
 })

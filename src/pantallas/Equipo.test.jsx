@@ -34,7 +34,12 @@ async function cargar() {
   const equipoMod = await import('./Equipo.jsx')
   const rosterMod = await import('../lib/roster.js')
   await dbMod.db.jugadores.toArray()
-  return { db: dbMod.db, Equipo: equipoMod.default, agregarJugador: rosterMod.agregarJugador }
+  return {
+    db: dbMod.db,
+    Equipo: equipoMod.default,
+    agregarJugador: rosterMod.agregarJugador,
+    desactivarJugador: rosterMod.desactivarJugador,
+  }
 }
 
 beforeEach(async () => {
@@ -162,5 +167,126 @@ describe('Equipo — organizador edita jugador vía el menú ⋯ (Stage 3B, Slic
     await screen.findByText(ficha.nombre)
     expect(screen.queryByRole('button', { name: 'Acciones del jugador' })).toBeNull()
     expect(screen.queryByRole('dialog', { name: 'Editar jugador' })).toBeNull()
+  })
+})
+
+describe('Equipo — organizador ve inactivos y reactiva jugador (Stage 3B, Slice 7)', () => {
+  async function sembrarDosJugadores(db, agregarJugador) {
+    const liga = { id: 'liga1', codigo: '1001', estado: 'publicada', organizadorId: 'yo' }
+    const equipo = { id: 'equipoA', ligaId: liga.id, codigo: '2001', nombre: 'Los Tigres', corto: 'TIG' }
+    await db.ligas.add(liga)
+    await db.equipos.add(equipo)
+    await db.meta.put({ id: 'sesion', ...sesionDueno })
+    const a = await agregarJugador({
+      sesion: sesionDueno, liga, equipoId: equipo.id,
+      campos: { nombrePila: 'Ana', apellido1: 'Julia', apellido2: '', dorsal: 5 },
+    })
+    const b = await agregarJugador({
+      sesion: sesionDueno, liga, equipoId: equipo.id,
+      campos: { nombrePila: 'Miguel', apellido1: 'Sam', apellido2: 'Robles', dorsal: 10 },
+    })
+    expect(a.tipo).toBe('creado')
+    expect(b.tipo).toBe('creado')
+    return { liga, equipo, fichaA: a.ficha, fichaB: b.ficha }
+  }
+
+  it('organizador abre Ver inactivos y ve el roster inactivo, con el más recientemente desactivado primero', async () => {
+    const { db, Equipo, agregarJugador, desactivarJugador } = await cargar()
+    const { liga, equipo, fichaA, fichaB } = await sembrarDosJugadores(db, agregarJugador)
+    await desactivarJugador({ sesion: sesionDueno, liga, ficha: fichaA })
+    await desactivarJugador({ sesion: sesionDueno, liga, ficha: fichaB })
+    const user = userEvent.setup()
+
+    renderEquipo(Equipo, equipo.codigo)
+
+    await user.click(await screen.findByRole('button', { name: 'Ver inactivos' }))
+
+    const nombres = [...document.querySelectorAll('.jugador-fila.inactivo .nombre')].map((n) => n.textContent)
+    expect(nombres).toEqual([fichaB.nombre, fichaA.nombre])
+    expect(screen.getAllByText('Inactivo')).toHaveLength(2)
+    // De vuelta a la plantilla activa: ya no se muestran las filas inactivas.
+    await user.click(screen.getByRole('button', { name: '← Volver a la plantilla activa' }))
+    expect(document.querySelectorAll('.jugador-fila.inactivo')).toHaveLength(0)
+  })
+
+  it('el menú de una fila inactiva ofrece Editar jugador y Reactivar jugador, no Desactivar', async () => {
+    const { db, Equipo, agregarJugador, desactivarJugador } = await cargar()
+    const { equipo, liga, ficha } = await sembrarEquipoConJugador(db, agregarJugador)
+    await desactivarJugador({ sesion: sesionDueno, liga, ficha })
+    const user = userEvent.setup()
+
+    renderEquipo(Equipo, equipo.codigo)
+    await user.click(await screen.findByRole('button', { name: 'Ver inactivos' }))
+    await user.click(screen.getByRole('button', { name: 'Acciones del jugador' }))
+
+    expect(screen.getByRole('menuitem', { name: 'Editar jugador' })).toBeTruthy()
+    expect(screen.getByRole('menuitem', { name: 'Reactivar jugador' })).toBeTruthy()
+    expect(screen.queryByRole('menuitem', { name: 'Desactivar jugador' })).toBeNull()
+  })
+
+  it('Editar jugador sobre una ficha inactiva abre el formulario real prellenado, y guardar no la reactiva', async () => {
+    const { db, Equipo, agregarJugador, desactivarJugador } = await cargar()
+    const { equipo, liga, ficha } = await sembrarEquipoConJugador(db, agregarJugador)
+    const inactiva = (await desactivarJugador({ sesion: sesionDueno, liga, ficha })).ficha
+    const user = userEvent.setup()
+
+    renderEquipo(Equipo, equipo.codigo)
+    await user.click(await screen.findByRole('button', { name: 'Ver inactivos' }))
+    await user.click(screen.getByRole('button', { name: 'Acciones del jugador' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Editar jugador' }))
+
+    const dialogo = await screen.findByRole('dialog', { name: 'Editar jugador' })
+    expect(within(dialogo).getByLabelText('Nombre *').value).toBe(inactiva.nombrePila)
+    const numero = within(dialogo).getByLabelText('Número *')
+    expect(numero.value).toBe(String(inactiva.dorsal))
+
+    await user.clear(numero)
+    await user.type(numero, '77')
+    await user.click(within(dialogo).getByRole('button', { name: 'Guardar cambios' }))
+
+    await screen.findByText('Jugador actualizado')
+    expect(screen.queryByRole('dialog', { name: 'Editar jugador' })).toBeNull()
+    const enBd = await db.jugadores.get(inactiva.id)
+    expect(enBd.dorsal).toBe(77)
+    // Editar una ficha inactiva nunca la reactiva por sí sola.
+    expect(enBd.activo).toBe(false)
+  })
+
+  it('Reactivar jugador reactiva vía la operación real, vuelve a la plantilla activa y avisa el éxito', async () => {
+    const { db, Equipo, agregarJugador, desactivarJugador } = await cargar()
+    const { equipo, liga, ficha } = await sembrarEquipoConJugador(db, agregarJugador)
+    await desactivarJugador({ sesion: sesionDueno, liga, ficha })
+    const user = userEvent.setup()
+
+    renderEquipo(Equipo, equipo.codigo)
+    await user.click(await screen.findByRole('button', { name: 'Ver inactivos' }))
+    await user.click(screen.getByRole('button', { name: 'Acciones del jugador' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Reactivar jugador' }))
+
+    const dialogo = await screen.findByRole('dialog', { name: 'Reactivar jugador' })
+    await user.click(within(dialogo).getByRole('button', { name: 'Reactivar jugador' }))
+
+    await screen.findByText('Jugador reactivado')
+    expect(screen.queryByRole('dialog', { name: 'Reactivar jugador' })).toBeNull()
+    // Volvió a la plantilla activa (Slice 7): la fila reactivada aparece ahí, sin recargar.
+    await screen.findByText(ficha.nombre)
+    expect(document.querySelectorAll('.jugador-fila.inactivo')).toHaveLength(0)
+
+    const enBd = await db.jugadores.get(ficha.id)
+    expect(enBd.activo).toBe(true)
+    expect(enBd.dorsal).toBe(ficha.dorsal)
+  })
+
+  it('un visitante sin sesión de organizador no ve Ver inactivos ni puede gestionar fichas inactivas', async () => {
+    const { db, Equipo, agregarJugador, desactivarJugador } = await cargar()
+    const { equipo, liga, ficha } = await sembrarEquipoConJugador(db, agregarJugador)
+    await desactivarJugador({ sesion: sesionDueno, liga, ficha })
+    await db.meta.put({ id: 'sesion', rol: 'invitado' })
+
+    renderEquipo(Equipo, equipo.codigo)
+    await screen.findByText('Resultados')
+
+    expect(screen.queryByRole('button', { name: 'Ver inactivos' })).toBeNull()
+    expect(screen.queryByText(ficha.nombre)).toBeNull()
   })
 })

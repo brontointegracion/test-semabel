@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Hoja } from './ui'
-import { agregarJugador, editarJugador, desactivarJugador, validarCamposJugador } from './lib/roster'
+import { agregarJugador, editarJugador, desactivarJugador, reactivarJugador, validarCamposJugador } from './lib/roster'
 import { urlJugador } from './lib/enlaces'
 
 const CAMPOS_VACIOS = { nombrePila: '', apellido1: '', apellido2: '', dorsal: '', fechaNacimiento: '' }
@@ -331,6 +331,119 @@ export function ConfirmarDesactivar({ sesion, liga, ficha, onCerrar, onExito }) 
           {guardando ? 'Desactivando…' : 'Desactivar jugador'}
         </button>
       </div>
+    </Hoja>
+  )
+}
+
+/**
+ * Confirmar reactivar jugador (Stage 3B, Slice 7 — Decisiones 31, 32, 40, 44, 63).
+ *
+ * Igual que ConfirmarDesactivar, solo confirma y llama reactivarJugador(): la
+ * regla de negocio (releer estado y número dentro de la transacción, exigir
+ * un número explícito si el anterior ya no está disponible o nunca existió)
+ * vive enteramente en roster.js. Sin nuevoDorsal, el primer intento pide
+ * recuperar el número anterior de la ficha; si el dominio responde
+ * conflicto-numero (número ocupado) o invalido (número faltante/ilegal), este
+ * componente pide un número de reemplazo y reintenta con nuevoDorsal — nunca
+ * decide un número por su cuenta ni reporta éxito sin que la mutación real lo
+ * confirme.
+ */
+export function ConfirmarReactivar({ sesion, liga, ficha, onCerrar, onExito }) {
+  const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState(null)
+  // confirmar | numero
+  const [paso, setPaso] = useState('confirmar')
+  const [motivo, setMotivo] = useState(null) // conflicto | invalido
+  const [numero, setNumero] = useState('')
+  const [errorNumero, setErrorNumero] = useState(null)
+
+  async function intentar(nuevoDorsal) {
+    if (guardando) return
+    setGuardando(true)
+    setError(null)
+    try {
+      const resultado = await reactivarJugador({
+        sesion, liga, ficha, ...(nuevoDorsal !== undefined ? { nuevoDorsal } : {}),
+      })
+      if (resultado.tipo === 'reactivado') {
+        onExito('Jugador reactivado')
+        onCerrar()
+      } else if (resultado.tipo === 'conflicto-numero') {
+        setMotivo('conflicto')
+        setErrorNumero('Ese número ya lo tiene otro jugador activo de este equipo.')
+        setPaso('numero')
+      } else if (resultado.tipo === 'invalido') {
+        setMotivo('invalido')
+        setErrorNumero(resultado.errores.dorsal)
+        setPaso('numero')
+      }
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  const confirmar = () => intentar(undefined)
+
+  const reintentar = (e) => {
+    e.preventDefault()
+    intentar(numero)
+  }
+
+  return (
+    <Hoja abierta titulo="Reactivar jugador" onSolicitarCierre={onCerrar}>
+      {paso === 'confirmar' && (
+        <>
+          <p style={{ margin: '0 0 12px' }}>
+            <strong>#{ficha.dorsal ?? '—'} {ficha.nombre}</strong> volverá a estar disponible para futuros
+            partidos de este equipo.
+          </p>
+          {error && <p className="campo-error" style={{ marginBottom: 12 }}>{error}</p>}
+          <div className="btn-fila">
+            <button type="button" className="btn fantasma" onClick={onCerrar} disabled={guardando}>
+              Cancelar
+            </button>
+            <button type="button" className="btn" onClick={confirmar} disabled={guardando}>
+              {guardando ? 'Reactivando…' : 'Reactivar jugador'}
+            </button>
+          </div>
+        </>
+      )}
+
+      {paso === 'numero' && (
+        <form onSubmit={reintentar} noValidate>
+          <p style={{ margin: '0 0 12px' }}>
+            {motivo === 'conflicto'
+              ? `El número #${ficha.dorsal} de ${ficha.nombre} ya lo tiene otro jugador activo de este equipo.`
+              : `${ficha.nombre} no tiene un número utilizable para reactivarse.`}
+            {' '}Ingresa un número distinto para continuar.
+          </p>
+          <div className="campo">
+            <label htmlFor="rj-numero">Número *</label>
+            <input
+              id="rj-numero"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={99}
+              step={1}
+              value={numero}
+              onChange={(e) => setNumero(e.target.value)}
+            />
+            {errorNumero && <span className="campo-error">{errorNumero}</span>}
+          </div>
+          {error && <p className="campo-error" style={{ marginBottom: 12 }}>{error}</p>}
+          <div className="btn-fila">
+            <button type="button" className="btn fantasma" onClick={onCerrar} disabled={guardando}>
+              Cancelar
+            </button>
+            <button type="submit" className="btn" disabled={guardando}>
+              {guardando ? 'Reactivando…' : 'Reintentar'}
+            </button>
+          </div>
+        </form>
+      )}
     </Hoja>
   )
 }
