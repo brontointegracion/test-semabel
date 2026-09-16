@@ -2,11 +2,11 @@
 
 ## Status
 
-**Decision discovery complete. Implementation not authorized.**
+**Decision discovery complete. Stage 3A and Stage 3B (Slices 1–7) implemented and checkpointed. Stage 3B functional quality gate: PASS (accepted by Master Tutor).**
 
 This document is the durable checkpoint for approved Roster MVP Stage 3 product/design decisions.
 
-Stage 3 implementation must not begin until the Master Tutor / Orchestrator explicitly closes decision discovery and authorizes implementation.
+Stage 3 implementation began only after the Master Tutor / Orchestrator explicitly closed decision discovery and authorized it; per-decision sequencing notes below (e.g. Decisions 20, 29, 30, 41) remain the historical record of that authorization boundary and are unchanged.
 
 ## Prior checkpoints
 

@@ -272,9 +272,9 @@ export const useRosterActivo = (equipoId) =>
   useLiveQuery(() => (equipoId ? rosterActivo(equipoId) : []), [equipoId], [])
 
 /**
- * Fichas inactivas de un equipo. Por ahora la UI solo la usa para decidir si
- * "Ver inactivos" debe aparecer (Decisión 90) — el panel de inactivos en sí
- * todavía no existe.
+ * Fichas inactivas de un equipo. La UI la usa para decidir si "Ver
+ * inactivos" debe aparecer (Decisión 90) y para poblar el panel de
+ * inactivos en sí (Stage 3B, Slice 7).
  */
 export const useRosterInactivo = (equipoId) =>
   useLiveQuery(() => (equipoId ? rosterInactivo(equipoId) : []), [equipoId], [])

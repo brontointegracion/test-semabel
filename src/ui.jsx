@@ -120,9 +120,8 @@ export function Vacio({ children }) {
 
 /**
  * Menú de acciones del organizador sobre una fila de Plantilla (Decisión 88).
- * Solo abre/cierra: las acciones todavía no mutan nada — eso llega en un
- * slice aparte, cuando exista el formulario de Editar y la confirmación de
- * Desactivar.
+ * Solo presenta y delega: quien lo usa conecta onEditar/onDesactivar/
+ * onReactivar a las operaciones reales de plantilla.jsx/roster.js.
  *
  * Una fila inactiva (Stage 3B, Slice 7) ofrece Reactivar en vez de
  * Desactivar — nunca ambas — porque la acción activa no aplica a una ficha
