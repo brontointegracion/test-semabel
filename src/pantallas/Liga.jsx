@@ -112,7 +112,7 @@ export default function Liga() {
           <button
             key={k}
             className={pestana === k ? 'activo' : ''}
-            style={pestana === k ? { background: 'var(--accent)' } : undefined}
+            style={pestana === k ? { background: 'var(--acento)' } : undefined}
             onClick={() => setPestana(k)}
           >
             {etiqueta}
