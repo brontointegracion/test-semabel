@@ -616,3 +616,72 @@ describe('ConfirmarReactivar (Stage 3B, Slice 7 — Decisiones 31, 32, 40, 44, 6
     expect(enBd.activo).toBe(false)
   })
 })
+
+describe('FormularioJugador — Nombre en camiseta', () => {
+  it('añadir: el campo es opcional, queda junto a Número, y se guarda normalizado', async () => {
+    const { db, FormularioJugador } = await cargar()
+    const { liga, equipoA } = await sembrarLiga(db)
+    const user = userEvent.setup()
+    renderFormulario(FormularioJugador, { liga, equipoId: equipoA.id })
+
+    const campo = screen.getByLabelText('Nombre en camiseta')
+    expect(campo.getAttribute('maxlength')).toBe('20')
+    expect(campo.required).toBe(false)
+    const orden = [...document.querySelectorAll('input')].map((i) => i.id)
+    expect(orden.indexOf('jf-camiseta')).toBe(orden.indexOf('jf-dorsal') + 1)
+
+    await llenarCampos(user, camposBase)
+    await user.type(campo, '  El   Profe ')
+    await user.click(screen.getByRole('button', { name: 'Añadir jugador' }))
+
+    expect(await screen.findByText('Jugador añadido a la plantilla.')).toBeTruthy()
+    const [creado] = await db.jugadores.where('equipoId').equals(equipoA.id).toArray()
+    expect(creado.nombreCamiseta).toBe('El Profe')
+    expect(creado.nombre).toBe('Miguel Sam Robles')
+  })
+
+  it('añadir sin llenarlo guarda cadena vacía y no estorba', async () => {
+    const { db, FormularioJugador } = await cargar()
+    const { liga, equipoA } = await sembrarLiga(db)
+    const user = userEvent.setup()
+    renderFormulario(FormularioJugador, { liga, equipoId: equipoA.id })
+    await llenarCampos(user, camposBase)
+    await user.click(screen.getByRole('button', { name: 'Añadir jugador' }))
+    expect(await screen.findByText('Jugador añadido a la plantilla.')).toBeTruthy()
+    const [creado] = await db.jugadores.where('equipoId').equals(equipoA.id).toArray()
+    expect(creado.nombreCamiseta).toBe('')
+  })
+
+  it('editar: viene prellenado y se puede cambiar y vaciar; una ficha antigua abre con el campo vacío', async () => {
+    const { db, FormularioJugador, agregarJugador } = await cargar()
+    const { liga, equipoA } = await sembrarLiga(db)
+    const creado = await agregarJugador({
+      sesion: sesionDueno, liga, equipoId: equipoA.id, campos: { ...camposBase, nombreCamiseta: 'SAM' },
+    })
+    const user = userEvent.setup()
+    const { onCerrar } = renderFormulario(FormularioJugador, { liga, equipoId: equipoA.id, ficha: creado.ficha })
+
+    const campo = screen.getByLabelText('Nombre en camiseta')
+    expect(campo.value).toBe('SAM')
+    await user.clear(campo)
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    await waitFor(() => expect(onCerrar).toHaveBeenCalled())
+    expect((await db.jugadores.get(creado.ficha.id)).nombreCamiseta).toBe('')
+
+    cleanup()
+    renderFormulario(FormularioJugador, { liga, equipoId: equipoA.id, ficha: { ...creado.ficha, nombreCamiseta: undefined } })
+    expect(screen.getByLabelText('Nombre en camiseta').value).toBe('')
+  })
+
+  it('el límite de 20 caracteres se refleja en el formulario (maxLength y mensaje de dominio)', async () => {
+    const { db, FormularioJugador } = await cargar()
+    const { liga, equipoA } = await sembrarLiga(db)
+    renderFormulario(FormularioJugador, { liga, equipoId: equipoA.id })
+    // fireEvent-like: el input real impide teclear más de 20; el dominio se prueba pegando el valor directo.
+    const { fireEvent } = await import('@testing-library/react')
+    fireEvent.change(screen.getByLabelText('Nombre en camiseta'), { target: { value: 'a'.repeat(21) } })
+    fireEvent.blur(screen.getByLabelText('Nombre en camiseta'))
+    expect(await screen.findByText('Máximo 20 caracteres.')).toBeTruthy()
+    expect(await db.jugadores.count()).toBe(0)
+  })
+})

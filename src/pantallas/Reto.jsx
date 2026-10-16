@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useReto } from '../datos'
+import { textoDorsal } from '../lib/dorsal'
 import { marcadorEquipo } from '../lib/marcador'
 import { codigoDe, urlLiga, urlPartido, urlJugador } from '../lib/enlaces'
 import { compartir } from '../lib/votos'
 import { useMeta } from '../lib/meta'
-import { Topbar, Escudo, Vacio, fechaCorta } from '../ui'
+import { etiquetaCategoria, etiquetaSubcategoria } from '../lib/categorias'
+import { Topbar, Escudo, Vacio, fechaCorta, EnlacePartido } from '../ui'
 
 const PAISES = { PA: 'Panamá', CO: 'Colombia' }
 
@@ -63,7 +65,10 @@ export default function Reto() {
           si se comparara el total, ganaría siempre la que juega más veces.
         </p>
         <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
-          <span className="pill acento">{reto.categoria}</span>
+          <span className="pill acento">{etiquetaCategoria(reto.categoria)}</span>
+          {etiquetaSubcategoria(reto.subcategoria) && (
+            <span className="pill acento">{etiquetaSubcategoria(reto.subcategoria)}</span>
+          )}
           <span className="pill">
             {fechaCorta(reto.desde)} — {fechaCorta(reto.hasta)}
           </span>
@@ -108,7 +113,7 @@ export default function Reto() {
 
             {lado.mejor?.jugador && (
               <Link to={urlJugador(lado.mejor.jugador)} className="jugador-fila" style={{ marginTop: 10 }}>
-                <div className="dorsal">{lado.mejor.jugador.dorsal}</div>
+                <div className="dorsal">{textoDorsal(lado.mejor.jugador)}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="nombre" style={{ fontWeight: 600 }}>{lado.mejor.jugador.nombre}</div>
                   <div className="sub" style={{ fontSize: '0.72rem' }}>El que más anotó</div>
@@ -121,7 +126,7 @@ export default function Reto() {
 
             <div className="lista" style={{ marginTop: 10 }}>
               {lado.partidos.slice(0, 4).map((p) => (
-                <Link
+                <EnlacePartido
                   key={p.id}
                   to={urlPartido(p, equipos[p.localId], equipos[p.visitaId])}
                   className="jugador-fila"
@@ -131,7 +136,7 @@ export default function Reto() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="sub" style={{ fontSize: '0.72rem' }}>{fechaCorta(p.inicio)}</div>
                   </div>
-                </Link>
+                </EnlacePartido>
               ))}
               {!lado.partidos.length && (
                 <p className="sub">

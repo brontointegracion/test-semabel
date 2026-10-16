@@ -1,0 +1,14 @@
+# Encabezados de los archivos estáticos (no se aplican a las respuestas que genera el Worker, que ya llevan los suyos).
+/*
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://ipwho.is; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'
+
+/anthony/*
+  X-Robots-Tag: noindex
+  Cache-Control: no-store
+
+/control/*
+  X-Robots-Tag: noindex
+  Cache-Control: no-store

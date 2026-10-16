@@ -26,6 +26,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
+        // Una navegación a la API nunca se contesta con la página de la aplicación guardada.
+        navigateFallbackDenylist: [/^\/v1\//],
       },
       devOptions: { enabled: true },
     }),

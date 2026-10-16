@@ -121,3 +121,48 @@ describe('Liga — el selector Posiciones/Calendario/Jugadores', () => {
     expect(posiciones.className).not.toContain('activo')
   })
 })
+
+describe('Liga — Calendario: "Partido finalizado"', () => {
+  const partido = (id, localId, visitaId, estado, inicio) => ({
+    id, codigo: `70${id.length}${id.slice(-1)}1`, ligaId: 'liga1', canchaId: 'c1', localId, visitaId, estado, inicio,
+  })
+
+  async function sembrarCalendario(db) {
+    await db.canchas.add({ id: 'c1', nombre: 'Cancha', pais: 'EC', provincia: 'X', codigo: '111' })
+    await db.ligas.add({ id: 'liga1', codigo: '4821', nombre: 'Liga Barrial', deporte: 'futsal', canchaIds: ['c1'] })
+    await db.equipos.bulkAdd(['A', 'B', 'C', 'D', 'E', 'F'].map((n, i) => ({
+      id: `e${n}`, ligaId: 'liga1', codigo: `${i + 1}${i + 1}${i + 1}${i + 1}`, nombre: `Equipo ${n}`, corto: n, color: '#06c',
+    })))
+    await db.partidos.bulkAdd([
+      partido('pf', 'eA', 'eB', 'final', '2026-08-01T10:00:00.000Z'),
+      partido('pv', 'eC', 'eD', 'vivo', '2026-08-02T10:00:00.000Z'),
+      // Programado pero con fecha pasada: el estado manda, no la fecha.
+      partido('ps', 'eE', 'eF', 'programado', '2020-01-01T10:00:00.000Z'),
+    ])
+  }
+
+  it('solo el partido con estado final lleva la etiqueta; vivo y programado (aun con fecha pasada) no', async () => {
+    const { db, Liga } = await cargar()
+    await sembrarCalendario(db)
+    render(
+      <MemoryRouter initialEntries={['/l/liga-4821?pestana=calendario']}>
+        <Routes><Route path="/l/:slug" element={<Liga />} /></Routes>
+      </MemoryRouter>,
+    )
+    await screen.findByText('Equipo A')
+
+    const etiquetas = screen.getAllByText('Partido finalizado')
+    expect(etiquetas).toHaveLength(1)
+    expect(etiquetas[0].textContent).toBe('Partido finalizado')
+    const fila = (nombre) => screen.getByText(nombre).closest('a.partido')
+    expect(fila('Equipo A').contains(etiquetas[0])).toBe(true)
+    expect(fila('Equipo C').textContent).not.toContain('Partido finalizado')
+    expect(fila('Equipo C').textContent).toContain('VIVO')
+    expect(fila('Equipo E').textContent).not.toContain('Partido finalizado')
+    // La fila final conserva equipos, marcador, hora y el enlace al partido.
+    expect(fila('Equipo A').getAttribute('href')).toMatch(/^\/p\//)
+    expect(fila('Equipo A').textContent).toContain('Equipo B')
+    expect(fila('Equipo A').querySelectorAll('.goles')).toHaveLength(2)
+    expect(fila('Equipo A').querySelector('.hora')).not.toBeNull()
+  })
+})

@@ -1,3 +1,4 @@
+import { horaLocal } from './publico/formato.js'
 // ---------------------------------------------------------------------------
 // La cabecera HTML que el servidor tiene que devolver.
 //
@@ -13,6 +14,14 @@
 //
 // No depende de la base ni del navegador, así que se prueba en Node.
 // ---------------------------------------------------------------------------
+
+import { etiquetaCategoria, etiquetaSubcategoria } from './categorias.js'
+
+// Ligas con categoría ('Libre' no cuenta) y, en las nuevas de baloncesto, subcategoría. Una liga de antes
+// produce exactamente el mismo texto que antes.
+const clasificacionDe = (liga) =>
+  (liga?.categoria && liga.categoria !== 'Libre' ? `, categoría ${etiquetaCategoria(liga.categoria)}` : '') +
+  (etiquetaSubcategoria(liga?.subcategoria) ? `, subcategoría ${etiquetaSubcategoria(liga.subcategoria)}` : '')
 
 const escapar = (t = '') =>
   String(t)
@@ -32,16 +41,13 @@ const FECHA = { day: 'numeric', month: 'long', year: 'numeric' }
  */
 export function textosDePartido({ partido, liga, cancha, local, visita, golesLocal, golesVisita }) {
   const fecha = new Date(partido.inicio).toLocaleDateString('es-PA', FECHA)
-  const hora = new Date(partido.inicio).toLocaleTimeString('es-PA', {
-    hour: '2-digit', minute: '2-digit', hour12: false,
-  })
+  const hora = horaLocal(partido.inicio) ?? ''
 
   if (partido.estado === 'final') {
     return {
       titulo: `${local?.nombre} ${golesLocal}-${golesVisita} ${visita?.nombre}`,
       descripcion:
-        `Resultado del ${fecha} en ${cancha?.nombre}. ${liga?.nombre}` +
-        (liga?.categoria && liga.categoria !== 'Libre' ? `, categoría ${liga.categoria}` : '') + '.',
+        `Resultado del ${fecha} en ${cancha?.nombre}. ${liga?.nombre}` + clasificacionDe(liga) + '.',
     }
   }
 
@@ -55,8 +61,7 @@ export function textosDePartido({ partido, liga, cancha, local, visita, golesLoc
   return {
     titulo: `${local?.nombre} vs ${visita?.nombre}`,
     descripcion:
-      `Juegan el ${fecha} a las ${hora} en ${cancha?.nombre}. ${liga?.nombre}` +
-      (liga?.categoria && liga.categoria !== 'Libre' ? `, categoría ${liga.categoria}` : '') + '.',
+      `Juegan el ${fecha} a las ${hora} en ${cancha?.nombre}. ${liga?.nombre}` + clasificacionDe(liga) + '.',
   }
 }
 

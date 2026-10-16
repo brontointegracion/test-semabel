@@ -9,6 +9,9 @@
 // eso conviene que no dependa de nada.
 // ---------------------------------------------------------------------------
 
+import { PERIODOS } from './reloj-calculo'
+import { tablaDeResultados } from './tabla-posiciones'
+
 export const PUNTOS_POR_DEPORTE = {
   baloncesto: [1, 2, 3],
   futsal: [1],
@@ -43,6 +46,31 @@ export function periodoActual(eventos) {
   return vivos(eventos, 'periodo').length + 1
 }
 
+/**
+ * El periodo que muestra la consola: el contado, sin pasar del máximo del deporte.
+ * Un doble toque antiguo pudo dejar más transiciones que periodos; la pantalla
+ * siempre mostró el tope, y las acciones se anotan con ese mismo número.
+ */
+export function periodoVisible(eventos, deporte) {
+  return Math.min(periodoActual(eventos), PERIODOS[deporte] || 2)
+}
+
+/**
+ * Marca de frontera: el mayor seq entre TODAS las transiciones de periodo,
+ * también las anuladas (0 si no hay ninguna). Cambia con cada transición y
+ * no vuelve atrás aunque el periodo vuelva a tener el mismo número, así una
+ * pantalla vieja no puede confundirse con la actual.
+ */
+export function marcaDePeriodo(eventos) {
+  return eventos.reduce((m, e) => (e.tipo === 'periodo' ? Math.max(m, e.seq) : m), 0)
+}
+
+/** El periodo que le corresponde a un evento según su lugar en el historial. */
+export function periodoEnPosicion(eventos, seq, deporte) {
+  const antes = eventos.filter((e) => !e.anulado && e.tipo === 'periodo' && e.seq < seq).length
+  return deporte ? Math.min(antes + 1, PERIODOS[deporte] || 2) : antes + 1
+}
+
 /** Mejor anotador y jugador con más faltas de un equipo, dentro de un partido. */
 export function destacadosDeEquipo({ eventos, jugadores, equipoId }) {
   const plantel = jugadores.filter((j) => j.equipoId === equipoId)
@@ -59,46 +87,29 @@ export function destacadosDeEquipo({ eventos, jugadores, equipoId }) {
   return { mejor, masFaltas, faltasEquipo: faltasEquipo(eventos, equipoId) }
 }
 
+/** Una transición de periodo anulada no se rehace: no es un punto ni una falta. */
 export function hayQueRehacer(eventos) {
-  return eventos.some((e) => e.anulado && !e.rehacerBloqueado)
+  return eventos.some((e) => e.anulado && !e.rehacerBloqueado && e.tipo !== 'periodo')
 }
 
 // ---------------------------------------------------------------------------
 // Tabla de posiciones y estadística, derivadas de los eventos.
 // ---------------------------------------------------------------------------
 
-const REGLAS = {
-  baloncesto: { ganado: 2, perdido: 1, empate: 1 },
-  futsal: { ganado: 3, perdido: 0, empate: 1 },
-}
-
 export function tablaPosiciones({ equipos, partidos, eventosPorPartido, deporte }) {
-  const regla = REGLAS[deporte] || REGLAS.futsal
-  const fila = {}
-  for (const eq of equipos) {
-    fila[eq.id] = { equipo: eq, jj: 0, jg: 0, jp: 0, je: 0, pf: 0, pc: 0, faltas: 0, pts: 0 }
-  }
-
-  for (const p of partidos.filter((p) => p.estado === 'final')) {
+  // Los resultados salen de los eventos de cada partido final; la tabla (y sus reglas de puntos) es la de tabla-posiciones.js.
+  const resultados = partidos.filter((p) => p.estado === 'final').map((p) => {
     const evs = eventosPorPartido[p.id] || []
-    const local = marcadorEquipo(evs, p.localId)
-    const visita = marcadorEquipo(evs, p.visitaId)
-    const a = fila[p.localId]
-    const b = fila[p.visitaId]
-    if (!a || !b) continue
-    a.jj++; b.jj++
-    a.pf += local; a.pc += visita
-    b.pf += visita; b.pc += local
-    a.faltas += faltasEquipo(evs, p.localId)
-    b.faltas += faltasEquipo(evs, p.visitaId)
-    if (local > visita) { a.jg++; b.jp++; a.pts += regla.ganado; b.pts += regla.perdido }
-    else if (visita > local) { b.jg++; a.jp++; b.pts += regla.ganado; a.pts += regla.perdido }
-    else { a.je++; b.je++; a.pts += regla.empate; b.pts += regla.empate }
-  }
-
-  return Object.values(fila).sort(
-    (x, y) => y.pts - x.pts || (y.pf - y.pc) - (x.pf - x.pc) || y.pf - x.pf,
-  )
+    return {
+      localId: p.localId,
+      visitaId: p.visitaId,
+      local: marcadorEquipo(evs, p.localId),
+      visita: marcadorEquipo(evs, p.visitaId),
+      faltasLocal: faltasEquipo(evs, p.localId),
+      faltasVisita: faltasEquipo(evs, p.visitaId),
+    }
+  })
+  return tablaDeResultados({ equipos, resultados, deporte })
 }
 
 export function estadisticaJugadores({ jugadores, partidos, eventosPorPartido }) {

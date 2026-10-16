@@ -1,0 +1,16 @@
+/* Activación del teléfono de control: una columna, legible a 360 px, objetivos táctiles de 44 px. */
+.control-act { max-width: 440px; margin: 0 auto; padding: 32px 0 24px; }
+.control-act h1 { font-size: 1.35rem; margin: 0 0 6px; }
+.control-act .sub { margin: 0 0 14px; }
+.control-act .partido-vista { margin: 0 0 16px; padding: 12px 14px; border: 1px solid var(--line-soft); border-radius: var(--r-md); background: var(--surface); overflow-wrap: anywhere; }
+.control-act .partido-vista .equipos { font-weight: 700; }
+.control-act .campo input {
+  /* 16 px evita el zoom automático de iOS al enfocar el campo */
+  font-size: 1rem; min-height: 48px; letter-spacing: 0.08em; text-transform: uppercase; width: 100%; box-sizing: border-box;
+}
+.control-act .btn { min-height: 48px; margin: 0 8px 8px 0; }
+.control-act .aviso-control { margin: 0 0 14px; padding: 10px 12px; border-radius: var(--r-md); background: var(--acento-wash); color: var(--acento-ink); font-size: 0.9rem; overflow-wrap: anywhere; }
+.control-act .estado-guardado { margin: 0 0 14px; padding: 10px 12px; border: 1px solid var(--line-soft); border-radius: var(--r-md); font-size: 0.95rem; overflow-wrap: anywhere; }
+.control-act .estado-guardado h2 { font-size: 1rem; margin: 0 0 6px; }
+.control-act .fechas { font-size: 0.85rem; color: var(--ink-soft); margin: 6px 0 0; }
+.control-act .no-puntua { font-size: 0.85rem; color: var(--ink-soft); margin: 0 0 16px; }

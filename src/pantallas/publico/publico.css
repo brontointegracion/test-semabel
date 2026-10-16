@@ -1,0 +1,74 @@
+/* Pantallas públicas del modo compartido. Reutilizan las clases del prototipo (.hm-*, .partido, .board…); aquí solo lo
+   que no existía. TODO va acotado bajo «.publico» (la raíz de cada pantalla pública) para no alterar las pantallas del prototipo. */
+
+.publico .escudo.escudo-texto { background: var(--ink-soft); color: #fff; font-weight: 800; letter-spacing: 0.02em; }
+.publico .sin-actualizar { color: var(--aviso); font-weight: 700; }
+
+.publico .pendiente-comenzar {
+  display: inline-block; margin-top: 3px; padding: 2px 8px; border-radius: 999px;
+  font-size: 0.68rem; font-weight: 700; background: var(--surface-2); color: var(--ink-soft);
+}
+
+/* La sede puede ser un nombre largo: se parte en dos líneas en vez de cortarse. */
+.publico .partido .cuando { width: 88px; }
+.publico .partido .cuando .dia { white-space: normal; overflow-wrap: anywhere; line-height: 1.15; }
+
+.publico .nota-seccion { margin: 2px 0 8px; font-size: 0.74rem; color: var(--ink-mute); }
+.publico .hm-marcador { color: inherit; text-decoration: none; display: block; }
+
+/* Marcador público */
+.publico .board .equipo .corto.nombre-equipo {
+  white-space: normal; overflow-wrap: anywhere; line-height: 1.1;
+  font-size: clamp(0.95rem, 4.4vw, 1.6rem); min-height: 2.2em; display: flex; align-items: center; justify-content: center;
+}
+.publico .board .equipo .barra.neutra { background: var(--board-line); }
+.publico .board a.cerrar { text-decoration: none; display: inline-block; }
+.publico .board .medio .nota-estado {
+  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--acento); margin-top: 2px;
+}
+.publico .board .medio .nota-estado.apagada { color: var(--board-mute); }
+.publico .board .medio .fecha-programada { font-size: 1rem; font-weight: 700; color: var(--board-ink); margin-top: 4px; }
+
+.publico .faltas-partido {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px;
+  margin: 10px 0 4px; padding: 8px 0; border-top: 1px solid var(--board-line);
+  font-size: 0.78rem; color: var(--board-mute);
+}
+.publico .faltas-partido .titulo { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; text-align: center; }
+.publico .faltas-partido .lado { display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+.publico .faltas-partido .lado:last-child { justify-content: flex-end; }
+.publico .faltas-partido .lado b { font-size: 1.15rem; color: var(--board-ink); font-variant-numeric: tabular-nums; }
+.publico .faltas-partido .lado span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.publico .board.pantalla-completa .faltas-partido { font-size: 1rem; }
+.publico .board.pantalla-completa .faltas-partido .lado b { font-size: 1.6rem; }
+
+.publico .en-preparacion { max-width: 440px; margin: 0 auto; padding: 64px 0; text-align: center; }
+.publico a.volver { text-decoration: none; }
+.publico .liga-datos { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.publico .lista-equipos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.publico .lista-equipos .pill { font-weight: 600; }
+
+/* Marca (la misma del prototipo: peso, espaciado y punto de acento) con su propia clase: «.marca» también nombra otra pieza. */
+.publico .marca-publica { font-weight: 800; letter-spacing: -0.03em; font-size: 1.25rem; }
+.publico .marca-publica span { color: var(--acento); }
+.publico .hm-badge-vivo { white-space: nowrap; }
+
+/* Página de equipo */
+.publico .jugador-publico { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.publico .jugador-publico .num { font-variant-numeric: tabular-nums; min-width: 2.4em; }
+.publico .jugador-publico .falta-dato { color: var(--ink-mute); font-style: italic; }
+.publico .jugador-publico .nota-ficha { font-size: 0.68rem; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--surface-2); color: var(--ink-soft); }
+.publico .tabla-wrap th:first-child, .publico .tabla-wrap td:first-child { text-align: left; }
+.publico .board a.nombre-equipo { color: inherit; text-decoration: none; }
+.publico .board a.nombre-equipo:hover, .publico .board a.nombre-equipo:focus-visible { text-decoration: underline; }
+.publico a.pill { text-decoration: none; }
+
+/* Nombre real de la liga en la tarjeta de cabecera (REPORT_160). */
+.publico .liga-nombre {
+  margin: 6px 0 2px;
+  font-size: 1.45rem;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}

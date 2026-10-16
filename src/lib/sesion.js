@@ -1,4 +1,5 @@
 import { db } from '../db'
+import { modoCompartido } from './modo'
 
 // ---------------------------------------------------------------------------
 // Quién está mirando.
@@ -14,6 +15,13 @@ import { db } from '../db'
 // ---------------------------------------------------------------------------
 
 export async function asegurarSesion() {
+  // Modo compartido: nada local concede permisos. Un rol guardado en este navegador (de un uso anterior del prototipo)
+  // se reemplaza por invitado; no se borra ninguna otra cosa de la base.
+  if (modoCompartido()) {
+    const invitado = { id: 'sesion', rol: 'invitado', cuentaId: null }
+    await db.meta.put(invitado)
+    return invitado
+  }
   const actual = await db.meta.get('sesion')
   if (actual) return actual
   const invitado = { id: 'sesion', rol: 'invitado', cuentaId: null }
@@ -22,6 +30,7 @@ export async function asegurarSesion() {
 }
 
 export async function entrar() {
+  if (modoCompartido()) return // el atajo local no existe en modo compartido
   await db.meta.put({ id: 'sesion', rol: 'organizador', cuentaId: 'yo' })
 }
 
@@ -29,8 +38,8 @@ export async function salir() {
   await db.meta.put({ id: 'sesion', rol: 'invitado', cuentaId: null })
 }
 
-export const esOrganizador = (sesion) => sesion?.rol === 'organizador'
+export const esOrganizador = (sesion) => !modoCompartido() && sesion?.rol === 'organizador'
 
 /** Solo el dueño de la liga puede tocarla. */
 export const esDuenoDe = (sesion, liga) =>
-  esOrganizador(sesion) && !!liga && liga.organizadorId === sesion.cuentaId
+  !modoCompartido() && esOrganizador(sesion) && !!liga && liga.organizadorId === sesion.cuentaId

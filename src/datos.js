@@ -1,7 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { cronicaDePartido, resumenDeJornada } from './lib/cronica'
+import { compararPorDorsal } from './lib/dorsal'
 import { rosterActivo, rosterInactivo } from './lib/roster'
+import { esRivalCompatible, huellaSubcategoria } from './lib/categorias'
 
 const porId = (filas) => Object.fromEntries(filas.map((f) => [f.id, f]))
 
@@ -241,7 +243,7 @@ export function useEquipo(codigo) {
     return {
       equipo,
       liga,
-      jugadores: jugadores.sort((a, b) => a.dorsal - b.dorsal),
+      jugadores: jugadores.sort(compararPorDorsal),
       partidos: suyos,
       jugados: suyos.filter((p) => p.estado === 'final'),
       proximo: suyos.find((p) => p.estado === 'programado') || null,
@@ -506,9 +508,9 @@ export const useRetosDeCategoria = (deporte, categoria) =>
 
 
 /**
- * Con quién se puede retar: misma categoría, mismo deporte, y que la otra liga
- * también haya dejado la puerta abierta. El país no importa — un reto es
- * justamente el objeto compartido que cruza la frontera.
+ * Con quién se puede retar: mismo deporte, misma categoría y subcategoría compatible
+ * (ver esRivalCompatible), y que la otra liga también haya dejado la puerta abierta.
+ * El país no importa — un reto es justamente el objeto compartido que cruza la frontera.
  */
 export const useRivalesPosibles = (liga) =>
   useLiveQuery(async () => {
@@ -519,10 +521,9 @@ export const useRivalesPosibles = (liga) =>
         l.id !== liga.id &&
         !l.esTorneo &&
         l.aceptaRetos &&
-        l.deporte === liga.deporte &&
-        l.categoria === liga.categoria,
+        esRivalCompatible(liga, l),
     )
-  }, [liga?.id, liga?.aceptaRetos, liga?.deporte, liga?.categoria], [])
+  }, [liga?.id, liga?.aceptaRetos, liga?.deporte, liga?.categoria, huellaSubcategoria(liga?.subcategoria)], [])
 
 
 /**

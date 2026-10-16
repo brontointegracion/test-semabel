@@ -1,0 +1,14 @@
+/* Página de entrada del organizador: una columna, legible a 360 px, objetivos táctiles de 44 px. */
+.acceso { max-width: 440px; margin: 0 auto; padding: 32px 0 24px; }
+.acceso h1 { font-size: 1.35rem; margin: 0 0 6px; }
+.acceso .sub { margin: 0 0 18px; }
+.acceso .campo input {
+  /* 16 px evita el zoom automático de iOS al enfocar el campo */
+  font-size: 1rem; min-height: 48px; letter-spacing: 0.08em; text-transform: uppercase; width: 100%; box-sizing: border-box;
+}
+.acceso .btn { min-height: 48px; }
+.acceso .aviso-acceso { margin: 0 0 14px; padding: 10px 12px; border-radius: var(--r-md); background: var(--acento-wash); color: var(--acento-ink); font-size: 0.9rem; }
+.acceso .ligas-acceso { list-style: none; margin: 8px 0 16px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.acceso .ligas-acceso li { padding: 12px 14px; border: 1px solid var(--line-soft); border-radius: var(--r-md); background: var(--surface); overflow-wrap: anywhere; font-weight: 700; }
+.acceso .pendiente { font-size: 0.85rem; color: var(--ink-soft); margin: 0 0 16px; }
+.en-preparacion { max-width: 440px; margin: 0 auto; padding: 64px 0; text-align: center; }

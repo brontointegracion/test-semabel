@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useCronicas, useRegion } from '../datos'
-import { Marca, Vacio, fechaCorta } from '../ui'
+import { Marca, Vacio, fechaCorta, EnlacePartido } from '../ui'
 import { urlPartido, urlLiga } from '../lib/enlaces'
 import { useMeta } from '../lib/meta'
 
@@ -52,13 +52,13 @@ export default function Noticias() {
           )
 
           return c.partido ? (
-            <Link
+            <EnlacePartido
               key={c.id}
               to={urlPartido(c.partido, c.equipos[c.partido.localId], c.equipos[c.partido.visitaId])}
               className={`noticia ${i === 0 ? 'principal' : ''}`}
             >
               {dentro}
-            </Link>
+            </EnlacePartido>
           ) : (
             <Link key={c.id} to={urlLiga(c.liga)} className="noticia">
               {dentro}

@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Local Wrangler/Miniflare state and local persistence
+.wrangler/
+.wrangler-state/
+
+# Generated output
+dist/
+coverage/
+worker-configuration.d.ts
+
+# Secrets and local environment files (never commit real values)
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+!.dev.vars.example
+!.env.example
+
+# Logs and OS files
+*.log
+.DS_Store

@@ -1,0 +1,46 @@
+import { ligaAdmitida } from './admision.js'
+import { textosIguales, tokenDeEncabezado } from './credenciales.js'
+import { LIMITES_CARGA, validarEstructura, validarPartidos } from './carga.js'
+import { administracionHabilitada } from './acceso/config.js'
+import { leerJsonAcotado, metodoNoPermitido, noAutorizado, noEncontrado, responder } from './acceso/http.js'
+
+// ---------------------------------------------------------------------------
+// Carga del OPERADOR (ver carga.js). Solo existe con la misma puerta que la provisión del operador
+// (ACCESO_ADMIN_HABILITADO=1 y ACCESO_ADMIN_TOKEN de 32+ caracteres): cerrada por defecto, sin un segundo sistema de
+// autenticación. Una sesión de organizador (cookie) NO sirve: aquí solo se mira el Bearer del operador.
+//
+//   POST /v1/admin/ligas/{liga}/estructura   liga + equipos, atómico por petición
+//   POST /v1/admin/ligas/{liga}/partidos     lote de partidos nuevos, atómico por lote
+//
+// Orden: puerta del operador → liga ADMITIDA (antes de cualquier objeto) → método → Bearer → cuerpo acotado → validación
+// completa → liga. Una liga no admitida recibe el 404 de siempre, con cualquier cuerpo o credencial.
+// ---------------------------------------------------------------------------
+
+const ID = '[A-Za-z0-9_-]{1,64}'
+const RE_CARGA = new RegExp(`^/v1/admin/ligas/(${ID})/(estructura|partidos)$`)
+
+export const esRutaDeCarga = (pathname) => RE_CARGA.test(pathname)
+
+export async function manejarCarga(request, env, pathname) {
+  const [, ligaId, tipo] = RE_CARGA.exec(pathname)
+  if (!administracionHabilitada(env)) return noEncontrado()
+  if (!ligaAdmitida(env, ligaId)) return noEncontrado()
+  if (request.method !== 'POST') return metodoNoPermitido('POST')
+  const token = tokenDeEncabezado(request.headers.get('authorization'))
+  if (token === null || !(await textosIguales(token, env.ACCESO_ADMIN_TOKEN))) return noAutorizado()
+  const esEstructura = tipo === 'estructura'
+  const { valor, error } = await leerJsonAcotado(request, esEstructura ? LIMITES_CARGA.bytesEstructura : LIMITES_CARGA.bytesPartidos)
+  if (error) return error
+  const v = esEstructura ? validarEstructura(valor, ligaId) : validarPartidos(valor)
+  if (!v.ok) return responder(422, { error: 'payload-invalido', errores: v.errores })
+  try {
+    const stub = env.LIGA.get(env.LIGA.idFromName(ligaId))
+    const r = esEstructura
+      ? await stub.cargarEstructuraOperador({ ligaId, normalizado: v.normalizado })
+      : await stub.cargarPartidosOperador({ ligaId, normalizado: v.normalizado })
+    return responder(r.status, r.cuerpo)
+  } catch {
+    // Resultado incierto: repetir la MISMA carga (mismo cargaId y contenido) es seguro.
+    return responder(503, { error: 'resultado-desconocido', reintento: 'misma-carga' })
+  }
+}

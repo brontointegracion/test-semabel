@@ -1,0 +1,27 @@
+/* Pantalla de puntuación del modo compartido: solo lo que no tiene ya el diseño de la consola (styles.css). */
+.control-partido { padding: 0 0 8px; }
+.control-partido > main, main.control-partido { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.control-partido .topbar .volver { text-decoration: none; }
+.cp-avisos { display: flex; flex-direction: column; gap: 8px; }
+.cp-aviso { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line, #ddd); background: var(--paper, #fff); font-size: 0.9rem; line-height: 1.35; }
+.cp-aviso.error { border-color: var(--acento, #D7263D); color: var(--acento-ink, #8b1325); }
+.cp-aviso.aviso { border-color: #b7791f; }
+.cp-aviso.ok { border-color: #2f855a; }
+.cp-aviso.info { color: var(--ink-mute, #555); }
+.cp-sincro { margin: 0; font-size: 0.8rem; color: var(--ink-mute, #555); text-align: center; font-variant-numeric: tabular-nums; }
+.cp-confirmar { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 2px solid var(--acento, #D7263D); border-radius: 12px; background: var(--paper, #fff); }
+.cp-confirmar p { margin: 0; }
+.cp-confirmar .fila { display: flex; gap: 8px; }
+.cp-confirmar .fila .btn { flex: 1; min-height: 48px; }
+.cp-corregir { display: grid; grid-template-columns: 1fr auto; gap: 6px 8px; align-items: end; }
+.cp-corregir label { grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-mute, #555); }
+.cp-corregir input { min-height: 44px; padding: 0 10px; font-size: 1rem; border: 1px solid var(--line, #ccc); border-radius: 10px; min-width: 0; }
+.cp-corregir .btn { min-height: 44px; }
+.cp-estado { font-size: 0.68rem; font-weight: 700; padding: 2px 6px; border-radius: 999px; border: 1px solid var(--line, #ccc); white-space: nowrap; }
+.cp-estado.pendiente { border-color: #b7791f; color: #8a5a10; }
+.cp-estado.confirmado { border-color: #2f855a; color: #276749; }
+.cp-resumen { display: flex; flex-direction: column; gap: 8px; }
+.cp-final { font-size: 1.3rem; font-weight: 800; margin: 0; text-align: center; font-variant-numeric: tabular-nums; }
+.cp-resumen-equipo h3 { margin: 4px 0; font-size: 1rem; }
+.cp-resumen-equipo ul { margin: 0; padding-left: 18px; font-size: 0.9rem; }
+.control-partido .consola > .btn { min-height: 48px; }

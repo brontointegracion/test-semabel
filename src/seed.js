@@ -1,6 +1,5 @@
 import { db, uid } from './db'
 import { generarCalendario } from './lib/calendario'
-import { restanteMs } from './lib/reloj-calculo'
 import { partirNombre } from './lib/identidad'
 
 // Datos de ejemplo. Todo se genera relativo a hoy para que el prototipo
@@ -258,47 +257,49 @@ export async function sembrarSiHaceFalta() {
   await db.meta.put({ id: 'semilla', version: SEMILLA, sembradoEn: new Date().toISOString() })
 }
 
-/**
- * Solo para el prototipo: el partido de ejemplo tiene que estar siempre en juego.
- *
- * El reloj de la semilla empieza a correr cuando se crean los datos, así que a
- * los pocos minutos llegaba a cero y el "partido en vivo" quedaba congelado.
- * Esto lo vuelve a poner en marcha cuando se acaba, avanzando de período como
- * lo haría un partido de verdad.
- *
- * Si alguien lo detuvo a mano desde la consola y todavía queda tiempo, se
- * respeta: eso es una decisión del árbitro, no un reloj agotado.
- */
-let mantenimientoPausado = false
-
-/** Mientras el árbitro tiene la consola abierta, el reloj es suyo y nadie más lo toca. */
-export const pausarMantenimiento = (v) => { mantenimientoPausado = v }
-
-/**
- * El partido de ejemplo empieza su período con el tiempo completo y corre hacia
- * abajo. Nunca se muestra en pausa: un partido en juego tiene el reloj andando.
- *
- * Se vuelve a cargar al abrir la app y cada vez que llega a cero, para que la
- * demostración no dependa de cuándo se sembraron los datos.
- */
-export async function mantenerPartidoEnVivo() {
-  if (mantenimientoPausado) return
-
-  const vivos = await db.partidos.where('estado').equals('vivo').toArray()
-  for (const partido of vivos) {
-    const liga = await db.ligas.get(partido.ligaId)
-    if (restanteMs(partido, liga) > 0 && partido.relojEstado === 'corriendo') continue
-
-    await db.partidos.update(partido.id, {
-      relojEstado: 'corriendo',
-      relojRestante: minutosDe(liga) * 60 * 1000,
-      relojDesde: Date.now(),
-    })
-  }
-}
-
 const minutosDe = (liga) =>
   liga?.minutosPorPeriodo ?? (liga?.deporte === 'baloncesto' ? 10 : 20)
+
+/**
+ * Pone los eventos de un partido en el orden en que pasaron: lo anotado en cada
+ * período queda entre la transición que lo abrió y la que lo cierra, y cada
+ * evento recibe un seq único y creciente.
+ *
+ * Los eventos y sus marcas (anulado, rehacerBloqueado) no cambian, ni los puntos,
+ * las faltas o el período con el que se anotó cada uno. Las transiciones
+ * anuladas no cuentan como frontera, así que las vivas ocupan las primeras
+ * fronteras y cada una lleva el número del período que realmente cierra.
+ * Una transición anulada queda justo antes de la viva que lleva su mismo
+ * número (como un cambio de período hecho por error y corregido); si no hay una
+ * viva con ese número, va al final. Solo cambian el orden, el seq, las horas
+ * derivadas del seq y el `periodo` de las transiciones vivas.
+ */
+export function ordenarHistoria(eventos, inicioMs) {
+  const vivas = eventos.filter((e) => e.tipo === 'periodo' && !e.anulado)
+  const anuladas = eventos.filter((e) => e.tipo === 'periodo' && e.anulado)
+  const acciones = eventos.filter((e) => e.tipo !== 'periodo')
+  const periodos = Math.max(vivas.length, ...acciones.map((e) => e.periodo), 0)
+
+  const orden = []
+  const sinPareja = [...anuladas]
+  for (let p = 1; p <= periodos; p++) {
+    orden.push(...acciones.filter((e) => e.periodo === p))
+    const viva = vivas[p - 1]
+    if (!viva) continue
+    const corregidas = sinPareja.filter((e) => e.periodo === p)
+    corregidas.forEach((e) => sinPareja.splice(sinPareja.indexOf(e), 1))
+    orden.push(...corregidas)
+    viva.periodo = p
+    orden.push(viva)
+  }
+  orden.push(...sinPareja)
+
+  orden.forEach((e, i) => {
+    e.seq = i + 1
+    e.creadoEn = inicioMs + e.seq * 20000
+    if (e.anulado) e.anuladoEn = e.creadoEn + 9000
+  })
+}
 
 /** Juega los partidos que ya pasaron generando eventos reales: puntos y faltas. */
 async function simular({ liga, jugadores, partidos }) {
@@ -371,6 +372,11 @@ async function simular({ liga, jugadores, partidos }) {
         cand.rehacerBloqueado = true
       }
     }
+
+    ordenarHistoria(
+      eventos.filter((e) => e.partidoId === partido.id),
+      new Date(partido.inicio).getTime(),
+    )
 
     if (enVivo) {
       // El período en curso empieza con su tiempo completo, y el reloj andando.
@@ -539,6 +545,7 @@ async function sembrarTorneo(canchas) {
       periodo: p, anulado: false, creadoEn: ayer.getTime() + seq * 20000,
     })
   }
+  ordenarHistoria(eventos, ayer.getTime())
   await db.eventos.bulkAdd(eventos)
 }
 

@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useEquipo, useSesion, useSiguiendo, useRosterActivo, useRosterInactivo } from '../datos'
+import { textoDorsal } from '../lib/dorsal'
 import { esDuenoDe } from '../lib/sesion'
 import { tablaPosiciones, marcadorEquipo, estadisticaJugadores } from '../lib/marcador'
 import { seguirEquipo, sigueEquipo } from '../lib/seguir'
 import { codigoDe, urlLiga, urlPartido, urlJugador, urlCancha } from '../lib/enlaces'
 import { useMeta } from '../lib/meta'
-import { Topbar, Escudo, Vacio, RelojVivo, MenuJugador, Toast, fechaCorta, fechaLarga, hora, diaRelativo } from '../ui'
-import { FormularioJugador, ConfirmarDesactivar, ConfirmarReactivar } from '../plantilla'
+import { Topbar, Escudo, Vacio, RelojVivo, MenuJugador, Toast, fechaCorta, fechaLarga, hora, diaRelativo, EnlacePartido } from '../ui'
+import { FormularioJugador, ConfirmarDesactivar, ConfirmarReactivar, AvisoNumeroPendiente } from '../plantilla'
 
 /**
  * La página del equipo.
@@ -133,7 +134,7 @@ export default function Equipo() {
       {vivo && (
         <>
           <h2 className="seccion">Jugando ahora</h2>
-          <Link to={urlPartido(vivo, equiposPorId[vivo.localId], equiposPorId[vivo.visitaId])} className="card">
+          <EnlacePartido to={urlPartido(vivo, equiposPorId[vivo.localId], equiposPorId[vivo.visitaId])} className="card">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
               <span className="pill vivo"><i className="punto" />EN VIVO</span>
               <RelojVivo partido={vivo} liga={liga} eventos={eventosPorPartido[vivo.id] || []} />
@@ -147,14 +148,14 @@ export default function Equipo() {
                 </span>
               </div>
             ))}
-          </Link>
+          </EnlacePartido>
         </>
       )}
 
       {proximo && (
         <>
           <h2 className="seccion">Próximo partido</h2>
-          <Link to={urlPartido(proximo, equiposPorId[proximo.localId], equiposPorId[proximo.visitaId])} className="card">
+          <EnlacePartido to={urlPartido(proximo, equiposPorId[proximo.localId], equiposPorId[proximo.visitaId])} className="card">
             <div style={{ fontWeight: 700 }}>
               vs {equiposPorId[proximo.localId === equipo.id ? proximo.visitaId : proximo.localId]?.nombre}
             </div>
@@ -162,7 +163,7 @@ export default function Equipo() {
               {diaRelativo(proximo.inicio)} · {fechaCorta(proximo.inicio)} · {hora(proximo.inicio)}
             </div>
             <div className="sub">{canchasPorId[proximo.canchaId]?.nombre}</div>
-          </Link>
+          </EnlacePartido>
           <Link to={urlCancha(canchasPorId[proximo.canchaId])} className="btn fantasma" style={{ marginTop: 8 }}>
             Cómo llegar a la cancha
           </Link>
@@ -194,7 +195,7 @@ export default function Equipo() {
             return (
               <div key={j.id} className="jugador-fila">
                 <Link to={urlJugador(j)} style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
-                  <div className="dorsal">{j.dorsal}</div>
+                  <div className="dorsal">{textoDorsal(j)}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="nombre" style={{ fontWeight: 600 }}>{j.nombre}</div>
                     <div className="sub" style={{ fontSize: '0.74rem' }}>
@@ -202,6 +203,7 @@ export default function Equipo() {
                       {s?.partidos ? `${s.promedio.toFixed(1)} pts por juego · ${s.faltas} faltas` : 'Sin partidos'}
                       {j.deEquipo && <> · de {j.deEquipo}</>}
                     </div>
+                    {esOrganizadorDelEquipo && <div style={{ marginTop: 4 }}><AvisoNumeroPendiente ficha={j} /></div>}
                   </div>
                   {s?.partidos > 0 && (
                     <div style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{s.puntos}</div>
@@ -259,13 +261,14 @@ export default function Equipo() {
             {inactivos.map((j) => (
               <div key={j.id} className="jugador-fila inactivo">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
-                  <div className="dorsal">{j.dorsal ?? '—'}</div>
+                  <div className="dorsal">{textoDorsal(j)}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="nombre" style={{ fontWeight: 600 }}>{j.nombre}</div>
                     <div className="sub" style={{ fontSize: '0.74rem' }}>
                       <span className="pill">Inactivo</span>
                       {j.desactivadoEn && <> · Desde {fechaLarga(j.desactivadoEn)}</>}
                     </div>
+                    <div style={{ marginTop: 4 }}><AvisoNumeroPendiente ficha={j} /></div>
                   </div>
                 </div>
                 <MenuJugador
@@ -291,7 +294,7 @@ export default function Equipo() {
           const rivalId = p.localId === equipo.id ? p.visitaId : p.localId
           const otros = marcadorEquipo(evs, rivalId)
           return (
-            <Link key={p.id} to={urlPartido(p, equiposPorId[p.localId], equiposPorId[p.visitaId])} className="resultado">
+            <EnlacePartido key={p.id} to={urlPartido(p, equiposPorId[p.localId], equiposPorId[p.visitaId])} className="resultado">
               <div className="duelo">
                 <Escudo equipo={equipo} size="sm" />
                 <Escudo equipo={equiposPorId[rivalId]} size="sm" />
@@ -306,7 +309,7 @@ export default function Equipo() {
                   {mios > otros ? 'Ganó' : mios < otros ? 'Perdió' : 'Empató'}
                 </div>
               </div>
-            </Link>
+            </EnlacePartido>
           )
         })}
         {!jugados.length && <Vacio>Todavía no ha jugado.</Vacio>}

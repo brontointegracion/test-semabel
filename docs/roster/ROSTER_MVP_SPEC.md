@@ -4,6 +4,8 @@ Status: **Revised after specification review — ready for implementation planni
 
 **Revision note:** this draft supersedes the original version's league-scoped duplicate matching, its "not specified" active/inactive removal semantics, its "combined `nombre`" recommendation, and its "not specified" answers on name-edit re-matching and ficha reactivation. Those five points are now resolved by approved decisions and are reflected throughout this document — see §9, §5, §8, §10, §11, and the reconciled §20.
 
+**Amendment note (2026-10-11):** the jersey-number statements in this document are reconciled in **§23**. The original text elsewhere is preserved and annotated where it conflicts. In summary: this specification originally made the jersey number optional; Stage 3 Decision 1 later made it required; Stage 3 **Decision 115** now makes it required **unless the organizer explicitly marks it `Número pendiente`**, and blocks starting a game until every active player of both teams has a valid unique number. **Pilot update (2026-10-11):** for the pilot, the pending option is superseded — every add, edit and reactivation requires a valid jersey number (0–99, real `0` valid) — while the game-start readiness rule is retained and implemented in the connected application only (engine/server enforcement pending). See §23 and `ROSTER_MVP_STAGE3_DECISIONS.md` (Decision 115, "Pilot amendment"). *[Updated 2026-10-12: engine enforcement is implemented and accepted (S5a/S5b); application integration and server enforcement remain pending. See §23.7.]*
+
 This document is derived from three sources, kept distinct throughout:
 
 - **[REQ]** — a direct citation from `REQUISITOS.md`.
@@ -89,7 +91,7 @@ For roster management:
 Organizer creates a league (`/nueva`, `NuevaLiga.jsx`), typing real team names instead of accepting placeholders. Each team is created with 0 players. Organizer is directed (or navigates) to each team's page to begin adding players. **[DECISION]** §G.
 
 **Journey 2 — Add a player.**
-From the owning organizer's view of a Team page (`/e/:slug`, `Equipo.jsx`), the organizer adds a player with first name + last name (required), optionally jersey number and date of birth. If a plausible name match exists anywhere in Sebel, the organizer is asked to resolve it (§9) before the ficha is finalized. The player appears immediately in the roster list, including if they have zero games — no page reload or stats event required for visibility (§13, §4.4).
+From the owning organizer's view of a Team page (`/e/:slug`, `Equipo.jsx`), the organizer adds a player with first name + last name (required), optionally jersey number and date of birth. If a plausible name match exists anywhere in Sebel, the organizer is asked to resolve it (§9) before the ficha is finalized. The player appears immediately in the roster list, including if they have zero games — no page reload or stats event required for visibility (§13, §4.4). **[SUPERSEDED — see §23: Stage 3 Decision 1 made the jersey number required; Decision 115 allowed it to be absent only with explicit `Número pendiente` intent, and for the pilot even that exception is superseded (a valid number is always required). Date of birth stays optional.]**
 
 **Journey 3 — Correct information later.**
 Organizer edits an existing roster entry's first name, last name, jersey number, or date of birth (§10) from the same Team page.
@@ -113,7 +115,7 @@ Organizer corrects a misspelled first or last name on an existing player; becaus
 - Last name.
 
 **Optional at creation: [DECISION] §B, §C**
-- Jersey number (`dorsal`).
+- Jersey number (`dorsal`). **[SUPERSEDED — see §23. Stage 3 Decision 1 made it required; Decision 115 allowed it to be absent only when the organizer explicitly marks `Número pendiente`, which is itself superseded for the pilot.]**
 - Date of birth.
 
 **Inherited from context, not entered by the organizer: [DECISION] §B**
@@ -309,7 +311,7 @@ These must hold after any roster operation defined in this specification:
 - **Two different real people, same name, added by two different organizers to two different teams — same league or different leagues/countries — both choosing "Es otra persona."** Correct and expected — the system must not force a merge; two distinct `personaId` values result, exactly as intended, regardless of scope.
 - **Editing a player's name into a collision that didn't exist at creation time.** **Resolved (§10, §6 of the approved updates):** any edit to first or last name reruns the Sebel-wide matching flow; jersey number/DOB-only edits do not.
 - **Removing a player who has a pending duplicate-decision context (e.g., mid-flow).** Not specified — assume removal only applies to an already-created ficha; the duplicate-decision flow in §9 happens before a ficha exists, so no overlap should occur if implemented as specified.
-- **A player with no jersey number.** Already representable — `dorsal` is not in the required set (§8); existing rendering already handles absence gracefully in some places (e.g. `Equipo.jsx:167` renders `{j.dorsal}` directly with no fallback shown — implementer should verify this doesn't render `undefined` visibly and add a fallback if needed; this is a pre-existing minor gap, not introduced by this specification).
+- **A player with no jersey number.** Already representable — `dorsal` is not in the required set (§8); existing rendering already handles absence gracefully in some places (e.g. `Equipo.jsx:167` renders `{j.dorsal}` directly with no fallback shown — implementer should verify this doesn't render `undefined` visibly and add a fallback if needed; this is a pre-existing minor gap, not introduced by this specification). **[RECONCILED — see §23: a missing number on an existing record is displayed as `—` on public surfaces and explained as `Número pendiente` to the organizer; such records sort last. New registrations always have a number.]**
 - **A removed player who is later re-added to any team, league, or sport.** **Resolved (§11, §3 of the approved updates):** this always creates a **new** active ficha (via the normal add-player flow, reusing `personaId` through the standard "Es la misma persona" confirmation) — the old ficha is never reactivated and stays inactive/historical. No separate "reactivate" code path is needed or specified.
 - **Tournament call-ups (`sembrarTorneo`-style) referencing a player created through this new flow.** Should work correctly as long as `personaId` is always set (§17.1) — this specification's fix to defect §4.3 is a prerequisite for call-ups to function correctly on real (non-seeded) data, closing a risk noted in the identity-inspection work this document is built on.
 - **Cross-league candidate visibility.** **Resolved (§9, cross-league candidate-disclosure rule):** because matching is Sebel-wide, an organizer adding a player may see a candidate whose other fichas belong to a league they do not own. That candidate card is bounded to name, age (not exact DOB), country when appropriate, sport, and relevant prior sporting context — exact DOB, phone/WhatsApp, email, ID/document, and account information are never disclosed to a non-owning organizer, even though those sensitive fields may still be used internally to help identify the candidate as plausible.
@@ -319,7 +321,7 @@ These must hold after any roster operation defined in this specification:
 All of the following must hold for this specification to be considered correctly implemented:
 
 1. Create a team with 0 players — succeeds, no placeholder players generated.
-2. Add a player using only first + last name — succeeds; `dorsal` and date of birth are absent without error.
+2. Add a player using only first + last name — succeeds; `dorsal` and date of birth are absent without error. **[SUPERSEDED for `dorsal` — see §23: the number is required (for the pilot there is no `Número pendiente` exception). A missing date of birth is still accepted without error.]**
 3. A player added without date of birth shows a persistent, organizer-visible "identity information incomplete" reminder.
 4. Adding a date of birth to that player clears the reminder.
 5. Adding a player whose normalized name matches an existing player **anywhere in Sebel** triggers an explicit "Es la misma persona" / "Es otra persona" choice — creation does not proceed silently either way.
@@ -365,6 +367,7 @@ All of the following must hold for this specification to be considered correctly
 - Guardian-consent flow for minors (§15) — implementation itself, not the boundary, which is documented.
 - The exact schema field name/type for the active/inactive flag on `jugadores` (§11) — architecture direction and product behavior are specified; only the concrete field name/type is left to the implementer.
 - Wording/visual design of the "identity information incomplete" reminder (§14).
+- The items listed as pending in **§23** (storage representation of an absent number, API details, roster changes after a game starts, reactivation, reverting to pending, wording of the organizer explanation). *For the pilot, the pending-number items are moot; roster changes after a game starts and engine/server readiness remain open (§23.4).*
 - **Migration strategy for the existing combined `nombre` field** (§8) — splitting into separate first/last fields requires either backfilling existing `nombre` values or keeping `nombre` as a derived/composed value for existing readers; which approach, and the exact mechanics, are not decided here.
 - **Richer person-match UX** — the exact visual presentation of a candidate card (layout, ranking of multiple candidates, wording) beyond the fields it is and isn't allowed to disclose, which is now specified (§9's cross-league candidate-disclosure rule).
 - **Exact additional identifier/privacy policy beyond date of birth** (§14) — whether anything further will ever be required or offered as identity evidence, and under what consent/privacy terms, is unresolved.
@@ -410,6 +413,103 @@ Files/components/data functions likely involved if this specification is impleme
 - Integration test confirming a name-only edit (first/last) reruns matching, while a jersey-number/DOB-only edit does not.
 - Integration test confirming a rejoin (remove, then re-add) produces a new ficha with the same `personaId` and leaves the original ficha inactive and unmodified.
 - Unit test confirming the candidate-card serialization/view-model excludes exact DOB, phone/WhatsApp, email, and ID/document fields entirely (not merely hides them client-side), while still allowing the matching function itself to read those fields.
+
+---
+
+## 23. Amendment — pending jersey numbers and game-start readiness (2026-10-11)
+
+Source of authority: **Stage 3 Decision 115** in `docs/roster/ROSTER_MVP_STAGE3_DECISIONS.md`, including its "Pilot amendment". This section reconciles this specification with it. **[DECISION]** items are approved product policy; **[CODE]** items describe the current implementation; **[VERIFIED]** items are reported automated results. Sections 23.1 and 23.2 record the original amendment (history preserved); where the pilot supersedes an item it is marked, and 23.3–23.6 give the current status.
+
+**Pilot policy in one paragraph.** **[DECISION]** For the pilot, adding, editing and reactivating a player each require a valid jersey number (whole number 0–99; real `0` valid; leading-zero input normalizes through strict parsing; unique among the active players of the team). Pending-number creation, deliberate clearing to pending, and pending reactivation are not permitted. Existing incomplete or malformed records are preserved and must receive a valid number before an edit or reactivation of them succeeds. Incomplete source entries stay outside registered rosters as preparation data; numbered players alone are not proof of a complete real-game roster. Initial game start is blocked unless every active player of both teams has a valid unique number. This does not declare the pilot ready and authorizes no import.
+
+### 23.1 What changed (original amendment; items on pending registration are superseded for the pilot)
+
+- **[DECISION]** Teams and known players may be saved and publicly displayed while jersey numbers remain pending organizer confirmation. A missing value stays missing and is never fabricated. *[Superseded for the pilot: players are registered only with a valid number.]*
+- **[DECISION]** Saving a player without a number requires explicit organizer intent, labelled `Número pendiente`. Without it, an empty number is still a validation error. Accidental omission must not become pending. *[Superseded for the pilot: there is no pending intent.]*
+- **[DECISION]** An absent number is stored as absent: never a random number, `0`, `NaN`, an empty string or another placeholder. `0` stays a valid real jersey number (range `0`–`99`).
+- **[DECISION]** Public surfaces show `—`. Organizer views explain `Número pendiente`. Missing numbers sort last.
+- **[DECISION]** A pending player stays editable. Supplying a real number later checks uniqueness among the **active** players of that team and preserves the ficha id, `personaId` and historical links. *[Superseded for the pilot: an existing record without a valid number must receive one before an edit or reactivation succeeds; uniqueness and identity/history preservation still apply.]*
+- **[DECISION]** Starting a game is blocked until every **active** player of both participating teams has a valid number, unique within that player's team. Inactive historical registrations never create this blocker.
+- **[DECISION]** Date of birth stays optional and never blocks a game start. No age rules and no minimum roster size are introduced.
+- **[DECISION]** A first name supplied as a single initial is acceptable as supplied; expansion must not be required.
+- **[DECISION]** No match-roster selection workflow and no handover or control-transfer workflow is authorized.
+- **[DECISION]** The authoritative start command must enforce readiness, using the same trusted roster context as scoring. Disabling an interface button alone is not enough.
+
+### 23.2 Reconciliation of earlier statements in this document
+
+| Earlier statement | Status after the amendment |
+|---|---|
+| §7 (user journeys) and §8 (add-player requirements): the jersey number is optional at creation | Superseded by Stage 3 Decision 1 (required), then amended by Decision 115 (required unless explicitly `Número pendiente`); for the pilot the pending exception is itself superseded, so the number is always required. |
+| §18 (edge cases), "A player with no jersey number": already representable | Reconciled: such a record can exist only as a preserved existing record (it cannot be created in the pilot); display is `—` publicly and `Número pendiente` for organizers. |
+| §19, acceptance 2: add using only first and last name succeeds with `dorsal` absent | Superseded for `dorsal` (a valid number is required); still true for date of birth. |
+| §19, acceptance 3 and 4: reminder for a missing date of birth | Unchanged. A missing date of birth never blocks starting a game. |
+| §10: editing the number alone does not trigger name matching | Unchanged. |
+
+### 23.3 Current implementation (pilot status)
+
+*The earlier version of this subsection (written before any implementation) said that normal writes required a number, that a numberless record could not be edited, that the write paths turned an empty value into `0`, that display was partial and that no start check existed. That snapshot is out of date and is replaced by the following.*
+
+- **[CODE]** Add, edit and reactivate in `src/lib/roster.js` (`agregarJugador`, `editarJugador`, `reactivarJugador`) require a valid number read by the strict parser in `src/lib/dorsal.js`; a blank or malformed value is rejected and never becomes `0`; the former pending intent is rejected. The forms in `src/plantilla.jsx` offer no pending option.
+- **[CODE]** An existing record without a valid number is preserved; an edit or reactivation of it is rejected until a valid number is supplied, and a rejection leaves the stored data unchanged.
+- **[CODE]** The display and sort helpers show `—` and order missing numbers last; organizer notices for incomplete records are in `src/plantilla.jsx` and `src/pantallas/Equipo.jsx`.
+- **[CODE]** Initial game start in the connected application is validated inside the same Dexie transaction that writes the start (`iniciarPartido` in `src/lib/reloj.js`; pure rule in `src/lib/prontitud-plantilla.js`): an existing league, two distinct existing teams of that league, and valid unique numbers for all active players; inactive records and a missing birth date do not block, and an empty roster is not rejected by a minimum-size rule.
+- **[CODE]** The unconnected scoring engine and any server adapter have **no** readiness check, and the trusted roster context used for scoring does not carry jersey numbers. *[Superseded in part 2026-10-12: the engine now has a readiness check and carries stored numbers in its preparation context (S5a/S5b); no server adapter exists. See §23.7.]*
+- **[CODE]** Date of birth is optional in storage and validation.
+- **[VERIFIED]** After the numbered-only enforcement, the full automated suite was reported passing (710 of 710) and a build was reported successful; later changes touched test files only, a later suite run also passed, and no new build was run after them. Earlier failures were not fully captured. Later diagnostics identified timing-sensitive startup and console tests; their relationship to the original failures remains unproven. Automated results only; no real-device acceptance.
+
+### 23.4 Pending — not decided
+
+- Engine and server readiness: jersey-number presence in the trusted roster context, an atomic read-to-commit comparison, and the durable server adapter's own acceptance evidence. Numbered-only registration and a single in-browser database transaction do not demonstrate server atomicity, shared persistence, authentication or offline readiness. *[Updated 2026-10-12: the engine side is implemented (S5a/S5b), proven only against a test-only memory adapter. Application integration and the server parts remain pending. See §23.7.]*
+- Roster changes **after a game has started**. No policy is set. A stale offline-start rejection is proposed in a design plan and is not approved. *[Amended 2026-10-12: the stale queued initial-Start rejection is now **approved** (see §23.7); the sentence above is retained as superseded history. The roster-changes-after-start policy remains unresolved.]*
+- Option C (an organizer completion link or portal): deferred and not authorized. If built, it is a separate preparation area followed by an explicit validated registration; no shared link, schema or workflow is approved.
+- Real-device acceptance.
+- Exact wording and placement of the organizer-only explanation beyond the label `Número pendiente`.
+- *Moot for the pilot (retained as history):* storage representation of an absent number, reactivation as pending, and reverting a numbered player to pending, because pending registration is not permitted.
+
+### 23.5 Acceptance criteria
+
+The first list is the **pilot** list; the second is the original list, kept as history.
+
+Pilot acceptance criteria (the first six are implemented and have reported automated tests; items 7 and 8 are pending):
+
+1. Add, edit and reactivate each reject a blank, missing or malformed number and accept a whole number 0–99, including `0`; leading-zero input is stored as the integer.
+2. The former pending intent cannot create, clear or reactivate a player.
+3. A name-only edit keeps an existing valid number; an existing record without a valid number cannot be edited or reactivated until it receives one, and a rejection leaves the stored data unchanged.
+4. Numbers are unique among active teammates, including `0`.
+5. Starting a game in the connected application is refused unless there is an existing league, two distinct existing teams of it, and valid unique numbers for every active player of both teams; inactive records, a missing birth date and an empty roster do not block it.
+6. Missing numbers display as `—` and sort last; identity, history, optional birth date and permissions are preserved.
+7. **Pending:** the same start enforcement in the unconnected engine and any server adapter. *[Updated 2026-10-12: implemented in the engine (S5a/S5b); still pending in the application and in any server adapter. See §23.7.]*
+8. **Pending:** real-device acceptance.
+
+Original criteria (history; items 1 and 4 are superseded for the pilot):
+
+1. Adding a player without a number and without the explicit pending intent is rejected; with the intent it succeeds and the number is stored as absent. *[Superseded for the pilot.]*
+2. A stored pending number is never `0`, `NaN`, an empty string or a placeholder, and a real `0` is still accepted.
+3. Public surfaces show `—`, organizer views show `Número pendiente`, and missing numbers sort last everywhere.
+4. A pending player can be edited without supplying a number; supplying a real number enforces uniqueness among active players of that team and keeps ficha id, `personaId` and history. *[Superseded for the pilot.]*
+5. Starting a game is refused by the authoritative start command if any active player of either participating team has no valid unique number; inactive registrations do not count.
+6. A missing date of birth never blocks a game start.
+7. A single-initial first name is accepted without a request to expand it.
+
+### 23.6 Limits of this amendment
+
+This amendment does not declare the pilot ready, does not authorize importing any incomplete roster, and does not authorize any new workflow, schema, age/category rule, minimum roster size or match-roster selection.
+
+### 23.7 Post-S5b status amendment (2026-10-12)
+
+*Adds status only. It supersedes only the specifically annotated historical status statements marked "Updated", "Amended" or "Superseded in part 2026-10-12" above. It preserves other history and changes no roster policy.*
+
+- **[DECISION]** Stale queued initial-Start rejection is **approved**: a queued initial Start whose captured preparation version no longer matches the server's current version is rejected. (§23.4 previously called it proposed and not approved.)
+- **[DECISION]** Missing, malformed and wrong-match preparation are rejected through the same definitive-rejection path.
+- **[DECISION]** A definitive rejection preserves the rejected command, its receipt and its dependent pending commands. Recovery requires an authoritative refresh, explicit operator confirmation and a **new `cmdId`** carrying the current version. Nothing is rewritten or retransmitted automatically.
+- **[DECISION]** Unknown acceptance is distinct from a confirmed rejection. When a response is lost or an error/exhaustion leaves the commit outcome uncertain, retain the original immutable envelope and `cmdId` and resolve the outcome through authorized receipt lookup/retry. A known validation failure or confirmed definitive rejection is not unknown acceptance. Do not create a new `cmdId` merely because a response was lost.
+- **[DECISION]** Live-game roster-edit policy remains unresolved. This amendment introduces no new restriction or permission.
+- **[CODE]** Connected Dexie enforcement is unchanged (`iniciarPartido` in `src/lib/reloj.js`; rule in `src/lib/prontitud-plantilla.js`) and is not server authority.
+- **[CODE]** The engine (`src/lib/motor/`, S5a/S5b, accepted) carries the stored numbers of active players in its preparation context, accepts an optional `preparacionVersion` on the initial Start, applies the gate in this order (integrity, actual-game binding, missing version, stale version, current readiness), replays an accepted receipt before the gate, and exposes an atomic version-comparison hook. It is disconnected from the application and is exercised only with a test-only memory adapter.
+- **[CODE]** **Missing:** application integration (no capture of the version, no persisted queue, no recovery presentation) and the trusted/durable server (shared persistence, authentication and match-scoped authorization, complete trusted roster retrieval, atomic comparison on real shared storage, durable receipts, restart safety, publication, real-device acceptance).
+- **[SUPPLIED EVIDENCE]** REPORT_066 reported 33 of 33 compatibility tests, 282 of 282 motor tests, 807 of 807 full-suite tests and a passing build for S5b. These are supplied results: not a fresh verification, not server acceptance and not pilot readiness. Memory-adapter tests do not demonstrate durable-server atomicity, restart safety, authentic or complete retrieval, or real concurrency.
+- **Reference.** `docs/scoring/AUTHORITATIVE_START_CONTRACT.md`, accepted after the REPORT_070 corrections, defines the contract the shared server must meet. Its proposed guarantees and open choices are not implementation authorization.
+- **Unchanged.** Numbered-only registration, uniqueness among active teammates, preservation of existing incomplete records, and Option C (deferred, not authorized, not mandatory for any import).
 
 ---
 

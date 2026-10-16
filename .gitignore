@@ -5,3 +5,23 @@ dev-dist/
 .DS_Store
 .vite/
 node_modules/
+
+# Credenciales y variables de entorno locales (las plantillas *.example siguen versionables)
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+.env
+.env.*
+!.env.example
+
+# Estado local de Wrangler/Miniflare (persistencia de Durable Objects) y archivos de base de datos locales
+.wrangler/
+.wrangler-state/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# Material privado de carga: diarios con cuerpos exactos y archivos con códigos emitidos (nunca versionar)
+private/
+diario.json
+diario-*.json

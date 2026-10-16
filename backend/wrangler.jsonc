@@ -1,0 +1,49 @@
+{
+  // Configuración del backend. El nivel superior es para desarrollo LOCAL.
+  // El entorno "staging" usa el MISMO código con otro nombre de script (otro espacio de
+  // Durable Objects). No hay account_id, rutas, dominios ni secretos en este archivo: los
+  // secretos (por ejemplo SEMILLA_TOKEN) se entregan fuera del repositorio.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sebel-liga-backend",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-10-01",
+  // LIGAS_ADMITIDAS vacía = ninguna liga admitida (cerrado). Se admite solo lo que se liste aquí o en un --var explícito.
+  // Acceso por códigos: CERRADO por defecto. ACCESO_ORIGEN vacío = las rutas del organizador no existen;
+  // ACCESO_ADMIN_HABILITADO "0" = la provisión del operador no existe (y su secreto, ACCESO_ADMIN_TOKEN, no está aquí:
+  // se entrega como secreto de Cloudflare, nunca en este archivo).
+  "vars": { "ENTORNO": "local", "PERMITIR_SEMILLA": "0", "LIGAS_ADMITIDAS": "", "ACCESO_ORIGEN": "", "ACCESO_ADMIN_HABILITADO": "0" },
+  "durable_objects": { "bindings": [{ "name": "LIGA", "class_name": "LigaDO" }, { "name": "ACCESO", "class_name": "AccesoDO" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["LigaDO"] }, { "tag": "v2", "new_sqlite_classes": ["AccesoDO"] }],
+  // Misma procedencia para la aplicación y la API. La aplicación (compilada en modo compartido, ver README) se sirve como
+  // archivos estáticos; TODO lo que empieza por /v1/ pasa primero por el Worker, que responde su propio JSON (incluido
+  // el 404 de una ruta que no existe): una ruta de la API nunca se contesta con la página de la aplicación.
+  // `wrangler` exige que ../dist exista: se compila antes (VITE_MODO_COMPARTIDO=1 npm run build, en la raíz).
+  "assets": { "directory": "../dist", "not_found_handling": "single-page-application", "run_worker_first": ["/v1/*"] },
+  "env": {
+    "staging": {
+      "name": "sebel-liga-backend-staging",
+      "vars": { "ENTORNO": "staging", "PERMITIR_SEMILLA": "1", "LIGAS_ADMITIDAS": "", "ACCESO_ORIGEN": "", "ACCESO_ADMIN_HABILITADO": "0" },
+      "durable_objects": { "bindings": [{ "name": "LIGA", "class_name": "LigaDO" }, { "name": "ACCESO", "class_name": "AccesoDO" }] },
+      "migrations": [{ "tag": "v1", "new_sqlite_classes": ["LigaDO"] }, { "tag": "v2", "new_sqlite_classes": ["AccesoDO"] }],
+      "assets": { "directory": "../dist", "not_found_handling": "single-page-application", "run_worker_first": ["/v1/*"] }
+    },
+    // PRODUCCIÓN (despliegue manual: `wrangler deploy --env production`; sin `--env` se publicaría la configuración LOCAL de arriba).
+    //  - `name` es explícito y ESTABLE: el espacio de Durable Objects pertenece al nombre del script; cambiarlo después crea un espacio
+    //    vacío (los datos quedarían en el anterior). No es el nombre derivado por defecto (sebel-liga-backend-production).
+    //  - `vars` y `durable_objects` NO se heredan en un entorno (documentación de Wrangler): se declaran aquí. `migrations` SÍ se heredan
+    //    si el entorno no las define: el historial v1/v2 vive solo arriba (una sola copia). No editar ni quitar etiquetas ya desplegadas.
+    //  - `workers_dev`/`preview_urls` en false: el sitio vive solo en https://semabel.com (las rutas del operador responden en cualquier host).
+    //  - `ACCESO_ADMIN_HABILITADO` "0" por omisión (puerta del operador cerrada). Se abre SOLO en una ventana de carga, a propósito
+    //    y con el secreto ACCESO_ADMIN_TOKEN (`wrangler secret put … --env production`); nunca aquí. PERMITIR_SEMILLA "0" y sin SEMILLA_TOKEN.
+    //  - Antes de desplegar hay que compilar `../dist` con las variables públicas (ver README: «Producción»).
+    "production": {
+      "name": "semabel-production",
+      "workers_dev": false,
+      "preview_urls": false,
+      "routes": [{ "pattern": "semabel.com", "custom_domain": true }],
+      "vars": { "ENTORNO": "produccion", "PERMITIR_SEMILLA": "0", "LIGAS_ADMITIDAS": "PLATINIUM-U10,PLATINIUM-U12", "ACCESO_ORIGEN": "https://semabel.com", "ACCESO_ADMIN_HABILITADO": "0" },
+      "durable_objects": { "bindings": [{ "name": "LIGA", "class_name": "LigaDO" }, { "name": "ACCESO", "class_name": "AccesoDO" }] },
+      "assets": { "directory": "../dist", "not_found_handling": "single-page-application", "run_worker_first": ["/v1/*"] }
+    }
+  }
+}

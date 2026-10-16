@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useCategoria, useRetosDeCategoria } from '../datos'
 import { tablaPosiciones } from '../lib/marcador'
 import { urlLiga, urlEquipo, urlReto } from '../lib/enlaces'
+import { etiquetaCategoria } from '../lib/categorias'
 import { useMeta } from '../lib/meta'
 import { Topbar, Escudo, Vacio, fechaCorta } from '../ui'
 
@@ -21,11 +22,12 @@ export default function Categoria() {
   const { deporte, categoria } = useParams()
   const d = useCategoria(deporte, decodeURIComponent(categoria))
   const retos = useRetosDeCategoria(deporte, decodeURIComponent(categoria))
+  const etiqueta = etiquetaCategoria(decodeURIComponent(categoria))
 
   useMeta({
-    titulo: `${DEPORTES[deporte] || deporte} ${decodeURIComponent(categoria)}: dónde se juega`,
+    titulo: `${DEPORTES[deporte] || deporte} ${etiqueta}: dónde se juega`,
     descripcion:
-      `Ligas de ${DEPORTES[deporte] || deporte} categoría ${decodeURIComponent(categoria)} ` +
+      `Ligas de ${DEPORTES[deporte] || deporte} categoría ${etiqueta} ` +
       'en cada país, con sus tablas y sus torneos internacionales.',
   })
 
@@ -42,7 +44,7 @@ export default function Categoria() {
 
   return (
     <>
-      <Topbar titulo={`${DEPORTES[deporte] || deporte} ${decodeURIComponent(categoria)}`} />
+      <Topbar titulo={`${DEPORTES[deporte] || deporte} ${etiqueta}`} />
 
       <p className="sub" style={{ marginTop: 14 }}>
         La misma categoría, en cada país. Los de tu edad no juegan solo aquí.

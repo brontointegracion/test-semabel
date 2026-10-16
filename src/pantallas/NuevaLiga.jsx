@@ -5,6 +5,9 @@ import { useCanchas, useSesion, useCuenta } from '../datos'
 import { generarCalendario, DIAS } from '../lib/calendario'
 import { Topbar, Escudo, fechaCorta, hora, mismoDia } from '../ui'
 import { urlLiga } from '../lib/enlaces'
+import {
+  SUBCATEGORIA_TEXTO_MAX, etiquetaCategoria, opcionesDeCategoria, presetsDeCategoria, resolverClasificacion, sugerenciaPreset,
+} from '../lib/categorias'
 
 const COLORES = ['#C9452B', '#2A5C86', '#D89B1C', '#1E7F8C', '#6B4E9B', '#0D6B55', '#8C3B63', '#3F6B22']
 const FRANJAS = ['18:00', '19:00', '20:00', '21:00']
@@ -30,6 +33,9 @@ const abreviarEquipo = (nombre) => {
 
 const normalizarNombreEquipo = (n) => n.trim().toLowerCase()
 
+// Valor del selector de subcategoría que significa "la escribo yo".
+const SUB_PERSONALIZADA = '__personalizada'
+
 export default function NuevaLiga() {
   const canchas = useCanchas()
   const sesion = useSesion()
@@ -48,7 +54,10 @@ export default function NuevaLiga() {
   const [franjas, setFranjas] = useState(['19:00', '20:30'])
   const [desde, setDesde] = useState(enISO(hoy))
   const [hasta, setHasta] = useState(enISO(en8))
-  const [categoria, setCategoria] = useState('Libre')
+  // Baloncesto no tiene categoría por defecto: se elige, igual que la subcategoría.
+  const [categoria, setCategoria] = useState('')
+  const [subSeleccion, setSubSeleccion] = useState('')
+  const [subTexto, setSubTexto] = useState('')
   const [aceptaRetos, setAceptaRetos] = useState(true)
   const [paso, setPaso] = useState(1)
   const [guardando, setGuardando] = useState(false)
@@ -57,6 +66,21 @@ export default function NuevaLiga() {
   // Al mover el control de cuántos equipos, los nombres que ya se habían
   // escrito se quedan donde están: solo se agregan casillas vacías al final
   // (al subir) o se recortan las de más (al bajar). Nunca se reordena nada.
+  // Cambiar de deporte o de categoría borra lo elegido debajo: una subcategoría de otra
+  // categoría nunca se queda puesta. Aun así, publicar() vuelve a validar todo.
+  const cambiarDeporte = (valor) => {
+    setDeporte(valor)
+    setCategoria(valor === 'baloncesto' ? '' : 'Libre')
+    setSubSeleccion('')
+    setSubTexto('')
+  }
+
+  const cambiarCategoria = (valor) => {
+    setCategoria(valor)
+    setSubSeleccion('')
+    setSubTexto('')
+  }
+
   const cambiarNEquipos = (n) => {
     setNEquipos(n)
     setNombresEquipos((prev) => (
@@ -109,14 +133,36 @@ export default function NuevaLiga() {
     })
   }, [equiposDemo, desde, hasta, dias, franjas, canchaIds])
 
+  const subcategoriaElegida = deporte !== 'baloncesto' || subSeleccion === ''
+    ? undefined
+    : subSeleccion === SUB_PERSONALIZADA ? { texto: subTexto } : { clave: subSeleccion }
+  const clasificacion = resolverClasificacion({ deporte, categoria, subcategoria: subcategoriaElegida })
+  const sugerida = deporte === 'baloncesto' && subSeleccion === SUB_PERSONALIZADA
+    ? presetsDeCategoria(categoria).find((p) => p.clave === sugerenciaPreset(categoria, subTexto))
+    : null
+
+  // En baloncesto solo una subcategoría predefinida puede recibir retos; una escrita a mano, o aún sin
+  // resolver, no se empareja con nadie. Fútbol sala no cambia. La elección del organizador (aceptaRetos)
+  // se conserva aparte: solo se aplica mientras los retos sean posibles.
+  const retosPosibles = deporte !== 'baloncesto' || clasificacion.subcategoria?.clave !== undefined
+  const retosAceptados = retosPosibles && aceptaRetos
+
   const listo = nombre.trim() && canchaIds.length && dias.length && franjas.length
-    && !faltaNombreEquipo && !hayNombresDuplicados
+    && !faltaNombreEquipo && !hayNombresDuplicados && clasificacion.ok
   const precio = (nEquipos * 1.5 + propuesta.partidos.length * 0.4).toFixed(2)
 
   const alternar = (lista, set, v) =>
     set(lista.includes(v) ? lista.filter((x) => x !== v) : [...lista, v].sort())
 
   const publicar = async () => {
+    // Última comprobación antes de escribir: no depende de que la pantalla haya limpiado lo viejo.
+    const final = resolverClasificacion({ deporte, categoria, subcategoria: subcategoriaElegida })
+    if (!final.ok) {
+      setError('Revisa la categoría y la subcategoría antes de publicar.')
+      return
+    }
+    // Se decide con la clasificación ya validada, no con lo que la pantalla muestre en este momento.
+    const retosFinal = (deporte !== 'baloncesto' || final.subcategoria?.clave !== undefined) && aceptaRetos
     setGuardando(true)
     setError(null)
     const ligaId = uid()
@@ -133,8 +179,10 @@ export default function NuevaLiga() {
           diasSemana: dias,
           franjas,
           minutosPorPeriodo: deporte === 'baloncesto' ? 10 : 20,
-          categoria,
-          aceptaRetos,
+          categoria: final.categoria,
+          // Solo existe en las ligas nuevas de baloncesto; las demás no llevan la propiedad.
+          ...(final.subcategoria ? { subcategoria: final.subcategoria } : {}),
+          aceptaRetos: retosFinal,
           desde: new Date(`${desde}T00:00:00`).toISOString(),
           hasta: new Date(`${hasta}T23:59:59`).toISOString(),
           pais: (canchas || []).find((c) => c.id === canchaIds[0])?.pais,
@@ -266,7 +314,7 @@ export default function NuevaLiga() {
 
       <div className="campo">
         <label htmlFor="dep">Deporte</label>
-        <select id="dep" value={deporte} onChange={(e) => setDeporte(e.target.value)}>
+        <select id="dep" value={deporte} onChange={(e) => cambiarDeporte(e.target.value)}>
           <option value="baloncesto">Baloncesto</option>
           <option value="futsal">Fútbol sala</option>
         </select>
@@ -274,27 +322,78 @@ export default function NuevaLiga() {
 
       <div className="campo">
         <label htmlFor="cat">Categoría</label>
-        <select id="cat" value={categoria} onChange={(e) => setCategoria(e.target.value)}>
-          <option value="Libre">Libre (cualquier edad)</option>
-          <option value="35+">Veteranos 35+</option>
-          <option value="40+">Veteranos 40+</option>
-          <option value="45+">Veteranos 45+</option>
-          <option value="50+">Veteranos 50+</option>
+        <select id="cat" value={categoria} onChange={(e) => cambiarCategoria(e.target.value)}>
+          {deporte === 'baloncesto' && <option value="">Elige una categoría</option>}
+          {opcionesDeCategoria(deporte).map((o) => (
+            <option key={o.valor} value={o.valor}>{o.etiqueta}</option>
+          ))}
         </select>
       </div>
+
+      {deporte === 'baloncesto' && categoria && (
+        <div className="campo">
+          <label htmlFor="sub">Subcategoría</label>
+          <select
+            id="sub"
+            value={subSeleccion}
+            onChange={(e) => { setSubSeleccion(e.target.value); setSubTexto('') }}
+          >
+            <option value="">Elige una subcategoría</option>
+            {presetsDeCategoria(categoria).map((p) => (
+              <option key={p.clave} value={p.clave}>{p.etiqueta}</option>
+            ))}
+            <option value={SUB_PERSONALIZADA}>Otra (la escribo yo)</option>
+          </select>
+          {subSeleccion === SUB_PERSONALIZADA && (
+            <>
+              <input
+                id="sub-texto"
+                value={subTexto}
+                onChange={(e) => setSubTexto(e.target.value)}
+                placeholder="Subcategoría"
+                aria-label="Texto de la subcategoría"
+                style={{ marginTop: 8 }}
+              />
+              <p className="sub" style={{ marginTop: 8 }}>
+                Entre 1 y {SUBCATEGORIA_TEXTO_MAX} caracteres. Se guarda tal como la escribes. Las ligas con
+                subcategoría escrita a mano no participan en retos por ahora.
+              </p>
+              {subTexto !== '' && clasificacion.errores.subcategoria && (
+                <span className="campo-error">{clasificacion.errores.subcategoria}</span>
+              )}
+              {sugerida && (
+                <p className="sub" style={{ marginTop: 8 }}>
+                  ¿Quisiste decir {sugerida.etiqueta}? Elígela en la lista para que la liga pueda recibir retos.
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       <label className="casilla">
         <input
           type="checkbox"
-          checked={aceptaRetos}
+          checked={retosAceptados}
+          disabled={!retosPosibles}
           onChange={(e) => setAceptaRetos(e.target.checked)}
         />
         <span>
           <strong>Aceptar retos de otras ligas</strong>
           <span className="sub">
-            Otras ligas de {categoria === 'Libre' ? 'la misma categoría' : `categoría ${categoria}`} y
-            del mismo deporte podrán retarte. Cada una juega lo suyo en su cancha y se comparan los
-            promedios de la semana. Nadie viaja.
+            {retosPosibles ? (
+              <>
+                Otras ligas de {categoria === 'Libre' || !categoria ? 'la misma categoría' : `categoría ${etiquetaCategoria(categoria)}`} y
+                del mismo deporte podrán retarte. Cada una juega lo suyo en su cancha y se comparan los
+                promedios de la semana. Nadie viaja.
+                {deporte === 'baloncesto' && ' En baloncesto solo se emparejan ligas con la misma subcategoría predefinida (por ejemplo U10).'}
+              </>
+            ) : (
+              <>
+                Retos no disponibles: en baloncesto solo las ligas con una subcategoría predefinida (por ejemplo U10)
+                pueden recibir retos. Las subcategorías escritas a mano no participan en retos por ahora.
+              </>
+            )}
           </span>
         </span>
       </label>
@@ -402,8 +501,8 @@ export default function NuevaLiga() {
       </button>
       {!listo && (
         <p className="sub" style={{ marginTop: 10, textAlign: 'center' }}>
-          Falta el nombre de la liga, un nombre para cada equipo sin repetir, al menos una
-          cancha, un día y una hora.
+          Falta el nombre de la liga, la categoría (y la subcategoría en baloncesto), un nombre
+          para cada equipo sin repetir, al menos una cancha, un día y una hora.
         </p>
       )}
     </>

@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { estadoDeEntrada } from './lib/volver'
+import { horaLocal } from './lib/publico/formato.js'
 import { useSesion } from './datos'
 import { entrar, salir, esOrganizador } from './lib/sesion'
+import { modoCompartido } from './lib/modo'
+import { TABS, iconosTab } from './lib/publico/navegacion.js'
+import { MarcaNav, TopbarVolver } from './pantallas/publico/Navegacion.jsx'
 import { periodoActual } from './lib/marcador'
 import { PERIODOS, restanteMs, mmss, corriendo, nombrePeriodo } from './lib/reloj-calculo'
 
@@ -11,25 +16,13 @@ import { PERIODOS, restanteMs, mmss, corriendo, nombrePeriodo } from './lib/relo
  * abajo en Marca) — así nunca hay dos sitios que puedan quedar
  * desincronizados en qué rutas o etiquetas existen.
  */
-export const TABS = [
-  { id: 'inicio', to: '/', label: 'Inicio' },
-  { id: 'ligas', to: '/ligas', label: 'Mis ligas', organizador: true },
-  { id: 'siguiendo', to: '/siguiendo', label: 'Siguiendo' },
-  { id: 'saldo', to: '/saldo', label: 'Saldo', organizador: true },
-]
-
-export const iconosTab = {
-  inicio: 'M4 11.5L12 4l8 7.5M6 10v10h12V10',
-  ligas: 'M4 5h16M4 12h16M4 19h10',
-  siguiendo: 'M12 20.5s-7-4.6-7-9.6a4 4 0 017-2.6 4 4 0 017 2.6c0 5-7 9.6-7 9.6z',
-  saldo: 'M3 8h18v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm0 0l2.4-4h13.2L21 8M7 14h4',
-}
+export { TABS, iconosTab }
 
 export const DIAS_CORTO = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
-export const hora = (iso) =>
-  new Date(iso).toLocaleTimeString('es-PA', { hour: '2-digit', minute: '2-digit', hour12: false })
+// Hora local del dispositivo en 12 horas («7:05 p. m.»), con el formato único del sitio (REPORT_161).
+export const hora = (iso) => horaLocal(iso) ?? ''
 
 export const fechaCorta = (iso) => {
   const d = new Date(iso)
@@ -63,19 +56,19 @@ export function Escudo({ equipo, size = '' }) {
   )
 }
 
-export function Topbar({ titulo, atras = true, accion = null }) {
+/**
+ * Enlace a un partido. Guarda la pantalla actual (con su pestaña) como origen
+ * para el "Salir" del partido. Todo enlace a /p/... debería usar este.
+ */
+export function EnlacePartido(props) {
+  const location = useLocation()
+  return <Link {...props} state={estadoDeEntrada(location)} />
+}
+
+// `alAtras` reemplaza el nav(-1) por defecto (la consola vuelve siempre al partido).
+export function Topbar({ titulo, atras = true, accion = null, alAtras = null }) {
   const nav = useNavigate()
-  return (
-    <div className="topbar">
-      {atras && (
-        <button className="volver" onClick={() => nav(-1)} aria-label="Volver">
-          ‹ Atrás
-        </button>
-      )}
-      <h1>{titulo}</h1>
-      {accion}
-    </div>
-  )
+  return <TopbarVolver titulo={titulo} atras={atras} accion={accion} alAtras={alAtras || (() => nav(-1))} />
 }
 
 export function Marca() {
@@ -83,26 +76,16 @@ export function Marca() {
   const dentro = esOrganizador(sesion)
   const tabs = TABS.filter((t) => !t.organizador || dentro)
 
+  // El atajo "Soy organizador" es solo del prototipo local: en modo compartido no existe.
   return (
-    <div className="topbar">
-      <div className="marca">sebel<span>.</span></div>
-
-      {/* Solo visible a partir de cierto ancho (ver styles.css): en móvil la
-          navegación sigue siendo la barra inferior de siempre. Misma lista,
-          mismas rutas, mismas etiquetas — no hay una segunda a mano. */}
-      <nav className="nav-escritorio" aria-label="Navegación principal">
-        {tabs.map((t) => (
-          <NavLink key={t.id} to={t.to} end={t.to === '/'} className={({ isActive }) => (isActive ? 'activo' : undefined)}>
-            {t.label}
-          </NavLink>
-        ))}
-      </nav>
-
-      <div style={{ flex: 1 }} />
-      <button className="sesion" onClick={dentro ? salir : entrar}>
-        {dentro ? 'Salir' : 'Soy organizador'}
-      </button>
-    </div>
+    <MarcaNav
+      tabs={tabs}
+      accion={!modoCompartido() && (
+        <button className="sesion" onClick={dentro ? salir : entrar}>
+          {dentro ? 'Salir' : 'Soy organizador'}
+        </button>
+      )}
+    />
   )
 }
 

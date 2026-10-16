@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom'
 import { useLoQueSigo } from '../datos'
+import { textoDorsal } from '../lib/dorsal'
 import { marcadorEquipo } from '../lib/marcador'
 import { urlEquipo, urlPartido, urlJugador, urlCancha } from '../lib/enlaces'
 import { urlWaze, tieneUbicacion } from '../lib/mapas'
 import { useMeta } from '../lib/meta'
-import { Marca, Escudo, Vacio, RelojVivo, fechaCorta, hora, diaRelativo } from '../ui'
+import { Marca, Escudo, Vacio, RelojVivo, fechaCorta, hora, diaRelativo, EnlacePartido } from '../ui'
 
 /**
  * Lo que sigue quien mira.
@@ -62,7 +63,7 @@ export default function Siguiendo() {
             {vivos.map((p) => {
               const evs = eventosPorPartido[p.id] || []
               return (
-                <Link key={p.id} to={urlPartido(p, todosEquipos[p.localId], todosEquipos[p.visitaId])} className="card">
+                <EnlacePartido key={p.id} to={urlPartido(p, todosEquipos[p.localId], todosEquipos[p.visitaId])} className="card">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                     <span className="pill vivo"><i className="punto" />EN VIVO</span>
                     <RelojVivo partido={p} liga={ligas[p.ligaId]} eventos={evs} />
@@ -76,7 +77,7 @@ export default function Siguiendo() {
                       </span>
                     </div>
                   ))}
-                </Link>
+                </EnlacePartido>
               )
             })}
           </div>
@@ -90,7 +91,7 @@ export default function Siguiendo() {
           const cancha = canchas[p.canchaId]
           return (
             <div key={p.id} className="card">
-              <Link to={urlPartido(p, todosEquipos[p.localId], todosEquipos[p.visitaId])}>
+              <EnlacePartido to={urlPartido(p, todosEquipos[p.localId], todosEquipos[p.visitaId])}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <Escudo equipo={yo} size="sm" />
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -102,7 +103,7 @@ export default function Siguiendo() {
                     </div>
                   </div>
                 </div>
-              </Link>
+              </EnlacePartido>
               {tieneUbicacion(cancha) && (
                 <div className="mapas">
                   <a className="btn" href={urlWaze(cancha)} target="_blank" rel="noopener noreferrer">
@@ -125,7 +126,7 @@ export default function Siguiendo() {
           const mios = marcadorEquipo(evs, yo?.id)
           const otros = marcadorEquipo(evs, rival(p, yo?.id)?.id)
           return (
-            <Link key={p.id} to={urlPartido(p, todosEquipos[p.localId], todosEquipos[p.visitaId])} className="resultado">
+            <EnlacePartido key={p.id} to={urlPartido(p, todosEquipos[p.localId], todosEquipos[p.visitaId])} className="resultado">
               <div className="duelo">
                 <Escudo equipo={yo} size="sm" />
                 <Escudo equipo={rival(p, yo?.id)} size="sm" />
@@ -142,7 +143,7 @@ export default function Siguiendo() {
                   {mios > otros ? 'Ganó' : mios < otros ? 'Perdió' : 'Empató'}
                 </div>
               </div>
-            </Link>
+            </EnlacePartido>
           )
         })}
         {!recientes.length && <p className="sub">Todavía no han jugado.</p>}
@@ -154,7 +155,7 @@ export default function Siguiendo() {
           <div className="lista">
             {jugadores.map((j) => (
               <Link key={j.id} to={urlJugador(j)} className="jugador-fila">
-                <div className="dorsal">{j.dorsal}</div>
+                <div className="dorsal">{textoDorsal(j)}</div>
                 <div style={{ flex: 1 }} className="nombre">{j.nombre}</div>
               </Link>
             ))}

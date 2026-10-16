@@ -290,3 +290,20 @@ describe('Equipo — organizador ve inactivos y reactiva jugador (Stage 3B, Slic
     expect(screen.queryByText(ficha.nombre)).toBeNull()
   })
 })
+
+describe('Equipo — el nombre en camiseta no cambia la vista pública', () => {
+  it('la plantilla pública sigue mostrando el nombre completo y el enlace del jugador no cambia', async () => {
+    const { db, Equipo, agregarJugador } = await cargar()
+    const { equipo, ficha } = await sembrarEquipoConJugador(db, agregarJugador)
+    const { urlJugador } = await import('../lib/enlaces.js')
+    const urlAntes = urlJugador(ficha)
+    await db.jugadores.update(ficha.id, { nombreCamiseta: 'SAM' })
+
+    renderEquipo(Equipo, equipo.codigo)
+    expect(await screen.findByText(ficha.nombre)).toBeTruthy()
+    expect(screen.queryByText('SAM')).toBeNull()
+    const enlace = screen.getByText(ficha.nombre).closest('a')
+    expect(enlace.getAttribute('href')).toBe(urlAntes)
+    expect(urlJugador({ ...ficha, nombreCamiseta: 'SAM' })).toBe(urlAntes)
+  })
+})

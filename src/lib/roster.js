@@ -1,6 +1,15 @@
 import { db, uid } from '../db'
-import { activoDe, nombreCompleto } from './identidad'
+import { compararPorDorsal } from './dorsal'
+import { activoDe } from './identidad'
+import {
+  claveDeComparacion, decidirEdicion, fichaResultante, nuevaFichaDe, numeroDisponibleEn, planAlta, planEdicion, planReactivacion,
+  proyectarCandidato, validarCamposJugador,
+} from './roster-reglas'
 import { esDuenoDe } from './sesion'
+
+// Las reglas puras (validación, forma canónica, decisiones de alta/edición/reactivación) viven en roster-reglas.js,
+// que también importa el backend compartido. Aquí queda solo lo que toca Dexie.
+export { validarCamposJugador }
 
 // ---------------------------------------------------------------------------
 // Operaciones de plantilla/identidad — Stage 3B, Slice 1.
@@ -16,83 +25,6 @@ import { esDuenoDe } from './sesion'
 // recompone; nunca se edita directamente como fuente propia.
 // ---------------------------------------------------------------------------
 
-const TIENE_LETRA = /\p{L}/u
-const TIENE_DIGITO = /[0-9]/
-
-const normalizarEntrada = (s) => (s ?? '').toString().trim().replace(/\s+/g, ' ')
-
-// Solo para comparar candidatos duplicados (Decisiones 72–76): minúsculas y
-// sin acentos, pero NUNCA se usa para lo que se guarda o se muestra — eso
-// conserva mayúsculas/acentos/puntuación tal como los escribió el organizador.
-const normalizarParaComparar = (s) =>
-  normalizarEntrada(s)
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-
-function validarCampoNombre(valor, { requerido }) {
-  const v = normalizarEntrada(valor)
-  if (!v) return requerido ? 'Este campo es obligatorio.' : null
-  if (v.length > 50) return 'Máximo 50 caracteres.'
-  if (TIENE_DIGITO.test(v)) return 'No puede contener números.'
-  if (!TIENE_LETRA.test(v)) return 'Debe contener al menos una letra.'
-  return null
-}
-
-function validarDorsal(dorsal) {
-  if (dorsal === undefined || dorsal === null || dorsal === '') return 'El número es obligatorio.'
-  const n = Number(dorsal)
-  if (!Number.isInteger(n) || n < 0 || n > 99) return 'El número debe ser un entero entre 0 y 99.'
-  return null
-}
-
-function validarFechaNacimiento(fecha) {
-  if (!fecha) return null
-  const d = new Date(fecha)
-  if (Number.isNaN(d.getTime())) return 'Fecha inválida.'
-  if (d.getTime() > Date.now()) return 'La fecha no puede ser futura.'
-  return null
-}
-
-/** Decisiones 70–83. Objeto vacío = válido. */
-export function validarCamposJugador({ nombrePila, apellido1, apellido2, dorsal, fechaNacimiento }) {
-  const errores = {}
-  const eNombre = validarCampoNombre(nombrePila, { requerido: true })
-  if (eNombre) errores.nombrePila = eNombre
-  const eApellido1 = validarCampoNombre(apellido1, { requerido: true })
-  if (eApellido1) errores.apellido1 = eApellido1
-  if (normalizarEntrada(apellido2)) {
-    const eApellido2 = validarCampoNombre(apellido2, { requerido: false })
-    if (eApellido2) errores.apellido2 = eApellido2
-  }
-  const eDorsal = validarDorsal(dorsal)
-  if (eDorsal) errores.dorsal = eDorsal
-  const eFecha = validarFechaNacimiento(fechaNacimiento)
-  if (eFecha) errores.fechaNacimiento = eFecha
-  return errores
-}
-
-// Decisión 71 (trim) + Decisión 75 (colapsar espacios internos accidentales
-// en el valor canónico). Mayúsculas/acentos/puntuación se conservan tal cual
-// (Decisión 73/76).
-function camposCanonicos({ nombrePila, apellido1, apellido2 }) {
-  return {
-    nombrePila: normalizarEntrada(nombrePila),
-    apellido1: normalizarEntrada(apellido1),
-    apellido2: normalizarEntrada(apellido2),
-  }
-}
-
-function edadDe(fechaNacimiento) {
-  if (!fechaNacimiento) return undefined
-  const hoy = new Date()
-  const nacio = new Date(fechaNacimiento)
-  let edad = hoy.getFullYear() - nacio.getFullYear()
-  const m = hoy.getMonth() - nacio.getMonth()
-  if (m < 0 || (m === 0 && hoy.getDate() < nacio.getDate())) edad--
-  return edad
-}
-
 function requerirPermiso(sesion, liga) {
   if (!esDuenoDe(sesion, liga)) {
     throw new Error('No autorizado para modificar la plantilla de este equipo.')
@@ -107,10 +39,7 @@ async function generarCodigoJugador() {
   return codigo
 }
 
-async function numeroDisponible({ equipoId, dorsal, excluirFichaId }) {
-  const activos = (await db.jugadores.where('equipoId').equals(equipoId).toArray()).filter(activoDe)
-  return !activos.some((j) => j.id !== excluirFichaId && j.dorsal === dorsal)
-}
+const fichasDelEquipo = (equipoId) => db.jugadores.where('equipoId').equals(equipoId).toArray()
 
 // ts alcanza para "cuándo" (Decisión 94), pero dos acciones en el mismo
 // milisegundo tendrían el mismo valor — seq desempata el orden real dentro
@@ -136,7 +65,7 @@ async function registrarAuditoria({ tipo, fichaId, actorId }) {
  */
 export async function rosterActivo(equipoId) {
   const jugadores = await db.jugadores.where('equipoId').equals(equipoId).toArray()
-  return jugadores.filter(activoDe).sort((a, b) => (a.dorsal ?? 0) - (b.dorsal ?? 0))
+  return jugadores.filter(activoDe).sort(compararPorDorsal)
 }
 
 /** Decisión 91: más recientemente desactivado primero. */
@@ -153,27 +82,18 @@ export async function rosterInactivo(equipoId) {
  * Nunca expone fecha de nacimiento exacta (Decisión 27), solo edad.
  */
 export async function buscarCandidatosDuplicados({ ligaId, nombrePila, apellido1, apellido2, excluirFichaId }) {
-  const clave = normalizarParaComparar(`${nombrePila} ${apellido1} ${apellido2 || ''}`)
+  const clave = claveDeComparacion({ nombrePila, apellido1, apellido2 })
   const fichas = await db.jugadores.where('ligaId').equals(ligaId).toArray()
   const candidatas = fichas.filter((f) => {
     if (f.id === excluirFichaId) return false
-    return normalizarParaComparar(`${f.nombrePila} ${f.apellido1} ${f.apellido2 || ''}`) === clave
+    return claveDeComparacion(f) === clave
   })
   if (!candidatas.length) return []
 
   const equipos = await db.equipos.where('ligaId').equals(ligaId).toArray()
   const equiposPorId = Object.fromEntries(equipos.map((e) => [e.id, e]))
 
-  return candidatas.map((f) => ({
-    fichaId: f.id,
-    personaId: f.personaId,
-    equipoId: f.equipoId,
-    equipoNombre: equiposPorId[f.equipoId]?.nombre,
-    nombreCompleto: nombreCompleto(f.nombrePila, f.apellido1, f.apellido2),
-    dorsal: f.dorsal,
-    activo: activoDe(f),
-    edad: edadDe(f.fechaNacimiento),
-  }))
+  return candidatas.map((f) => proyectarCandidato(f, equiposPorId[f.equipoId]?.nombre))
 }
 
 /**
@@ -191,15 +111,11 @@ export async function buscarCandidatosDuplicados({ ligaId, nombrePila, apellido1
 export async function agregarJugador({ sesion, liga, equipoId, campos, resolucionIdentidad }) {
   requerirPermiso(sesion, liga)
 
-  const errores = validarCamposJugador(campos)
-  if (Object.keys(errores).length) return { tipo: 'invalido', errores }
-
-  const canon = camposCanonicos(campos)
-  const dorsal = Number(campos.dorsal)
-  const fechaNacimiento = campos.fechaNacimiento || undefined
+  const plan = planAlta(campos)
+  if (plan.errores) return { tipo: 'invalido', errores: plan.errores }
 
   if (!resolucionIdentidad) {
-    const candidatos = await buscarCandidatosDuplicados({ ligaId: liga.id, ...canon })
+    const candidatos = await buscarCandidatosDuplicados({ ligaId: liga.id, ...plan.canon })
     if (candidatos.length) return { tipo: 'candidatos', candidatos }
   }
 
@@ -214,23 +130,11 @@ export async function agregarJugador({ sesion, liga, equipoId, campos, resolucio
   }
 
   return db.transaction('rw', db.jugadores, db.auditoria, async () => {
-    if (!(await numeroDisponible({ equipoId, dorsal }))) {
+    if (!numeroDisponibleEn(await fichasDelEquipo(equipoId), plan.dorsal)) {
       return { tipo: 'conflicto-numero' }
     }
     const codigo = await generarCodigoJugador()
-    const ficha = {
-      id: uid(),
-      codigo,
-      ligaId: liga.id,
-      equipoId,
-      personaId,
-      ...canon,
-      nombre: nombreCompleto(canon.nombrePila, canon.apellido1, canon.apellido2),
-      dorsal,
-      fechaNacimiento,
-      reclamado: false,
-      activo: true,
-    }
+    const ficha = nuevaFichaDe({ id: uid(), codigo, ligaId: liga.id, equipoId, personaId, plan })
     await db.jugadores.add(ficha)
     await registrarAuditoria({ tipo: 'created', fichaId: ficha.id, actorId: sesion.cuentaId })
     return { tipo: 'creado', ficha }
@@ -256,48 +160,23 @@ export async function editarJugador({ sesion, liga, ficha, campos, resolucionIde
   const actual = await db.jugadores.get(ficha.id)
   if (!actual) throw new Error('Esta ficha ya no existe.')
 
-  const combinados = {
-    nombrePila: campos.nombrePila ?? actual.nombrePila,
-    apellido1: campos.apellido1 ?? actual.apellido1,
-    apellido2: campos.apellido2 ?? actual.apellido2,
-    dorsal: campos.dorsal ?? actual.dorsal,
-    fechaNacimiento: 'fechaNacimiento' in campos ? campos.fechaNacimiento : actual.fechaNacimiento,
-  }
+  const decidida = decidirEdicion({ actual, campos })
+  if (decidida.errores) return { tipo: 'invalido', errores: decidida.errores }
 
-  const errores = validarCamposJugador(combinados)
-  if (Object.keys(errores).length) return { tipo: 'invalido', errores }
-
-  const canon = camposCanonicos(combinados)
-  const dorsal = Number(combinados.dorsal)
-  const fechaNacimiento = combinados.fechaNacimiento || undefined
-
-  // Decisión 7: solo un cambio real en los campos de nombre reactiva el
-  // chequeo de duplicados; número o fecha de nacimiento solos no lo hacen.
-  const nombreCambio =
-    canon.nombrePila !== normalizarEntrada(actual.nombrePila) ||
-    canon.apellido1 !== normalizarEntrada(actual.apellido1) ||
-    canon.apellido2 !== normalizarEntrada(actual.apellido2)
-
-  if (nombreCambio && !resolucionIdentidad) {
-    const candidatos = await buscarCandidatosDuplicados({ ligaId: liga.id, ...canon, excluirFichaId: actual.id })
+  if (decidida.nombreCambio && !resolucionIdentidad) {
+    const candidatos = await buscarCandidatosDuplicados({ ligaId: liga.id, ...decidida.canon, excluirFichaId: actual.id })
     if (candidatos.length) return { tipo: 'candidatos', candidatos }
   }
 
   return db.transaction('rw', db.jugadores, db.auditoria, async () => {
     const vivo = await db.jugadores.get(actual.id)
     if (!vivo) throw new Error('Esta ficha ya no existe.')
-    if (dorsal !== vivo.dorsal && !(await numeroDisponible({ equipoId: vivo.equipoId, dorsal, excluirFichaId: vivo.id }))) {
-      return { tipo: 'conflicto-numero' }
-    }
-    const cambios = {
-      ...canon,
-      nombre: nombreCompleto(canon.nombrePila, canon.apellido1, canon.apellido2),
-      dorsal,
-      fechaNacimiento,
-    }
+    const plan = planEdicion({ vivo, decidida, fichasDelEquipo: await fichasDelEquipo(vivo.equipoId) })
+    if (plan.tipo !== 'ok') return plan.tipo === 'invalido' ? { tipo: 'invalido', errores: plan.errores } : { tipo: 'conflicto-numero' }
+    const { cambios } = plan
     await db.jugadores.update(vivo.id, cambios)
     await registrarAuditoria({ tipo: 'edited', fichaId: vivo.id, actorId: sesion.cuentaId })
-    return { tipo: 'editado', ficha: { ...vivo, ...cambios } }
+    return { tipo: 'editado', ficha: fichaResultante(vivo, cambios) }
   })
 }
 
@@ -326,7 +205,7 @@ export async function desactivarJugador({ sesion, liga, ficha }) {
  * equipo, o si la ficha no tiene número (Decisión 44), exige uno explícito.
  * Igual que desactivar, relee el estado y el número dentro de la transacción.
  */
-export async function reactivarJugador({ sesion, liga, ficha, nuevoDorsal }) {
+export async function reactivarJugador({ sesion, liga, ficha, nuevoDorsal, numeroPendiente }) {
   requerirPermiso(sesion, liga)
 
   return db.transaction('rw', db.jugadores, db.auditoria, async () => {
@@ -334,16 +213,12 @@ export async function reactivarJugador({ sesion, liga, ficha, nuevoDorsal }) {
     if (!actual) throw new Error('Esta ficha ya no existe.')
     if (activoDe(actual)) throw new Error('Esta ficha ya está activa.')
 
-    const dorsalObjetivo = nuevoDorsal !== undefined ? Number(nuevoDorsal) : actual.dorsal
-    const eDorsal = validarDorsal(dorsalObjetivo)
-    if (eDorsal) return { tipo: 'invalido', errores: { dorsal: eDorsal } }
-
-    if (!(await numeroDisponible({ equipoId: actual.equipoId, dorsal: dorsalObjetivo, excluirFichaId: actual.id }))) {
-      return { tipo: 'conflicto-numero' }
-    }
-    const cambios = { activo: true, dorsal: dorsalObjetivo }
+    const plan = planReactivacion({ actual, nuevoDorsal, numeroPendiente, fichasDelEquipo: await fichasDelEquipo(actual.equipoId) })
+    if (plan.tipo === 'invalido') return { tipo: 'invalido', errores: plan.errores }
+    if (plan.tipo === 'conflicto-numero') return { tipo: 'conflicto-numero' }
+    const { cambios } = plan
     await db.jugadores.update(actual.id, cambios)
     await registrarAuditoria({ tipo: 'reactivated', fichaId: actual.id, actorId: sesion.cuentaId })
-    return { tipo: 'reactivado', ficha: { ...actual, ...cambios } }
+    return { tipo: 'reactivado', ficha: fichaResultante(actual, cambios) }
   })
 }

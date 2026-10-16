@@ -94,6 +94,14 @@ db.version(9).stores({
   auditoria: 'id, fichaId',
 })
 
+// Auditoría del reloj y del ciclo de vida del partido (inicio, arranque, parada,
+// cambio de período, cierre). Tabla nueva y vacía: no hace falta upgrade(), no
+// toca ninguna tabla existente y no inventa historia para partidos anteriores.
+// [partidoId+seq] es único: el orden de los comandos de un partido no se repite.
+db.version(10).stores({
+  auditoriaReloj: 'id, partidoId, &[partidoId+seq]',
+})
+
 export const uid = () => Math.random().toString(36).slice(2, 10)
 
 export async function resetear() {

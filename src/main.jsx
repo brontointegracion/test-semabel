@@ -2,21 +2,18 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
-import { sembrarSiHaceFalta, mantenerPartidoEnVivo } from './seed'
+import { sembrarSiHaceFalta } from './seed'
 import { resolverRegion } from './lib/region'
 import { asegurarSesion } from './lib/sesion'
+import { modoCompartido } from './lib/modo'
 import './styles.css'
 
 async function arrancar() {
-  await sembrarSiHaceFalta()
-  await resolverRegion()
+  // Modo compartido: no se siembran datos de demostración (la siembra además VACÍA tablas si cambia su versión).
+  if (!modoCompartido()) await sembrarSiHaceFalta()
+  // Modo compartido: el país del piloto es una configuración (VITE_PAIS_PILOTO), no se busca por IP ni se guarda en el navegador.
+  if (!modoCompartido()) await resolverRegion()
   await asegurarSesion()
-  await mantenerPartidoEnVivo()
-
-  // El partido de ejemplo sigue en juego mientras la app esté abierta: cuando
-  // se acaba un período empieza el siguiente. Es andamiaje del prototipo —
-  // con un backend, el reloj lo mueve el árbitro desde la consola.
-  setInterval(mantenerPartidoEnVivo, 15000)
 
   createRoot(document.getElementById('root')).render(
     <StrictMode>

@@ -672,14 +672,14 @@ td.pts { font-weight: 800; color: var(--acento-ink); }
   width: 100%; text-align: left; cursor: pointer;
 }
 
-.partido .cuando { flex: none; width: 56px; text-align: center; }
+.partido .cuando { flex: none; width: 84px; text-align: center; } /* ancho para «11:50 a. m.» (REPORT_161) */
 
 .partido .cuando .dia {
   font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
   color: var(--ink-mute); overflow: hidden; text-overflow: ellipsis;
 }
 
-.partido .cuando .hora { font-size: 0.92rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.partido .cuando .hora { font-size: 0.86rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .partido .enfrenta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 
@@ -915,6 +915,21 @@ td.pts { font-weight: 800; color: var(--acento-ink); }
 
 .reloj-consola.anda { color: var(--acento-ink); }
 
+/* Siempre visible en un partido terminado: texto y fondo oscuro, no solo color. */
+.insignia-final {
+  display: inline-block; max-width: 7.5rem; margin-top: 6px;
+  padding: 3px 8px; border-radius: 999px;
+  background: #B91C1C; color: #fff;
+  font-size: 0.62rem; font-weight: 800; letter-spacing: 0.06em; line-height: 1.2;
+  text-transform: uppercase; text-align: center;
+}
+
+/* En una fila del calendario: ocupa el ancho de los equipos, no la columna de 56px. */
+.insignia-final.en-fila {
+  align-self: flex-start; max-width: 100%; margin-top: 2px;
+  white-space: nowrap;
+}
+
 /* Arrancar y parar es lo que más se toca en un partido de baloncesto:
    botón grande, y los ajustes finos al lado, más chicos. */
 .reloj-panel { display: flex; flex-direction: column; gap: 8px; }
@@ -1050,6 +1065,138 @@ td.pts { font-weight: 800; color: var(--acento-ink); }
 .registro .ev .mas { font-weight: 800; font-variant-numeric: tabular-nums; min-width: 26px; }
 
 .registro .ev .mas.falta { color: var(--acento-ink); }
+
+/* ---- consola: interacción del baloncesto (panel global y prototipos) ----
+   Todo bajo .consola o con clases propias: Liga y el resto de pantallas
+   siguen usando .selector, .anota y .pill sin cambios. */
+
+.consola { --consola-topbar-h: 60px; }
+
+.consola .selector button { min-height: 48px; }
+
+.consola .selector button.activo { font-weight: 800; box-shadow: inset 0 -3px 0 rgba(255, 255, 255, 0.7); }
+
+/* Undo/Redo: la consola no tiene barra de pestañas, así que la barra se ancla
+   al borde inferior (no a --tab-h + 10px, que la dejaba flotando sobre el
+   contenido). Es compacta y vive en el flujo tras el plantel: al final del
+   desplazamiento queda debajo de la última fila, sin taparla. */
+/* z-index por encima de la barra de paneles (10) para que Deshacer/Rehacer
+   nunca quede tapado cuando coinciden en pantalla. */
+.consola .barra-deshacer {
+  bottom: 0; z-index: 15;
+  padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--paper) 96%, transparent);
+}
+
+/* Si algo toma foco o se desplaza a la vista, queda libre de las barras pegadas
+   (barra superior + paneles arriba, Undo/Redo abajo). */
+.consola .jugador-fila,
+.consola .proto-reloj { scroll-margin-top: calc(var(--consola-topbar-h) + 84px); scroll-margin-bottom: 84px; }
+
+.consola .btn-reloj { min-height: 48px; }
+
+.consola .reloj-panel .ajuste { min-width: 64px; min-height: 48px; }
+
+.consola .barra-deshacer .btn { min-height: 48px; flex: 1; }
+
+.consola .jugador-fila { flex-direction: column; align-items: stretch; gap: 8px; padding: 8px; }
+
+.consola .jugador-fila .identidad { display: flex; align-items: center; gap: 10px; min-width: 0; }
+
+.consola .jugador-fila .nombre { font-size: 0.92rem; }
+
+.consola .jugador-fila .suma { font-size: 0.875rem; }
+
+.consola .anota { display: grid; grid-template-columns: repeat(var(--cols, 4), 1fr); gap: 8px; }
+
+.consola .anota button {
+  min-width: 0; min-height: 48px; padding: 0;
+  font-size: 1rem; touch-action: manipulation;
+}
+
+.consola .anota button.falta { min-width: 0; }
+
+.consola .anota.proto button {
+  border-style: dashed; border-width: 2px; background: var(--surface-2);
+}
+
+.consola .registro .ev { padding: 4px 4px 4px 12px; }
+
+.consola .registro .ev .pill {
+  min-width: 44px; min-height: 44px; padding: 0 14px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line); cursor: pointer; font-size: 0.875rem;
+}
+
+.proto-aviso { font-size: 0.875rem; padding: 10px 12px; }
+
+.proto-toque { font-weight: 700; }
+
+.proto-relojes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.proto-reloj {
+  display: flex; flex-direction: column; gap: 6px; min-width: 0;
+  padding: 10px; border: 2px dashed var(--line); border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.proto-reloj-titulo { font-size: 0.875rem; font-weight: 700; line-height: 1.2; }
+
+.proto-reloj-valor { display: flex; align-items: baseline; gap: 6px; }
+
+.proto-reloj-valor b { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+
+.proto-reloj-valor span { font-size: 0.875rem; color: var(--ink-mute); }
+
+.proto-reloj-reset {
+  min-height: 48px; border-radius: var(--r-md);
+  border: 1px solid var(--line); background: var(--surface-2);
+  color: var(--ink); font-weight: 700; font-size: 0.875rem; cursor: pointer;
+  touch-action: manipulation;
+}
+
+.proto-reloj-estado { font-size: 0.875rem; color: var(--ink-mute); }
+
+.paneles-barra {
+  position: sticky; top: var(--consola-topbar-h); z-index: 10;
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 6px 0;
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.paneles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+
+.paneles button {
+  min-height: 48px; min-width: 0; padding: 0 4px;
+  border-radius: var(--r-md); border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink);
+  font-weight: 700; font-size: 0.875rem; cursor: pointer;
+  touch-action: manipulation;
+}
+
+.paneles button.activo {
+  background: var(--ink); color: #fff; border-color: var(--ink);
+  font-weight: 800; text-decoration: underline; text-underline-offset: 4px;
+}
+
+.paneles-proto {
+  font-size: 0.875rem; font-weight: 700; text-align: center;
+  color: var(--aviso); letter-spacing: 0.04em;
+}
+
+/* Mensaje de una acción rechazada (unos 4 s). Un ancla de alto cero pegada bajo
+   la barra superior lo mantiene a la vista sin empujar el resto de la pantalla. */
+.consola .rechazo-ancla {
+  position: sticky; top: var(--consola-topbar-h); z-index: 14;
+  height: 0; margin-bottom: -14px;
+}
+
+.consola .rechazo-ancla .aviso {
+  position: absolute; left: 0; right: 0; top: 8px;
+  font-weight: 700; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+  background: color-mix(in srgb, var(--aviso) 14%, var(--paper));
+}
 
 /* ---- avisos ---- */
 

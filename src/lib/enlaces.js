@@ -42,6 +42,9 @@ const arma = (prefijo, nombre, codigo) => `/${prefijo}/${slug(nombre)}-${codigo}
 export const urlLiga = (liga) =>
   liga ? arma('l', liga.nombre, liga.codigo) : '/'
 
+export const urlLigaCalendario = (liga) =>
+  liga ? `${urlLiga(liga)}?pestana=calendario` : '/'
+
 // Con la fecha, porque los mismos dos equipos se cruzan varias veces por
 // temporada: sin ella, dos partidos distintos tendrían el mismo nombre en la
 // dirección y quien busca no sabría cuál está abriendo.

@@ -5,6 +5,7 @@ import { useLiga, useSesion, useRivalesPosibles } from '../datos'
 import { esDuenoDe } from '../lib/sesion'
 import { codigoDe, urlLiga, urlReto } from '../lib/enlaces'
 import { useMeta } from '../lib/meta'
+import { copiaSubcategoriaParaReto, esRivalCompatible, etiquetaCategoria, etiquetaSubcategoria } from '../lib/categorias'
 import { Topbar, Vacio, fechaCorta } from '../ui'
 
 const PAISES = { PA: 'Panamá', CO: 'Colombia' }
@@ -46,16 +47,20 @@ export default function Retar() {
   }
 
   const crear = async () => {
-    if (!elegida) return
+    if (!elegida || !esRivalCompatible(liga, elegida)) return
     setCreando(true)
     const { desde, hasta } = ventana()
     const codigo = String(1000 + Math.floor(Math.random() * 8999))
+    const subcategoria = copiaSubcategoriaParaReto(liga)
     const reto = {
       id: uid(),
       codigo,
-      nombre: `Reto ${liga.provincia} – ${elegida.provincia} ${liga.categoria}`,
+      nombre: `Reto ${liga.provincia} – ${elegida.provincia} ${etiquetaCategoria(liga.categoria)}` +
+        (subcategoria ? ` ${etiquetaSubcategoria(subcategoria)}` : ''),
       deporte: liga.deporte,
       categoria: liga.categoria,
+      // Solo los retos entre presets llevan subcategoría; los de ligas de antes quedan como siempre.
+      ...(subcategoria ? { subcategoria } : {}),
       ligaAId: liga.id,
       ligaBId: elegida.id,
       desde: desde.toISOString(),
@@ -96,7 +101,10 @@ export default function Retar() {
       <h2 className="seccion">1. ¿A quién retas?</h2>
       <p className="sub" style={{ marginTop: -6, marginBottom: 10 }}>
         Solo ligas de {liga.deporte === 'baloncesto' ? 'baloncesto' : 'fútbol sala'} categoría{' '}
-        {liga.categoria} que también aceptan retos.
+        {etiquetaCategoria(liga.categoria)}
+        {etiquetaSubcategoria(liga.subcategoria) ? ` (${etiquetaSubcategoria(liga.subcategoria)})` : ''}{' '}
+        que también aceptan retos. En baloncesto solo se emparejan ligas con la misma subcategoría
+        predefinida; las subcategorías escritas a mano no participan en retos por ahora.
       </p>
 
       <div className="lista">
@@ -117,7 +125,7 @@ export default function Retar() {
         ))}
         {!rivales.length && (
           <Vacio>
-            Todavía no hay otra liga de tu categoría que acepte retos.<br />
+            Todavía no hay otra liga compatible (misma categoría y subcategoría) que acepte retos.<br />
             Cuando la haya, aparece aquí.
           </Vacio>
         )}

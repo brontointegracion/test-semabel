@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Hoja } from './ui'
 import { agregarJugador, editarJugador, desactivarJugador, reactivarJugador, validarCamposJugador } from './lib/roster'
+import { dorsalDe, etiquetaDorsal } from './lib/dorsal'
 import { urlJugador } from './lib/enlaces'
 
-const CAMPOS_VACIOS = { nombrePila: '', apellido1: '', apellido2: '', dorsal: '', fechaNacimiento: '' }
+const CAMPOS_VACIOS = { nombrePila: '', apellido1: '', apellido2: '', dorsal: '', nombreCamiseta: '', fechaNacimiento: '' }
 
 // Decisión 24/104: Editar reusa este mismo formulario, prellenado desde la
 // ficha seleccionada. dorsal se vuelve string aquí porque el input numérico
@@ -15,8 +16,23 @@ function camposDeFicha(ficha) {
     apellido1: ficha.apellido1 ?? '',
     apellido2: ficha.apellido2 ?? '',
     dorsal: ficha.dorsal === undefined || ficha.dorsal === null ? '' : String(ficha.dorsal),
+    nombreCamiseta: ficha.nombreCamiseta ?? '',
     fechaNacimiento: ficha.fechaNacimiento ?? '',
   }
+}
+
+/**
+ * Explicación solo para el organizador de una ficha sin número (Decisión 115).
+ * Las vistas públicas siguen mostrando "—". Solo se monta dentro de las hojas de
+ * gestión, que Equipo.jsx abre únicamente para quien pasa esDuenoDe().
+ */
+export function AvisoNumeroPendiente({ ficha }) {
+  if (!ficha || dorsalDe(ficha) !== null) return null
+  return (
+    <p className="sub" role="note" style={{ margin: '0 0 12px', fontSize: '0.8rem' }}>
+      Número pendiente: este jugador aún no tiene número asignado.
+    </p>
+  )
 }
 
 const hoyISO = () => new Date().toISOString().slice(0, 10)
@@ -91,7 +107,7 @@ export function FormularioJugador({ sesion, liga, equipoId, ficha, onCerrar, onE
         ? await editarJugador({ sesion, liga, ficha, campos, resolucionIdentidad })
         : await agregarJugador({ sesion, liga, equipoId, campos, resolucionIdentidad })
       if (resultado.tipo === 'invalido') {
-        setTocados({ nombrePila: true, apellido1: true, apellido2: true, dorsal: true, fechaNacimiento: true })
+        setTocados({ nombrePila: true, apellido1: true, apellido2: true, dorsal: true, nombreCamiseta: true, fechaNacimiento: true })
         setErrores(resultado.errores)
         setPaso('formulario')
       } else if (resultado.tipo === 'candidatos') {
@@ -200,8 +216,26 @@ export function FormularioJugador({ sesion, liga, equipoId, ficha, onCerrar, onE
               value={campos.dorsal}
               onChange={(e) => cambiarCampo('dorsal', e.target.value)}
               onBlur={() => marcarTocado('dorsal')}
+              aria-invalid={tocados.dorsal && errores.dorsal ? true : undefined}
+              aria-describedby={tocados.dorsal && errores.dorsal ? 'jf-dorsal-error' : undefined}
             />
-            {tocados.dorsal && errores.dorsal && <span className="campo-error">{errores.dorsal}</span>}
+            {tocados.dorsal && errores.dorsal && <span id="jf-dorsal-error" className="campo-error">{errores.dorsal}</span>}
+          </div>
+
+          <div className="campo">
+            <label htmlFor="jf-camiseta">Nombre en camiseta</label>
+            <input
+              id="jf-camiseta"
+              value={campos.nombreCamiseta}
+              onChange={(e) => cambiarCampo('nombreCamiseta', e.target.value)}
+              onBlur={() => marcarTocado('nombreCamiseta')}
+              maxLength={20}
+              aria-describedby="jf-camiseta-ayuda"
+            />
+            <span id="jf-camiseta-ayuda" className="sub" style={{ fontSize: '0.74rem' }}>
+              Opcional. Se usa en la consola del árbitro; si queda vacío se usa el nombre.
+            </span>
+            {tocados.nombreCamiseta && errores.nombreCamiseta && <span className="campo-error">{errores.nombreCamiseta}</span>}
           </div>
 
           <div className="campo">
@@ -233,7 +267,7 @@ export function FormularioJugador({ sesion, liga, equipoId, ficha, onCerrar, onE
               <div key={c.fichaId} className="card">
                 <div style={{ fontWeight: 700 }}>{c.nombreCompleto}</div>
                 <div className="sub" style={{ fontSize: '0.8rem', marginTop: 2 }}>
-                  {c.equipoNombre || 'Sin equipo'} · #{c.dorsal ?? '—'}
+                  {c.equipoNombre || 'Sin equipo'} · {etiquetaDorsal(c)}
                   {c.edad !== undefined && <> · {c.edad} años</>}
                   {!c.activo && ' · Inactivo'}
                 </div>
@@ -319,9 +353,10 @@ export function ConfirmarDesactivar({ sesion, liga, ficha, onCerrar, onExito }) 
   return (
     <Hoja abierta titulo="Desactivar jugador" onSolicitarCierre={onCerrar}>
       <p style={{ margin: '0 0 12px' }}>
-        <strong>#{ficha.dorsal ?? '—'} {ficha.nombre}</strong> ya no estará disponible para futuros partidos
+        <strong>{etiquetaDorsal(ficha)} {ficha.nombre}</strong> ya no estará disponible para futuros partidos
         de este equipo. Los partidos y estadísticas anteriores se conservan.
       </p>
+      <AvisoNumeroPendiente ficha={ficha} />
       {error && <p className="campo-error" style={{ marginBottom: 12 }}>{error}</p>}
       <div className="btn-fila">
         <button type="button" className="btn fantasma" onClick={onCerrar} disabled={guardando}>
@@ -363,7 +398,8 @@ export function ConfirmarReactivar({ sesion, liga, ficha, onCerrar, onExito }) {
     setError(null)
     try {
       const resultado = await reactivarJugador({
-        sesion, liga, ficha, ...(nuevoDorsal !== undefined ? { nuevoDorsal } : {}),
+        sesion, liga, ficha,
+        ...(nuevoDorsal !== undefined ? { nuevoDorsal } : {}),
       })
       if (resultado.tipo === 'reactivado') {
         onExito('Jugador reactivado')
@@ -396,9 +432,10 @@ export function ConfirmarReactivar({ sesion, liga, ficha, onCerrar, onExito }) {
       {paso === 'confirmar' && (
         <>
           <p style={{ margin: '0 0 12px' }}>
-            <strong>#{ficha.dorsal ?? '—'} {ficha.nombre}</strong> volverá a estar disponible para futuros
+            <strong>{etiquetaDorsal(ficha)} {ficha.nombre}</strong> volverá a estar disponible para futuros
             partidos de este equipo.
           </p>
+          <AvisoNumeroPendiente ficha={ficha} />
           {error && <p className="campo-error" style={{ marginBottom: 12 }}>{error}</p>}
           <div className="btn-fila">
             <button type="button" className="btn fantasma" onClick={onCerrar} disabled={guardando}>
@@ -415,7 +452,7 @@ export function ConfirmarReactivar({ sesion, liga, ficha, onCerrar, onExito }) {
         <form onSubmit={reintentar} noValidate>
           <p style={{ margin: '0 0 12px' }}>
             {motivo === 'conflicto'
-              ? `El número #${ficha.dorsal} de ${ficha.nombre} ya lo tiene otro jugador activo de este equipo.`
+              ? `El número ${etiquetaDorsal(ficha)} de ${ficha.nombre} ya lo tiene otro jugador activo de este equipo.`
               : `${ficha.nombre} no tiene un número utilizable para reactivarse.`}
             {' '}Ingresa un número distinto para continuar.
           </p>
@@ -430,8 +467,10 @@ export function ConfirmarReactivar({ sesion, liga, ficha, onCerrar, onExito }) {
               step={1}
               value={numero}
               onChange={(e) => setNumero(e.target.value)}
+              aria-invalid={errorNumero ? true : undefined}
+              aria-describedby={errorNumero ? 'rj-numero-error' : undefined}
             />
-            {errorNumero && <span className="campo-error">{errorNumero}</span>}
+            {errorNumero && <span id="rj-numero-error" className="campo-error">{errorNumero}</span>}
           </div>
           {error && <p className="campo-error" style={{ marginBottom: 12 }}>{error}</p>}
           <div className="btn-fila">

@@ -1,0 +1,15 @@
+{
+  // Solo para las pruebas locales: el punto de entrada de prueba reexporta el mismo
+  // código con puntos de extensión (reloj y pausa) y la siembra activada con un secreto
+  // sintético que no sirve en ningún otro lugar.
+  "name": "sebel-liga-backend-prueba",
+  "main": "test/worker-prueba.js",
+  "compatibility_date": "2026-10-01",
+  "vars": { "ENTORNO": "prueba", "PERMITIR_SEMILLA": "1", "SEMILLA_TOKEN": "semilla-sintetica-solo-pruebas",
+    // Acceso por códigos SOLO para pruebas locales: origen y secreto de operador sintéticos, sin valor fuera de aquí.
+    "ACCESO_ORIGEN": "https://backend.local", "ACCESO_ADMIN_HABILITADO": "1", "ACCESO_ADMIN_TOKEN": "operador-sintetico-solo-pruebas-0000000000",
+    // Solo IDs SINTÉTICOS de las pruebas (LIGA1…LIGA100). Ningún ID real.
+    "LIGAS_ADMITIDAS": "LIGA1,LIGA2,LIGA3,LIGA4,LIGA5,LIGA6,LIGA7,LIGA8,LIGA9,LIGA10,LIGA11,LIGA12,LIGA13,LIGA14,LIGA15,LIGA16,LIGA17,LIGA18,LIGA19,LIGA20,LIGA21,LIGA22,LIGA23,LIGA24,LIGA25,LIGA26,LIGA27,LIGA28,LIGA29,LIGA30,LIGA31,LIGA32,LIGA33,LIGA34,LIGA35,LIGA36,LIGA37,LIGA38,LIGA39,LIGA40,LIGA41,LIGA42,LIGA43,LIGA44,LIGA45,LIGA46,LIGA47,LIGA48,LIGA49,LIGA50,LIGA51,LIGA52,LIGA53,LIGA54,LIGA55,LIGA56,LIGA57,LIGA58,LIGA59,LIGA60,LIGA61,LIGA62,LIGA63,LIGA64,LIGA65,LIGA66,LIGA67,LIGA68,LIGA69,LIGA70,LIGA71,LIGA72,LIGA73,LIGA74,LIGA75,LIGA76,LIGA77,LIGA78,LIGA79,LIGA80,LIGA81,LIGA82,LIGA83,LIGA84,LIGA85,LIGA86,LIGA87,LIGA88,LIGA89,LIGA90,LIGA91,LIGA92,LIGA93,LIGA94,LIGA95,LIGA96,LIGA97,LIGA98,LIGA99,LIGA100" },
+  "durable_objects": { "bindings": [{ "name": "LIGA", "class_name": "LigaDO" }, { "name": "ACCESO", "class_name": "AccesoDO" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["LigaDO"] }, { "tag": "v2", "new_sqlite_classes": ["AccesoDO"] }]
+}

@@ -1,7 +1,8 @@
 import { Link, useParams } from 'react-router-dom'
 import { db } from '../db'
 import { useJugador, useOtrasFichas } from '../datos'
-import { Topbar, Escudo, fechaCorta } from '../ui'
+import { Topbar, Escudo, fechaCorta, EnlacePartido } from '../ui'
+import { etiquetaDorsal, textoDorsal, tieneNumero } from '../lib/dorsal'
 import { codigoDe, urlPartido, urlEquipo, urlJugador } from '../lib/enlaces'
 import { useMeta } from '../lib/meta'
 
@@ -12,7 +13,7 @@ export default function Jugador() {
   useMeta({
     titulo: d && `${d.jugador.nombre} (${d.equipo?.nombre}): estadísticas`,
     descripcion: d && (
-      `${d.jugador.nombre}, dorsal ${d.jugador.dorsal} de ${d.equipo?.nombre} en ${d.liga?.nombre}. ` +
+      `${d.jugador.nombre}${tieneNumero(d.jugador) ? `, dorsal ${textoDorsal(d.jugador)}` : ''} de ${d.equipo?.nombre} en ${d.liga?.nombre}. ` +
       `${d.puntos} puntos en ${d.partidosJugados} partidos, ${d.faltas} faltas.`
     ),
     tipo: 'profile',
@@ -48,7 +49,7 @@ export default function Jugador() {
         <div className="datos">
           <div className="nom">{jugador.nombre}</div>
           <div className="sub">
-            #{jugador.dorsal} · <Link to={urlEquipo(equipo)} style={{ textDecoration: 'underline' }}>{equipo?.nombre}</Link>
+            {etiquetaDorsal(jugador)} · <Link to={urlEquipo(equipo)} style={{ textDecoration: 'underline' }}>{equipo?.nombre}</Link>
           </div>
           <div style={{ marginTop: 8 }}>
             {jugador.reclamado ? (
@@ -121,7 +122,7 @@ export default function Jugador() {
         {historial.map(({ partido, pts }) => {
           const rival = partido.localId === equipo.id ? partido.visitaId : partido.localId
           return (
-            <Link key={partido.id} to={urlPartido(partido, equiposPorId[partido.localId], equiposPorId[partido.visitaId])} className="jugador-fila">
+            <EnlacePartido key={partido.id} to={urlPartido(partido, equiposPorId[partido.localId], equiposPorId[partido.visitaId])} className="jugador-fila">
               <Escudo equipo={equiposPorId[rival]} size="sm" />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="nombre" style={{ fontWeight: 600 }}>
@@ -130,7 +131,7 @@ export default function Jugador() {
                 <div className="sub" style={{ fontSize: '0.75rem' }}>{fechaCorta(partido.inicio)}</div>
               </div>
               <div style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{pts}</div>
-            </Link>
+            </EnlacePartido>
           )
         })}
         {!historial.length && <p className="sub">Todavía no ha anotado en un partido cerrado.</p>}

@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, Link } from 'react-router-dom'
 import { usePartido, useSesion, useMiVoto } from '../datos'
 import { db, uid } from '../db'
+import { etiquetaDorsal, textoDorsal } from '../lib/dorsal'
 import { votosGanador, votosJugadorDelPartido, compartir } from '../lib/votos'
 import { marcadorEquipo, faltasEquipo, periodoActual, destacadosDeEquipo, puntosJugador } from '../lib/marcador'
 import { esDuenoDe } from '../lib/sesion'
 import { PERIODOS, restanteMs, mmss, corriendo, nombrePeriodo } from '../lib/reloj'
 import { Escudo, fechaCorta, hora } from '../ui'
-import { codigoDe, urlPartido, urlJugador, urlCancha } from '../lib/enlaces'
+import { codigoDe, urlPartido, urlJugador, urlCancha, urlLigaCalendario } from '../lib/enlaces'
+import { origenDe, reenviar } from '../lib/volver'
 import { urlWaze, urlGoogleMaps, tieneUbicacion } from '../lib/mapas'
 import { useMeta, useDatosEstructurados, partidoComoEvento } from '../lib/meta'
 
@@ -22,6 +24,7 @@ import { useMeta, useDatosEstructurados, partidoComoEvento } from '../lib/meta'
 export default function Partido() {
   const { slug } = useParams()
   const nav = useNavigate()
+  const location = useLocation()
   const d = usePartido(codigoDe(slug))
   const sesion = useSesion()
   const [, setTic] = useState(0)
@@ -103,6 +106,7 @@ export default function Partido() {
     } catch { /* el navegador puede negarlo */ }
   }
 
+  const origen = origenDe(location)
   const hayDetalle = eventos.some((e) => !e.anulado)
   // Cómo llegar importa sobre todo ANTES del partido, que es justo cuando
   // todavía no hay nada anotado. Por eso el detalle también se abre sin eventos.
@@ -113,7 +117,13 @@ export default function Partido() {
     <div className="board-pagina" ref={contenedor}>
       <div className={`board ${completa ? 'pantalla-completa' : ''}`}>
         <div className="board-top">
-          <button className="cerrar" onClick={() => nav(-1)}>‹ Salir</button>
+          {/* Con origen válido vuelve a él (con su pestaña); en entrada directa, a la liga en Calendario. */}
+          <button
+            className="cerrar"
+            onClick={() => nav(origen || urlLigaCalendario(liga), { replace: true })}
+          >
+            {origen ? '‹ Salir' : 'Ver liga'}
+          </button>
           <span className="liga">{liga.nombre}</span>
           {vivo && <span className="pill vivo"><i className="punto" />EN VIVO</span>}
         </div>
@@ -172,7 +182,7 @@ export default function Partido() {
           </button>
           {/* Llevar el marcador es cosa del dueño de la liga. Nadie más lo ve. */}
           {partido.estado !== 'final' && esDuenoDe(sesion, liga) && (
-            <Link to={`${urlPartido(partido, local, visita)}/consola`} className="btn">Llevar el marcador</Link>
+            <Link to={`${urlPartido(partido, local, visita)}/consola`} state={reenviar(location)} className="btn">Llevar el marcador</Link>
           )}
         </div>
 
@@ -231,7 +241,7 @@ export default function Partido() {
 /** Las mismas figuras, en una tira que cabe en el marcador a pantalla completa. */
 function ColumnaFiguras({ equipo, eventos, jugadores }) {
   const { mejor, masFaltas } = destacadosDeEquipo({ eventos, jugadores, equipoId: equipo.id })
-  const corto = (j) => `#${j.dorsal} ${j.nombre.split(' ')[0]} ${j.nombre.split(' ')[1]?.[0] || ''}.`
+  const corto = (j) => `${etiquetaDorsal(j)} ${j.nombre.split(' ')[0]} ${j.nombre.split(' ')[1]?.[0] || ''}.`
 
   return (
     <div className="col">
@@ -355,7 +365,7 @@ function Votos({ partido, liga, local, visita, jugadores, eventos }) {
             onClick={() => votar(f.jugador.id)}
           >
             <span className="relleno" style={{ width: `${f.pct}%` }} />
-            <span className="dorsal">{f.jugador.dorsal}</span>
+            <span className="dorsal">{textoDorsal(f.jugador)}</span>
             <span className="quien">{f.jugador.nombre}</span>
             <span className="sub">{f.puntos} pts</span>
             <span className="pct">{f.pct}%</span>
@@ -410,7 +420,7 @@ function TarjetaEquipo({ equipo, eventos, jugadores, puntos }) {
         {mejor ? (
           <>
             <Link to={urlJugador(mejor.jugador)} className="quien">
-              #{mejor.jugador.dorsal} {mejor.jugador.nombre}
+              {etiquetaDorsal(mejor.jugador)} {mejor.jugador.nombre}
             </Link>
             <span className="n">{mejor.puntos}</span>
           </>
@@ -424,7 +434,7 @@ function TarjetaEquipo({ equipo, eventos, jugadores, puntos }) {
         {masFaltas ? (
           <>
             <Link to={urlJugador(masFaltas.jugador)} className="quien">
-              #{masFaltas.jugador.dorsal} {masFaltas.jugador.nombre}
+              {etiquetaDorsal(masFaltas.jugador)} {masFaltas.jugador.nombre}
             </Link>
             <span className="n faltas">{masFaltas.faltas}</span>
           </>

@@ -38,5 +38,17 @@ export function partirNombre(nombre) {
   return { nombrePila: partes.join(' '), apellido1, apellido2: '' }
 }
 
+/**
+ * Cómo se llama a la ficha en la consola del árbitro: el nombre en camiseta si
+ * tiene uno con contenido; si no, el nombre completo de siempre. Solo es
+ * presentación: nunca cambia la identidad, el jugadorId de los eventos ni lo
+ * que muestran las vistas públicas. Ausente, vacío o solo espacios = sin nombre
+ * en camiseta (así se comportan las fichas de antes de que este campo existiera).
+ */
+export function nombreVisible(jugador) {
+  const camiseta = typeof jugador?.nombreCamiseta === 'string' ? jugador.nombreCamiseta.trim() : ''
+  return camiseta || jugador?.nombre
+}
+
 /** Ausente se trata como activo: así se comportan todas las fichas de antes de que este campo existiera. */
 export const activoDe = (jugador) => jugador?.activo !== false
