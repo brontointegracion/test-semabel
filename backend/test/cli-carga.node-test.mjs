@@ -148,3 +148,28 @@ describe('carga local simulada de extremo a extremo (servidor 127.0.0.1 de prueb
     assert.match(r.salida, /dentro-de-un-repositorio/)
   })
 })
+
+describe('command `equipos` (append teams to an already loaded league)', () => {
+  const anexo = (liga = 'LIGA-CLI') => escribir(`anexo-${liga}.json`, JSON.stringify({ cargaId: 'append-cli-0001-aaaaaaaa', equipos: [{ id: `${liga}-NUEVO`, nombre: 'Nuevo' }] }))
+  it('dry-run by default: no requests, no journal, and a bad file fails', async () => {
+    const r = await correr(OPERADOR, ['equipos', '--equipos', `LIGA-CLI=${anexo()}`])
+    assert.equal(r.codigo, 0, r.salida); assert.match(r.salida, /simulacro/); assert.doesNotMatch(r.salida, /Nuevo/)
+    const mal = escribir('anexo-mal.json', '{nada')
+    assert.equal((await correr(OPERADOR, ['equipos', '--equipos', `LIGA-CLI=${mal}`])).codigo, 1)
+    assert.match((await correr(OPERADOR, ['equipos', '--equipos', anexo()])).salida, /equipos-requiere-LIGA=archivo/)
+  })
+  it('apply sends ONE Bearer POST to /equipos with the exact body, journals it 0600, and a redirect is not followed', async () => {
+    const s = await servidor(() => ({ status: 201, json: { ok: true, reproducido: false } })); cerrar.push(s.s)
+    const diario = join(dir, 'dq.json')
+    const r = await correr(OPERADOR, ['equipos', '--equipos', `LIGA-CLI=${anexo()}`, '--aplicar', '--origen', s.origen, '--diario', diario], { SEBEL_OPERADOR_TOKEN: TOKEN })
+    assert.equal(r.codigo, 0, r.salida)
+    assert.equal(s.peticiones.length, 1); assert.equal(s.peticiones[0].url, '/v1/admin/ligas/LIGA-CLI/equipos')
+    assert.equal(s.peticiones[0].cabeceras.authorization, `Bearer ${TOKEN}`)
+    assert.deepEqual(JSON.parse(s.peticiones[0].cuerpo), { cargaId: 'append-cli-0001-aaaaaaaa', equipos: [{ id: 'LIGA-CLI-NUEVO', nombre: 'Nuevo' }] })
+    assert.equal(statSync(diario).mode & 0o777, 0o600); assert.ok(!readFileSync(diario, 'utf8').includes(TOKEN))
+    const fin = await servidor(() => ({ status: 200, json: {} })); cerrar.push(fin.s)
+    const redir = await servidor(() => ({ status: 307, json: {}, cabeceras: { location: `${fin.origen}/x` } })); cerrar.push(redir.s)
+    const r2 = await correr(OPERADOR, ['equipos', '--equipos', `LIGA-CLI=${anexo()}`, '--aplicar', '--origen', redir.origen, '--diario', join(dir, 'dq2.json')], { SEBEL_OPERADOR_TOKEN: TOKEN })
+    assert.match(r2.salida, /detenido-sin-resolver/); assert.equal(fin.peticiones.length, 0)
+  })
+})

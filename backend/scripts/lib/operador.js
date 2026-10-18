@@ -9,6 +9,7 @@ import { bloqueoDeEntorno, crearTransporte, tiempoValido, validarDestino } from 
 //   aplicar          Mutaciones del operador (Bearer; nunca cookie), una a la vez, con diario ANTES de enviar:
 //                      estructura   POST /v1/admin/ligas/{liga}/estructura   idempotente por `cargaId` + contenido (200 reproducido)
 //                      partidos     POST /v1/admin/ligas/{liga}/partidos     idempotente por `cargaId` + contenido (lote aparte)
+//                      equipos      POST /v1/admin/ligas/{liga}/equipos      AÑADE equipos a una liga ya cargada; `cargaId` NUEVO; idempotente por `cargaId` + contenido
 //                      provisionar  POST /v1/admin/organizador               NO idempotente: solo puede haber UN organizador activo
 //                      recuperar    POST /v1/admin/organizador/codigo/rotar  NO idempotente: cada llamada emite otro código y revoca el anterior
 //   verificar        Solo lecturas públicas (sin credenciales): compara la liga publicada con los archivos.
@@ -55,6 +56,38 @@ function validarEstructura(p) {
   return [...new Set(e)]
 }
 
+const claveCorta = (ligaId, id) => (id.startsWith(`${ligaId}-`) && id.length > ligaId.length + 1 ? id.slice(ligaId.length + 1) : id).toLowerCase()
+/** Mismo criterio que el servidor (carga.js `hayClavesAmbiguas`): dos equipos cuyas direcciones públicas serían ambiguas. */
+function clavesAmbiguas(ligaId, ids) {
+  for (let i = 0; i < ids.length; i += 1) {
+    for (let j = i + 1; j < ids.length; j += 1) {
+      const [a, b] = [ids[i], ids[j]]
+      const [ka, kb] = [claveCorta(ligaId, a), claveCorta(ligaId, b)]
+      if (a.toLowerCase() === b.toLowerCase() || ka === kb || ka === b.toLowerCase() || kb === a.toLowerCase()) return true
+    }
+  }
+  return false
+}
+
+function validarEquiposAnexos(p, ligaId) {
+  const e = []
+  if (!esObjeto(p)) return ['equipos-no-es-objeto']
+  if (Object.keys(p).some((k) => !['cargaId', 'equipos'].includes(k))) e.push('campos-no-permitidos')
+  if (!ID_CARGA.test(p.cargaId ?? '')) e.push('cargaId')
+  if (!Array.isArray(p.equipos) || p.equipos.length < 1 || p.equipos.length > LIMITES.equipos) e.push('equipos')
+  else {
+    const ids = new Set(); const nombres = new Set()
+    for (const q of p.equipos) {
+      if (!esObjeto(q) || Object.keys(q).some((k) => !['id', 'nombre'].includes(k)) || !ID.test(q.id ?? '') || typeof q.nombre !== 'string' || q.nombre.trim() === '' || q.nombre.trim() !== q.nombre) { e.push('equipo-invalido'); continue }
+      if (ids.has(q.id)) e.push('equipo-id-repetido')
+      if (nombres.has(q.nombre.toLowerCase())) e.push('equipo-nombre-repetido')
+      ids.add(q.id); nombres.add(q.nombre.toLowerCase())
+    }
+    if (ID.test(ligaId ?? '') && clavesAmbiguas(ligaId, [...ids])) e.push('clave-publica-ambigua')
+  }
+  return [...new Set(e)]
+}
+
 function validarPartidos(p, equiposConocidos) {
   const e = []
   if (!esObjeto(p)) return ['partidos-no-es-objeto']
@@ -79,17 +112,17 @@ async function elemento(tipo, ligaIdDado, texto, equiposConocidos) {
   let p
   try { p = JSON.parse(texto) } catch { return { ok: false, tipo, ligaId: ligaIdDado ?? null, problemas: ['json-ilegible'], resumen: { tipo } } }
   const cuerpo = JSON.stringify(p)
-  const limite = tipo === 'estructura' ? LIMITES.bytesEstructura : LIMITES.bytesPartidos
+  const limite = tipo === 'partidos' ? LIMITES.bytesPartidos : LIMITES.bytesEstructura
   const problemas = []
   if (bytes(cuerpo) > limite) problemas.push('demasiado-grande')
   const ligaId = tipo === 'estructura' ? p?.liga?.id : ligaIdDado
   if (!ID.test(ligaId ?? '')) problemas.push('liga-invalida')
-  problemas.push(...(tipo === 'estructura' ? validarEstructura(p) : validarPartidos(p, equiposConocidos)))
+  problemas.push(...(tipo === 'estructura' ? validarEstructura(p) : tipo === 'equipos' ? validarEquiposAnexos(p, ligaId) : validarPartidos(p, equiposConocidos)))
   const huella = await sha256Hex(cuerpo)
-  const resumen = tipo === 'estructura'
+  const resumen = tipo === 'estructura' || tipo === 'equipos'
     ? { tipo, ligaId: ligaId ?? null, cargaId: p?.cargaId ?? null, equipos: Array.isArray(p?.equipos) ? p.equipos.length : 0, huella: huella.slice(0, 12) }
     : { tipo, ligaId: ligaId ?? null, cargaId: p?.cargaId ?? null, partidos: Array.isArray(p?.partidos) ? p.partidos.length : 0, minutosPorPeriodo: p?.minutosPorPeriodo ?? null, huella: huella.slice(0, 12) }
-  const ruta = tipo === 'estructura' ? `/v1/admin/ligas/${ligaId}/estructura` : `/v1/admin/ligas/${ligaId}/partidos`
+  const ruta = `/v1/admin/ligas/${ligaId}/${tipo === 'estructura' ? 'estructura' : tipo === 'equipos' ? 'equipos' : 'partidos'}`
   return { ok: problemas.length === 0, tipo, ligaId, id: `${tipo}:${ligaId}:${p?.cargaId}`, ruta, cuerpo, huella, parsed: p, resumen, problemas: [...new Set(problemas)] }
 }
 
@@ -97,7 +130,7 @@ async function elemento(tipo, ligaIdDado, texto, equiposConocidos) {
  * entradas: { estructuras:[texto], partidos:[{ ligaId, texto }] } → plan { tipo, ok, huella, elementos, problemas }.
  * Los partidos se contrastan con las estructuras dadas en la MISMA ejecución (equipos existentes); sin estructuras no se contrasta.
  */
-export async function construirPlanCarga({ tipo, estructuras = [], partidos = [] }) {
+export async function construirPlanCarga({ tipo, estructuras = [], partidos = [], anexos = [] }) {
   const elementos = []
   const equiposPorLiga = new Map()
   for (const t of estructuras) {
@@ -105,8 +138,14 @@ export async function construirPlanCarga({ tipo, estructuras = [], partidos = []
     elementos.push(el)
     if (el.parsed?.equipos && el.ligaId) equiposPorLiga.set(el.ligaId, new Set(el.parsed.equipos.map((q) => q?.id)))
   }
+  // Equipos añadidos (`anexos`: [{ ligaId, texto }]): cuentan como equipos conocidos de su liga para contrastar los partidos.
+  for (const { ligaId, texto } of anexos) {
+    const el = await elemento('equipos', ligaId, texto)
+    elementos.push(el)
+    if (el.parsed?.equipos && el.ligaId) equiposPorLiga.set(el.ligaId, new Set([...(equiposPorLiga.get(el.ligaId) ?? []), ...el.parsed.equipos.map((q) => q?.id)]))
+  }
   for (const { ligaId, texto } of partidos) elementos.push(await elemento('partidos', ligaId, texto, equiposPorLiga.get(ligaId) ?? null))
-  const usadas = elementos.filter((e) => (tipo === 'estructura' ? e.tipo === 'estructura' : e.tipo === 'partidos'))
+  const usadas = elementos.filter((e) => e.tipo === (tipo === 'verificar' ? 'estructura' : tipo))
   const problemas = []
   if (usadas.length === 0) problemas.push('sin-archivos')
   const ids = usadas.map((e) => e.id)
@@ -213,7 +252,7 @@ export async function aplicarCarga({ plan, almacen, fetch: fCrudo, origen: orige
     } catch { r = { status: 0, json: null } }
     const j = r.json
     let aviso = null
-    if (op.tipo === 'estructura' || op.tipo === 'partidos') {
+    if (op.tipo === 'estructura' || op.tipo === 'partidos' || op.tipo === 'equipos') {
       if ((r.status === 200 || r.status === 201) && esObjeto(j) && typeof j.reproducido === 'boolean') {
         op.estado = 'aplicada'; op.resultado = { status: r.status, reproducido: j.reproducido }
         if (j.reproducido) cuenta.reproducidas += 1; else cuenta.aplicadas += 1
@@ -256,14 +295,14 @@ const hallar = (valor, ruta = '') => {
  * Compara la lectura pública de cada liga con los archivos. Sin credenciales, solo GET. → { ok, comprobaciones:[{ codigo, ok, detalle? }] }.
  * opciones: { estructuras:[texto], partidos:[{ ligaId, texto }], fetch, origen, remoto, entorno, tiempoMs, diario? (almacén; opcional) }
  */
-export async function verificarCarga({ estructuras = [], partidos = [], fetch: fCrudo, origen: origenCrudo, remoto = false, entorno = {}, tiempoMs, almacen }) {
+export async function verificarCarga({ estructuras = [], partidos = [], anexos = [], fetch: fCrudo, origen: origenCrudo, remoto = false, entorno = {}, tiempoMs, almacen }) {
   const destino = validarDestino(origenCrudo, { remoto: remoto === true })
   if (destino.error) return { ok: false, comprobaciones: [{ codigo: destino.error, ok: false }] }
   const bloqueo = bloqueoDeEntorno(entorno, destino)
   if (bloqueo) return { ok: false, comprobaciones: [{ codigo: bloqueo, ok: false }] }
   const t = tiempoValido(tiempoMs)
   if (t === null) return { ok: false, comprobaciones: [{ codigo: 'tiempo-invalido', ok: false }] }
-  const plan = await construirPlanCarga({ tipo: 'estructura', estructuras, partidos })
+  const plan = await construirPlanCarga({ tipo: 'estructura', estructuras, partidos, anexos })
   const todos = plan.elementos
   if (todos.some((e) => !e.ok)) return { ok: false, comprobaciones: [{ codigo: 'archivos-invalidos', ok: false, detalle: todos.filter((e) => !e.ok).map((e) => `${e.id}:${e.problemas.join('+')}`) }] }
   const f = crearTransporte({ fetch: fCrudo, destino, tiempoMs: t })
@@ -279,9 +318,21 @@ export async function verificarCarga({ estructuras = [], partidos = [], fetch: f
     const est = todos.find((e) => e.tipo === 'estructura' && e.ligaId === ligaId)
     if (est) {
       prueba(`liga-id-y-nombre:${ligaId}`, lectura.liga?.id === ligaId && lectura.liga?.nombre === est.parsed.liga.nombre)
-      const esperados = est.parsed.equipos.map((q) => `${q.id}|${q.nombre}`).sort()
+      // El conjunto esperado es EXACTO: la estructura inicial más los equipos añadidos que se den en esta misma comprobación. Sin
+      // `anexos`, un equipo añadido en el servidor es un equipo inesperado y la comprobación falla (no se relaja).
+      const anx = todos.filter((e) => e.tipo === 'equipos' && e.ligaId === ligaId)
+      const esperados = [...est.parsed.equipos, ...anx.flatMap((a) => a.parsed.equipos)].map((q) => `${q.id}|${q.nombre}`).sort()
       const reales = (lectura.equipos ?? []).map((q) => `${q.id}|${q.nombre}`).sort()
       prueba(`equipos-exactos:${ligaId}`, JSON.stringify(esperados) === JSON.stringify(reales), { esperados: esperados.length, reales: reales.length })
+    } else {
+      // Solo equipos añadidos, sin la estructura inicial: se comprueba que estén presentes con su nombre exacto; NO se afirma que la liga
+      // esté completa (para eso hay que dar también la estructura inicial).
+      const anx = todos.filter((e) => e.tipo === 'equipos' && e.ligaId === ligaId)
+      if (anx.length) {
+        const reales = new Map((lectura.equipos ?? []).map((q) => [q.id, q.nombre]))
+        const faltan = anx.flatMap((a) => a.parsed.equipos).filter((q) => reales.get(q.id) !== q.nombre).map((q) => q.id)
+        prueba(`equipos-anadidos-presentes:${ligaId}`, faltan.length === 0, faltan)
+      }
     }
     const lotes = todos.filter((e) => e.tipo === 'partidos' && e.ligaId === ligaId)
     if (lotes.length) {

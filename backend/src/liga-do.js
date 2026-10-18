@@ -11,7 +11,7 @@ import { LIMITES_ESTADO_CONTROL, leerEstadoControl } from './lectura-estado-cont
 import { candidatosExternos, ejecutarOperacion, huellaDe, leerLiga, leerPlantilla, resolverFichaParaVinculo } from './plantilla.js'
 import { LIMITES_EQUIPO_PUBLICO, leerEquipoPublico } from './proyeccion-equipo.js'
 import { proyectarLigaPublica, proyectarPartidoPublico } from './proyeccion-publica.js'
-import { cargarEstructura, cargarPartidos, huellaDeCarga } from './carga.js'
+import { cargarEquipos, cargarEstructura, cargarPartidos, huellaDeCarga } from './carga.js'
 import { aRespuesta } from './respuestas.js'
 import { LIMITES_REPARACION, repararResumenes, resumenValido } from './resumen-publico.js'
 import { sembrarLiga } from './semilla.js'
@@ -164,6 +164,11 @@ export class LigaDO extends DurableObject {
   async cargarEstructuraOperador({ ligaId, normalizado }) {
     const huella = await huellaDeCarga('estructura', ligaId, normalizado)
     return cargarEstructura(this.almacen, { normalizado, huella, ahora: this.ahora() })
+  }
+
+  async cargarEquiposOperador({ ligaId, normalizado }) {
+    const huella = await huellaDeCarga('equipos', ligaId, normalizado)
+    return cargarEquipos(this.almacen, { ligaId, normalizado, huella, ahora: this.ahora() })
   }
 
   async cargarPartidosOperador({ ligaId, normalizado }) {

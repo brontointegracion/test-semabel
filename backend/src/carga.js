@@ -9,6 +9,7 @@ import { esSede, insertarPartidoProgramado, normalizarProgramado } from './semil
 //
 //   estructura  { cargaId, liga:{ id, nombre, deporte, categoria?, subcategoria?, minutosPorPeriodo? }, equipos:[{ id, nombre }] }
 //   partidos    { cargaId, minutosPorPeriodo, partidos:[{ id, localId, visitaId, programadoPara?, sede? }] }
+//   equipos     { cargaId, equipos:[{ id, nombre }] }   AÑADE equipos a una liga ya cargada (cargaId NUEVO; nunca toca lo existente)
 //
 // TODO se valida ANTES de escribir (validarEstructura / validarPartidos son puras). Cada petición es UNA transactionSync:
 // o queda todo o no cambia nada. La identidad durable es `cargaId` (tabla `cargas`) con la huella del contenido NORMALIZADO
@@ -145,6 +146,60 @@ export function validarPartidos(p) {
   }
 }
 
+/**
+ * Clave pública de un equipo dentro de su liga, en minúsculas: el id sin el prefijo «{liga}-» (o el id completo si no lo lleva).
+ * Es la MISMA regla que src/lib/publico/claves.js (`claveEquipo`), repetida aquí para que el Worker no importe código de la aplicación;
+ * una prueba comprueba que ambas coinciden.
+ */
+export function clavePublicaDeEquipo(ligaId, equipoId) {
+  const prefijo = `${ligaId}-`
+  return (equipoId.startsWith(prefijo) && equipoId.length > prefijo.length ? equipoId.slice(prefijo.length) : equipoId).toLowerCase()
+}
+
+/** ¿Hay dos equipos cuyas direcciones públicas serían ambiguas? (misma clave, mismo id sin mayúsculas, o la clave de uno es el id de otro). */
+export function hayClavesAmbiguas(ligaId, ids, desde = 0) {
+  // `desde`: solo se miran los pares en que al menos uno es de ids[desde..] (los NUEVOS); lo que ya existía no bloquea una ampliación.
+  for (let i = 0; i < ids.length; i += 1) {
+    for (let j = Math.max(i + 1, desde); j < ids.length; j += 1) {
+      const [a, b] = [ids[i], ids[j]]
+      if (a.toLowerCase() === b.toLowerCase()) return true
+      const [ka, kb] = [clavePublicaDeEquipo(ligaId, a), clavePublicaDeEquipo(ligaId, b)]
+      if (ka === kb || ka === b.toLowerCase() || kb === a.toLowerCase()) return true
+    }
+  }
+  return false
+}
+
+/**
+ * Añadir equipos a una liga ya cargada. → { ok: true, normalizado } | { ok: false, errores }.
+ * Se valida TODO el lote (formas, ids, nombres, duplicados y claves públicas ambiguas dentro del lote) antes de tocar nada; los choques con
+ * los equipos ya guardados se comprueban dentro de la transacción (ver cargarEquipos).
+ */
+export function validarEquiposAnexos(p, ligaIdDeLaRuta) {
+  const e = []
+  if (!esObjeto(p)) return { ok: false, errores: ['payload'] }
+  if (!soloClaves(p, ['cargaId', 'equipos'])) e.push('payload.campos')
+  if (typeof p.cargaId !== 'string' || !ID_CARGA.test(p.cargaId)) e.push('cargaId')
+  const equipos = Array.isArray(p.equipos) && p.equipos.length >= 1 && p.equipos.length <= LIMITES_CARGA.equipos ? p.equipos : null
+  if (!equipos) e.push('equipos')
+  else {
+    const ids = new Set()
+    const nombres = new Set()
+    for (const q of equipos) {
+      if (!esObjeto(q) || !soloClaves(q, ['id', 'nombre'])) { e.push('equipos.forma'); continue }
+      if (typeof q.id !== 'string' || !ID.test(q.id)) e.push('equipos.id')
+      else if (ids.has(q.id)) e.push('equipos.id-duplicado')
+      else ids.add(q.id)
+      if (!esNombre(q.nombre)) e.push('equipos.nombre')
+      else if (nombres.has(claveNombre(q.nombre))) e.push('equipos.nombre-duplicado')
+      else nombres.add(claveNombre(q.nombre))
+    }
+    if (!e.length && hayClavesAmbiguas(ligaIdDeLaRuta, [...ids])) e.push('equipos.clave-ambigua')
+  }
+  if (e.length) return { ok: false, errores: acotar(e) }
+  return { ok: true, normalizado: { cargaId: p.cargaId, equipos: equipos.map((q) => ({ id: q.id, nombre: q.nombre })).sort((a, b) => (a.id < b.id ? -1 : 1)) } }
+}
+
 /** Huella del contenido normalizado, ligada al tipo de carga y a la liga. */
 export const huellaDeCarga = (tipo, ligaId, normalizado) => sha256Hex(canonico({ tipo, ligaId, normalizado }))
 
@@ -217,5 +272,31 @@ export function cargarPartidos(storage, { ligaId, normalizado: n, huella, ahora 
       return { id: g.id, estado: JSON.parse(f.estado_json).partido.estado, programadoPara: f.programado_para, sede: f.sede }
     })
     return guardarCarga(sql, n.cargaId, 'partidos', huella, { ok: true, cargaId: n.cargaId, tipo: 'partidos', ligaId, minutosPorPeriodo: n.minutosPorPeriodo, partidos }, ahora)
+  })
+}
+
+/**
+ * UNA transacción: equipos nuevos + recibo. SOLO añade equipos a una liga ya cargada; no toca la liga, los equipos, jugadores, personas,
+ * partidos, estados de marcador ni la propiedad del organizador. El recibo se mira PRIMERO (un reintento exacto devuelve el resultado
+ * original aunque la liga haya crecido desde entonces). → { status, cuerpo }
+ */
+export function cargarEquipos(storage, { ligaId, normalizado: n, huella, ahora }) {
+  return storage.transactionSync(() => {
+    const sql = storage.sql
+    const previo = reciboPrevio(sql, n.cargaId, 'equipos', huella)
+    if (previo) return previo
+    const liga = sql.exec('SELECT id FROM ligas WHERE id = ?', ligaId).toArray()[0]
+    if (!liga) return rechazo(409, 'liga-sin-estructura')
+    const actuales = sql.exec('SELECT id, nombre FROM equipos WHERE liga_id = ?', ligaId).toArray()
+    if (actuales.length + n.equipos.length > LIMITES_CARGA.equipos) return rechazo(409, 'liga-demasiado-grande')
+    const idsActuales = new Set(actuales.map((q) => q.id))
+    const nombresActuales = new Set(actuales.map((q) => claveNombre(q.nombre)))
+    if (n.equipos.some((q) => idsActuales.has(q.id))) return rechazo(409, 'equipo-existente')
+    if (n.equipos.some((q) => nombresActuales.has(claveNombre(q.nombre)))) return rechazo(409, 'nombre-existente')
+    if (hayClavesAmbiguas(ligaId, [...idsActuales, ...n.equipos.map((q) => q.id)], idsActuales.size)) return rechazo(409, 'clave-publica-ambigua')
+    for (const q of n.equipos) sql.exec('INSERT INTO equipos (id, liga_id, nombre) VALUES (?, ?, ?)', q.id, ligaId, q.nombre)
+    return guardarCarga(sql, n.cargaId, 'equipos', huella, {
+      ok: true, cargaId: n.cargaId, tipo: 'equipos', ligaId, agregados: n.equipos.length, equipos: n.equipos, totalEquipos: actuales.length + n.equipos.length,
+    }, ahora)
   })
 }
