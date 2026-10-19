@@ -12,3 +12,35 @@
 /control/*
   X-Robots-Tag: noindex
   Cache-Control: no-store
+
+# Pantallas del organizador (REPORT_184): mismas protecciones que /anthony/* y /control/*, para las direcciones antiguas (/anthony),
+# las canónicas (/organizador), la entrada amable (/ligas) y el alias del piloto (/deportivo-vip/ligas). El comodín «/x/*» no cubre «/x»:
+# por eso /anthony, /organizador, /ligas y el alias se declaran también exactos, con y sin barra final donde la aplicación los acepta.
+# No afecta a /v1/* (lo contesta el Worker con sus propios encabezados) ni a /assets/* (archivos con huella, que sí se guardan en caché).
+/anthony
+  X-Robots-Tag: noindex
+  Cache-Control: no-store
+
+/organizador
+  X-Robots-Tag: noindex
+  Cache-Control: no-store
+
+/organizador/*
+  X-Robots-Tag: noindex
+  Cache-Control: no-store
+
+/ligas
+  X-Robots-Tag: noindex
+  Cache-Control: no-store
+
+/ligas/
+  X-Robots-Tag: noindex
+  Cache-Control: no-store
+
+/deportivo-vip/ligas
+  X-Robots-Tag: noindex
+  Cache-Control: no-store
+
+/deportivo-vip/ligas/
+  X-Robots-Tag: noindex
+  Cache-Control: no-store

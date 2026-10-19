@@ -1,6 +1,7 @@
 import { PUNTOS_POR_DEPORTE, marcaDePeriodo, periodoEnPosicion, periodoVisible } from '../marcador-calculo'
 import { PERIODOS, corriendo, duracionMs, restanteMs } from '../reloj-calculo'
 import { atribucionIntegra } from './atribucion'
+import { estadoDeReglas } from '../reglas-categoria'
 import { camposDeReloj } from './estado'
 import {
   TIPOS, TOLERANCIA_FUTURO_MS, USA_TIEMPO_TRANSCURRIDO,
@@ -103,6 +104,9 @@ export function construirSobre(estado, orden, { deviceId, clientSeq }) {
     // defecto ni lectura del estado. Sin captura la clave no existe y el servidor rechaza el inicio nuevo.
     ...(orden.tipo === 'iniciar-partido' && orden.preparacionVersion !== undefined
       ? { preparacionVersion: orden.preparacionVersion } : {}),
+    // Solo el inicio, y solo si quien llama capturó la firma de las reglas que la persona veía (ver procesador.js).
+    ...(orden.tipo === 'iniciar-partido' && orden.reglasConfirmadas !== undefined
+      ? { reglasConfirmadas: orden.reglasConfirmadas } : {}),
   }
 }
 
@@ -426,9 +430,27 @@ const COMPROBACIONES = {
  * Devuelve { ok: false, motivo, estado? } o { ok: true, efectos, advertencias,
  * advertenciasRecepcion }.
  */
+/**
+ * Reglas de categoría PRESENTES pero inválidas o no soportadas (REPORT_177): las órdenes cuyo resultado depende de interpretarlas
+ * no se deciden con otra semántica, se rechazan con un diagnóstico. Son: el inicio (fijaría/usaría unas reglas dudosas) y las que
+ * calculan la duración de un periodo cuando el partido no trae una duración explícita (siguiente periodo, corregir reloj).
+ * Las demás (puntos, faltas, deshacer, rehacer, anular, arrancar, detener, cerrar) no interpretan reglas y siguen disponibles:
+ * el partido se puede terminar y consultar. Un reintento exacto de una orden ya aceptada no llega aquí (devuelve su recibo).
+ */
+const DEPENDEN_DE_LA_DURACION = new Set(['siguiente-periodo', 'corregir-reloj'])
+function bloqueoPorReglas(estado, sobre) {
+  const e = estadoDeReglas(estado.config)
+  if (e.estado !== 'invalidas') return null
+  const dependen = sobre.tipo === 'iniciar-partido'
+    || (DEPENDEN_DE_LA_DURACION.has(sobre.tipo) && (estado.config.minutosPorPeriodo ?? null) === null)
+  return dependen ? no('reglas-invalidas', { diagnostico: { reglas: 'invalidas', motivo: e.motivo, operacion: sobre.tipo } }) : null
+}
+
 export function decidirOrden(estado, sobre, ctx) {
   const def = REGLAS[sobre.tipo]
   if (!def) return no('tipo-desconocido')
+  const bloqueo = bloqueoPorReglas(estado, sobre)
+  if (bloqueo) return bloqueo
 
   const estadoPartido = estado.partido.estado ?? null
   if (def.estados && !def.estados.includes(estadoPartido)) {

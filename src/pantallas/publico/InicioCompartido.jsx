@@ -94,7 +94,7 @@ function Portada({ ids, tabs }) {
     )
     : (sinVerificar
       ? <div className="vacio">Faltan ligas por cargar: todavía no sabemos si hay partidos jugándose.</div>
-      : <div className="vacio">No hay partidos jugándose en este momento. Prueba «Lo que viene».</div>)
+      : <div className="vacio">No hay partidos jugándose en este momento. Prueba «Próximos partidos».</div>)
   const nodoViene = proximosF.length > 0
     ? <ListaProgramados partidos={proximosF} mono={mono} />
     : (sinVerificar

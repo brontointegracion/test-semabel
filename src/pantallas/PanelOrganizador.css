@@ -3,10 +3,11 @@
 .panel h1 { font-size: 1.3rem; margin: 0 0 6px; overflow-wrap: anywhere; }
 .panel h2 { font-size: 1.02rem; margin: 22px 0 8px; }
 .panel .btn, .hoja .btn { min-height: 44px; }
-.panel .nav-panel { margin: 0 0 12px; font-size: 0.9rem; }
+.panel .nav-panel { margin: 0 0 4px; font-size: 0.9rem; }
 .panel .lista-panel { list-style: none; margin: 8px 0 16px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .panel .fila-panel { padding: 12px 14px; border: 1px solid var(--line-soft); border-radius: var(--r-md); background: var(--surface); overflow-wrap: anywhere; }
-.panel .fila-panel a { font-weight: 700; text-decoration: none; color: inherit; display: block; }
+.panel .fila-panel a:not(.btn) { font-weight: 700; text-decoration: none; color: inherit; display: block; }
+.panel .nombre-contexto { display: block; font-weight: 700; }
 .panel .fila-panel .sub { font-size: 0.82rem; margin-top: 2px; }
 .aviso-panel { margin: 0 0 14px; padding: 10px 12px; border-radius: var(--r-md); background: var(--acento-wash); color: var(--acento-ink); font-size: 0.9rem; }
 .pendiente-panel { margin: 0 0 16px; }
@@ -19,3 +20,31 @@
 .enlace-boton { background: none; border: 0; padding: 0; color: var(--acento-ink); text-decoration: underline; cursor: pointer; font: inherit; text-align: left; }
 .tarjeta-candidato { padding: 12px 14px; }
 .panel .nota-vacia { color: var(--ink-soft); font-size: 0.9rem; }
+.codigo-emitido { margin: 12px 0 16px; padding: 12px 14px; border: 2px solid var(--acento); border-radius: var(--r-md); background: var(--surface); overflow-wrap: anywhere; }
+.codigo-valor { display: block; margin: 6px 0; font-size: 1.5rem; font-weight: 800; letter-spacing: 0.06em; user-select: all; }
+
+/* Acciones visibles (REPORT_179): enlaces con aspecto de botón para navegar, botones para actuar; 44 px de alto, foco visible global. */
+.panel .acciones-fila { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.panel .acciones-fila > .btn, .panel .acciones-fila > .compartir { flex: 1 1 200px; width: auto; }
+.panel .acciones-fila > .compartir > .btn { width: 100%; }
+.panel a.btn { text-decoration: none; text-align: center; }
+.panel .bloque-acciones { margin: 0 0 14px; }
+.panel .bloque-acciones .sub { margin: 0; }
+
+/* Enlaces de «volver» (REPORT_180): rojos, algo más grandes y con 44 px de alto, iguales en el panel y en la pantalla de puntuación. El foco visible es el global. */
+.enlace-volver {
+  display: inline-flex; align-items: center; box-sizing: border-box; max-width: 100%; min-height: 44px; padding: 8px 14px 8px 2px;
+  font-size: 1.05rem; font-weight: 700; line-height: 1.2; color: var(--acento-ink); text-decoration: none; overflow-wrap: anywhere;
+}
+.enlace-volver:hover { text-decoration: underline; }
+
+/* Invitación de activación (REPORT_182): un bloque aparte de «Compartir partido» (que es para espectadores). */
+.panel .invitacion { margin: 14px 0; padding: 12px 14px; border: 1px solid var(--line-soft); border-radius: var(--r-md); background: var(--surface); }
+.panel .invitacion h3 { margin: 0 0 6px; font-size: 1rem; }
+.panel .invitacion .sub { margin: 0 0 8px; }
+.panel .invitacion .nota-loopback { color: var(--ink-soft); font-size: 0.82rem; }
+.panel .invitacion .acciones-fila > .btn, .panel .codigo-emitido .acciones-fila > .btn { flex: 1 1 200px; width: auto; }
+.invitacion-estado { margin: 6px 0 0; min-height: 1.2em; font-size: 0.9rem; font-weight: 700; }
+.invitacion-estado.fallo { color: var(--acento-ink, #8a1d1d); }
+.invitacion-campo { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; font-size: 0.8rem; color: var(--ink-soft, #555); }
+.invitacion-campo input { width: 100%; box-sizing: border-box; padding: 12px; font: inherit; font-size: 0.9rem; border: 1px solid var(--line, #ddd); border-radius: var(--r-md, 10px); background: var(--surface-2, #f6f6f6); color: var(--ink, #1a1a1a); }

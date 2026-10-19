@@ -1,5 +1,6 @@
 import { nombreVisible } from '../../src/lib/identidad.js'
 import { dorsalDe } from '../../src/lib/dorsal.js'
+import { reglasDeConfig } from '../../src/lib/reglas-categoria.js'
 import { estadoDeCredencial } from './adaptador-liga.js'
 import { sha256Hex } from './credenciales.js'
 
@@ -147,7 +148,7 @@ export async function leerEstadoControl({
       cursor: { rev: p.rev, ultimoClientSeq: p.ultimo_client_seq },
       partido: { ligaId: p.liga_id, localId: p.local_id, visitaId: p.visita_id },
       estado: {
-        config: { deporte: e.config.deporte, minutosPorPeriodo: e.config.minutosPorPeriodo ?? null },
+        config: { deporte: e.config.deporte, minutosPorPeriodo: e.config.minutosPorPeriodo ?? null, ...reglasDeConfig(e.config) },
         partido: {
           estado: e.partido.estado ?? null,
           inicio: e.partido.inicio ?? null,

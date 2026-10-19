@@ -15,7 +15,7 @@ const importes = (archivo) => [...codigo(archivo).matchAll(/from\s+['"]([^'"]+)[
 
 describe('aislamiento de la sesión de puntuación', () => {
   it('solo importa el motor y a sí misma', () => {
-    expect(importes('sesion-motor.js')).toEqual(['../motor', './sesion-visualizacion'])
+    expect(importes('sesion-motor.js')).toEqual(['../motor', '../reglas-categoria', './sesion-visualizacion'])
     expect(importes('sesion-visualizacion.js')).toEqual([])
     expect(importes('reloj-telefono.js')).toEqual(['../motor'])
     expect(importes('sesion-almacen.js')).toEqual(['./sesion-motor'])

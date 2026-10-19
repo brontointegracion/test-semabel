@@ -1,4 +1,5 @@
 import { verificarAdaptador } from './contrato-adaptador'
+import { firmaDeReglas } from '../reglas-categoria'
 import { procesar } from './procesador'
 import { validarSobre } from './sobre'
 
@@ -67,7 +68,11 @@ export async function ejecutar(adaptador, sobreCrudo, { recibidoEn, credencial, 
         // Solo el inicio del partido depende del contexto de preparación: las demás órdenes no
         // chocan por un cambio de plantilla. null si no hay un contexto con versión.
         ...(sobre.tipo === 'iniciar-partido'
-          ? { versionPreparacion: typeof vista.preparacion?.version === 'string' ? vista.preparacion.version : null }
+          ? {
+            versionPreparacion: typeof vista.preparacion?.version === 'string' ? vista.preparacion.version : null,
+            // Las reglas que esta decisión vio (firma): el adaptador debe comprobar, atómicamente, que siguen siendo las vigentes.
+            firmaReglas: firmaDeReglas(vista.estado.config),
+          }
           : {}),
       }
 

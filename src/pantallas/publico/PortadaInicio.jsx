@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { etiquetaCategoria } from '../../lib/categorias.js'
 
 // ---------------------------------------------------------------------------
-// La portada ORIGINAL (Inicio) como presentación pura: encabezado, filtros, «Ahora mismo», «Lo que viene», ligas, figuras,
+// La portada ORIGINAL (Inicio) como presentación pura: encabezado, filtros, «Ahora mismo», «Próximos partidos», ligas, figuras,
 // buscador y espacio patrocinado, en el orden de siempre y con las mismas clases. No lee datos: la usan DOS contenedores,
 // el del prototipo (pantallas/Inicio.jsx, datos locales) y el compartido (InicioCompartido.jsx, lecturas públicas del
 // servidor). Lo que depende del origen de los datos entra por propiedades: los enlaces (`enlaces`), las piezas visuales del
@@ -137,7 +137,7 @@ export default function PortadaInicio({ claseRaiz = '', pie = null, marca, hayLi
           <div className="hm-reja">
             <div className="hm-principal">
               {/* Las dos secciones se muestran siempre, una debajo de la otra. Ahora mismo domina cuando hay partidos en vivo; si no
-                  hay ninguno, Lo que viene pasa a ser la región dominante. */}
+                  hay ninguno, Próximos partidos pasa a ser la región dominante. */}
               <section className="hm-seccion-ahora">
                 <h2 className="hm-titulo-vivo">
                   Ahora mismo
@@ -147,7 +147,7 @@ export default function PortadaInicio({ claseRaiz = '', pie = null, marca, hayLi
               </section>
 
               <section className={`hm-seccion-viene ${viene.dominante ? 'dominante' : ''}`}>
-                <h2 className="hm-titulo-viene">Lo que viene</h2>
+                <h2 className="hm-titulo-viene">Próximos partidos</h2>
                 {viene.nodo}
               </section>
 
@@ -171,7 +171,7 @@ export default function PortadaInicio({ claseRaiz = '', pie = null, marca, hayLi
             <aside className="hm-costado">
               {figuras}
               {buscador}
-              {/* Después de Ahora mismo, Lo que viene y el descubrimiento: nunca antes. */}
+              {/* Después de Ahora mismo, Próximos partidos y el descubrimiento: nunca antes. */}
               <Banner />
             </aside>
           </div>

@@ -45,9 +45,11 @@ function reloj(r) {
 const lado = (l, conNombre) => {
   if (!objeto(l) || !idDeEntidad(l.id) || !entero(l.puntos, 0, 9999) || !entero(l.faltas, 0, 9999)) return null
   if (conNombre && !texto(l.nombre, 200)) return null
-  return conNombre
-    ? { id: l.id, nombre: l.nombre, puntos: l.puntos, faltas: l.faltas }
-    : { id: l.id, puntos: l.puntos, faltas: l.faltas }
+  if (!conNombre) return { id: l.id, puntos: l.puntos, faltas: l.faltas }
+  // `faltasPeriodo` (solo en la lectura de un partido): ausente = null (respuesta de un servidor anterior); si está, entero o null.
+  const fp = l.faltasPeriodo === undefined ? null : l.faltasPeriodo
+  if (!(fp === null || entero(fp, 0, 9999))) return null
+  return { id: l.id, nombre: l.nombre, puntos: l.puntos, faltas: l.faltas, faltasPeriodo: fp }
 }
 
 /** Campos comunes a un partido de la liga y a la lectura de un partido. */
@@ -104,9 +106,13 @@ export function validarJuego(x, ligaId, gameId) {
   if (!clas) return null
   if (!entero(x.servidorAhoraMs, 1, 8.64e15) || x.faltasAlcance !== 'partido') return null
   if (!(x.inicio === null || (typeof x.inicio === 'string' && x.inicio.length <= 40))) return null
+  // Alcance de las faltas de equipo que se muestran: ausente = 'partido' (servidor anterior); un valor desconocido se rechaza.
+  const faltasEquipo = x.faltasEquipo === undefined ? 'partido' : x.faltasEquipo
+  if (!['periodo', 'partido', 'oculto', 'no-disponible'].includes(faltasEquipo)) return null
   const c = comunes(x, true)
   if (!c) return null
-  return { gameId, liga: { id: x.liga.id, nombre: x.liga.nombre, ...clas }, servidorAhoraMs: x.servidorAhoraMs, ...c }
+  if (faltasEquipo === 'periodo' && (c.local.faltasPeriodo === null || c.visita.faltasPeriodo === null)) return null
+  return { gameId, faltasEquipo, liga: { id: x.liga.id, nombre: x.liga.nombre, ...clas }, servidorAhoraMs: x.servidorAhoraMs, ...c }
 }
 
 const MOTIVOS = ['inactivo', 'otro-equipo', 'no-encontrado']

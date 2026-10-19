@@ -1,4 +1,5 @@
 import 'fake-indexeddb/auto'
+import { reglasDeConfig } from '../../reglas-categoria'
 import { crearBanco, estadoDePrueba, T0 } from '../../motor/prueba/banco'
 import { abrirAlmacen } from '../sesion-almacen'
 import { construirSesion, validarCuerpoEstado } from '../sesion-motor'
@@ -48,7 +49,7 @@ export function cuerpoDeServidor(banco, { deviceId = DEVICE, visualizacion = fal
     cursor: { rev: e.rev, ultimoClientSeq: banco.adaptador.ultimoClientSeq() },
     partido: { ligaId: LIGA, localId: 'E1', visitaId: 'E2' },
     estado: {
-      config: { deporte: e.config.deporte, minutosPorPeriodo: e.config.minutosPorPeriodo ?? null },
+      config: { deporte: e.config.deporte, minutosPorPeriodo: e.config.minutosPorPeriodo ?? null, ...reglasDeConfig(e.config) },
       partido: {
         estado: e.partido.estado ?? null,
         inicio: e.partido.inicio ?? null,

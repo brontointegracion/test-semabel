@@ -12,7 +12,7 @@ const importes = (a) => [...codigo(a).matchAll(/from\s+['"]([^'"]+)['"]/g)].map(
 describe('aislamiento del candado y del controlador', () => {
   it('imports', () => {
     expect(importes('sesion-candado.js')).toEqual([])
-    expect(importes('sesion-controlador.js').sort()).toEqual(['./activacion-almacen', './reloj-telefono', './sesion-almacen', './sesion-api', './sesion-candado', './sesion-emisor', './sesion-motor', './sesion-visualizacion'].sort())
+    expect(importes('sesion-controlador.js').sort()).toEqual(['../reglas-categoria', './activacion-almacen', './reloj-telefono', './sesion-almacen', './sesion-api', './sesion-candado', './sesion-emisor', './sesion-motor', './sesion-visualizacion'].sort())
   })
   it('el candado no usa red, almacenamiento, canales ni interfaz; los Web Locks solo están ahí', () => {
     const f = codigo('sesion-candado.js')

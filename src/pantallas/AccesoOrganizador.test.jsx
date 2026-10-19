@@ -160,7 +160,7 @@ describe('sesión activa', () => {
   it('muestra cuántas ligas tiene, enlaza al panel de plantillas, aclara que el control de partidos no está y no presenta nada como guardado', async () => {
     await entrarOk(userEvent.setup())
     expect(screen.getByText('Tienes acceso a 2 ligas.')).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Ver mis ligas y plantillas' }).getAttribute('href')).toBe('/anthony/ligas')
+    expect(screen.getByRole('link', { name: 'Ver mis ligas y plantillas' }).getAttribute('href')).toBe('/organizador')
     expect(screen.getByText(/El control de partidos todavía no está disponible desde aquí/)).toBeTruthy()
     expect(screen.queryByText(/plantilla guardada|jugador añadido/i)).toBeNull()
     expect(screen.queryByText(/sin confirmar/)).toBeNull() // sin registros de recuperación no se muestra el aviso de retención

@@ -177,3 +177,13 @@ describe('situación de control (qué se avisa y qué se permite)', () => {
     expect(sinDatos).toMatchObject({ puedePuntuar: false, puedeReloj: true, mostrarDatos: false })
   })
 })
+
+describe('inicio con un teléfono sin permiso (REPORT_181)', () => {
+  it('«no-autorizado» tiene su propio texto: dice que ya no tiene permiso, que no se guardó nada y que avise al organizador (no «no se pudo leer»)', () => {
+    const t = mensajeDeResultado({ ok: false, motivo: 'no-autorizado' })
+    expect(t.tipo).toBe('error')
+    expect(t.texto).toMatch(/ya no tiene permiso para este partido/)
+    expect(t.texto).toMatch(/No se guardó nada/)
+    expect(t.texto).not.toMatch(/No se pudo leer/)
+  })
+})

@@ -38,7 +38,7 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 describe('portada original: secciones, orden y redacción', () => {
-  it('encabezado original, menú y las secciones en su orden de siempre; «Lo que viene»; sin provincias ni canchas inventadas', async () => {
+  it('encabezado original, menú y las secciones en su orden de siempre; «Próximos partidos»; sin provincias ni canchas inventadas', async () => {
     servidor({ [L1]: ligaConPartidos() })
     montar()
     expect(await screen.findByText('Ahora mismo')).toBeTruthy()
@@ -47,7 +47,7 @@ describe('portada original: secciones, orden y redacción', () => {
     // solo el total que se sabe: «1 liga» (ni provincias ni canchas)
     expect(document.querySelector('.hm-hero-cifras').textContent).toBe('1 liga')
     // orden de las secciones
-    const titulos = ['Ahora mismo', 'Lo que viene', 'Ligas cerca de ti', 'Figuras del barrio', 'Encuentra lo tuyo', 'Espacio patrocinado']
+    const titulos = ['Ahora mismo', 'Próximos partidos', 'Ligas cerca de ti', 'Figuras del barrio', 'Encuentra lo tuyo', 'Espacio patrocinado']
     const posiciones = titulos.map((t) => document.body.textContent.indexOf(t))
     expect(posiciones.every((p) => p >= 0)).toBe(true)
     expect([...posiciones].sort((a, b) => a - b)).toEqual(posiciones)
@@ -61,6 +61,16 @@ describe('portada original: secciones, orden y redacción', () => {
     expect(within(v).getByText('12')).toBeTruthy()
   })
 
+  it('la portada NO lleva un botón «Acceso del organizador» (REPORT_180): el organizador entra por /ligas o por su dirección de piloto', async () => {
+    servidor({ [L1]: ligaConPartidos() })
+    montar()
+    await screen.findByText('Ahora mismo')
+    expect(screen.queryByRole('link', { name: /Acceso del organizador/ })).toBeNull()
+    expect(screen.queryByText(/Acceso del organizador/)).toBeNull()
+    expect(document.querySelector('.hm-organizador')).toBeNull()
+    expect(document.querySelector('a[href="/organizador/acceso"]')).toBeNull()
+    expect(llamadas.some((l) => l.ruta.startsWith('/v1/organizador'))).toBe(false) // la portada no pregunta por la sesión
+  })
   it('Ligas cerca de ti: enlaza a la liga con la dirección aprobada y solo dice lo que se sabe', async () => {
     servidor({ [L1]: ligaConPartidos() })
     montar()
@@ -120,7 +130,7 @@ describe('estados honestos', () => {
   it('vacío VERIFICADO: sin partidos, con todas las ligas leídas, se dice con la redacción original', async () => {
     servidor({ [L1]: respuestaLiga({ partidos: [] }) })
     montar()
-    expect(await screen.findByText('No hay partidos jugándose en este momento. Prueba «Lo que viene».')).toBeTruthy()
+    expect(await screen.findByText('No hay partidos jugándose en este momento. Prueba «Próximos partidos».')).toBeTruthy()
     expect(screen.getByText('No hay partidos programados con ese filtro.')).toBeTruthy()
   })
 

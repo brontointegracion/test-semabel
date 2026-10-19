@@ -1,3 +1,4 @@
+import { firmaDeReglas } from '../../reglas-categoria'
 import { camposDeReloj, crearEstado } from '../estado'
 
 // ---------------------------------------------------------------------------
@@ -61,6 +62,8 @@ export function crearAdaptadorMemoria({
       && esperado.versionAutorizacion === almacen.versionAutorizacion
       // Solo el inicio del partido trae esta clave: las demás órdenes no chocan por la plantilla.
       && (!('versionPreparacion' in esperado) || esperado.versionPreparacion === versionPreparacionVigente())
+      // Idem para las reglas de categoría que decidieron el inicio (firma).
+      && (!('firmaReglas' in esperado) || esperado.firmaReglas === firmaDeReglas(almacen.estado.config))
   }
 
   function fallar(punto) {
@@ -143,6 +146,8 @@ export function crearAdaptadorMemoria({
     fijarAtribucion(atribucion) { almacen.estado.atribucion = copia(atribucion) },
     /** Cambia el contexto de preparación vigente (lo que haría el adaptador real al cambiar la plantilla). */
     fijarPreparacion(prep) { almacen.preparacion = copia(prep) },
+    /** Solo pruebas: cambia la config del partido (p. ej. unas reglas de categoría) como lo haría una edición del servidor. */
+    fijarConfig(cambios) { almacen.estado.config = { ...almacen.estado.config, ...copia(cambios) } },
     preparacion: () => copia(almacen.preparacion),
     /** Cuántas veces se leyó la vista (recibos, estado, preparación): debe seguir en 0 si no hubo autorización. */
     lecturasDeVista: () => conteoLecturas,

@@ -2,6 +2,7 @@ import {
   VERSION_MOTOR, aplicarEfectos, alRecibir, atribucionIntegra, canonico, contenidoCanonico, crearEstado, decidirOrden,
   evaluarPreparacion, preparacionIntegra, reanudar, reconstruirProvisional, validarSobre, encolar as encolarEnCola,
 } from '../motor'
+import { estadoDeReglas, firmaDeReglas, reglasDeConfig } from '../reglas-categoria'
 import { datosParaMostrar, igualesVisualizacion, validarFilaVisualizacion, validarVisualizacion } from './sesion-visualizacion'
 
 // ---------------------------------------------------------------------------
@@ -277,6 +278,8 @@ export function evaluarInicio({ enLinea, sesion, entradas = [], preparacion }) {
   if (sesion.inicio === 'sin-resolver') return no('inicio-sin-resolver')
   if (entradas.some((e) => e.tipo === 'iniciar-partido' && vivas(e))) return no('inicio-en-curso')
   if (sesion.detenida) return no('cola-detenida')
+  // Reglas de categoría presentes pero inválidas: no se inicia con otra semántica (el servidor también lo rechaza).
+  if (estadoDeReglas(sesion.base.estado.config).estado === 'invalidas') return no('reglas-invalidas')
   if (!preparacionIntegra(preparacion, { gameId: sesion.partidoId })) return no('preparacion-no-disponible')
   const r = evaluarPreparacion(preparacion, { gameId: sesion.partidoId })
   if (!r.lista) return no(r.motivo, r.detalle)
@@ -288,7 +291,12 @@ export function evaluarInicio({ enLinea, sesion, entradas = [], preparacion }) {
 export function ordenDeInicio({ cmdId, preparacion, tiempo, sesion }) {
   if (!texto(cmdId)) return { ok: false, motivo: 'cmdId' }
   if (!preparacionIntegra(preparacion, { gameId: sesion.partidoId })) return { ok: false, motivo: 'preparacion-no-disponible' }
-  return { ok: true, orden: { cmdId, tipo: 'iniciar-partido', datos: {}, tiempo, preparacionVersion: preparacion.version } }
+  // Además de la preparación, la firma de las reglas de categoría que esta pantalla mostraba (la base de la sesión): el servidor
+  // rechaza el inicio si fijaría otras (reglas-desactualizadas) y la persona vuelve a confirmar con la base refrescada.
+  // Un partido SIN reglas conserva el sobre de siempre (sin la clave): así un servidor anterior, que rechaza campos desconocidos,
+  // sigue aceptando el inicio de los partidos que existen en él (los que tienen reglas solo existen donde ya se entiende la clave).
+  const firma = firmaDeReglas(sesion.base.estado.config)
+  return { ok: true, orden: { cmdId, tipo: 'iniciar-partido', datos: {}, tiempo, preparacionVersion: preparacion.version, ...(firma === 'ninguna' ? {} : { reglasConfirmadas: firma }) } }
 }
 
 // ---------------------------------------------------------------------------
@@ -364,7 +372,7 @@ function reservaDeRecibo(fila, esperadoAceptado) {
 
 const proyeccionBase = (e) => ({
   rev: e.rev,
-  config: { deporte: e.config.deporte, minutosPorPeriodo: e.config.minutosPorPeriodo ?? null },
+  config: { deporte: e.config.deporte, minutosPorPeriodo: e.config.minutosPorPeriodo ?? null, ...reglasDeConfig(e.config) },
   partido: {
     estado: e.partido.estado ?? null,
     inicio: e.partido.inicio ?? null,

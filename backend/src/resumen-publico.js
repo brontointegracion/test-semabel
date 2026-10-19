@@ -1,4 +1,4 @@
-import { faltasEquipo, marcadorEquipo, periodoVisible } from '../../src/lib/marcador-calculo.js'
+import { faltasEquipo, faltasEquipoPeriodo, marcadorEquipo, periodoVisible } from '../../src/lib/marcador-calculo.js'
 
 // ---------------------------------------------------------------------------
 // RESUMEN PÚBLICO POR PARTIDO (`resumen_partido`). Es un dato DERIVADO y RECONSTRUIBLE, solo para servir lecturas
@@ -15,7 +15,9 @@ import { faltasEquipo, marcadorEquipo, periodoVisible } from '../../src/lib/marc
 //     resumen NO se sirve (ver `resumenValido`): nunca se publica un marcador conocido como viejo.
 // ---------------------------------------------------------------------------
 
-export const VERSION_PROYECCION = 1
+// Versión 2 (REPORT_175): añade las faltas del PERIODO visible por lado (`local_faltas_periodo`/`visita_faltas_periodo`). Las faltas de
+// partido completo siguen siendo las de siempre. Al cambiar la versión, los resúmenes anteriores se reconstruyen por la reparación.
+export const VERSION_PROYECCION = 2
 
 /**
  * Topes de la REPARACIÓN (arranque). Se aplican antes de leer o reservar memoria: más partidos pendientes que `partidos`,
@@ -29,9 +31,9 @@ const entero = (n) => {
 }
 
 /**
- * La derivación. `eventos`: lista con al menos { tipo, equipoId, puntos, anulado } (el motor pasa los eventos completos
- * y la reconstrucción solo esas cuatro columnas; las cuentas no usan nada más).
- * → { localId, visitaId, localPuntos, visitaPuntos, localFaltas, visitaFaltas, periodo }
+ * La derivación. `eventos`: lista con al menos { seq, tipo, equipoId, puntos, anulado } (el motor pasa los eventos completos
+ * y la reconstrucción solo esas columnas; las cuentas no usan nada más).
+ * → { localId, visitaId, localPuntos, visitaPuntos, localFaltas, visitaFaltas, localFaltasPeriodo, visitaFaltasPeriodo, periodo }
  */
 export function resumirPartido({ eventos, localId, visitaId, deporte }) {
   return {
@@ -41,6 +43,8 @@ export function resumirPartido({ eventos, localId, visitaId, deporte }) {
     visitaPuntos: entero(marcadorEquipo(eventos, visitaId)),
     localFaltas: entero(faltasEquipo(eventos, localId)),
     visitaFaltas: entero(faltasEquipo(eventos, visitaId)),
+    localFaltasPeriodo: entero(faltasEquipoPeriodo(eventos, localId, deporte)),
+    visitaFaltasPeriodo: entero(faltasEquipoPeriodo(eventos, visitaId, deporte)),
     periodo: entero(periodoVisible(eventos, deporte)),
   }
 }
@@ -49,14 +53,15 @@ export function resumirPartido({ eventos, localId, visitaId, deporte }) {
 export function escribirResumen(sql, partidoId, resumen, revFuente) {
   sql.exec(
     `INSERT INTO resumen_partido (partido_id, local_id, visita_id, local_puntos, visita_puntos, local_faltas, visita_faltas,
-        periodo, rev_fuente, version_proyeccion)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        periodo, rev_fuente, version_proyeccion, local_faltas_periodo, visita_faltas_periodo)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(partido_id) DO UPDATE SET local_id = excluded.local_id, visita_id = excluded.visita_id,
         local_puntos = excluded.local_puntos, visita_puntos = excluded.visita_puntos,
         local_faltas = excluded.local_faltas, visita_faltas = excluded.visita_faltas,
-        periodo = excluded.periodo, rev_fuente = excluded.rev_fuente, version_proyeccion = excluded.version_proyeccion`,
+        periodo = excluded.periodo, rev_fuente = excluded.rev_fuente, version_proyeccion = excluded.version_proyeccion,
+        local_faltas_periodo = excluded.local_faltas_periodo, visita_faltas_periodo = excluded.visita_faltas_periodo`,
     partidoId, resumen.localId, resumen.visitaId, resumen.localPuntos, resumen.visitaPuntos, resumen.localFaltas,
-    resumen.visitaFaltas, resumen.periodo, revFuente, VERSION_PROYECCION,
+    resumen.visitaFaltas, resumen.periodo, revFuente, VERSION_PROYECCION, resumen.localFaltasPeriodo, resumen.visitaFaltasPeriodo,
   )
 }
 
@@ -107,14 +112,14 @@ export function repararResumenes(storage, { limites = LIMITES_REPARACION, todos 
         const p = sql.exec('SELECT id, local_id, visita_id, estado_json, rev FROM partidos WHERE id = ?', id).toArray()[0]
         if (!p) return 0
         const filas = sql.exec(
-          `SELECT json_extract(json, '$.tipo') AS tipo, json_extract(json, '$.equipoId') AS equipoId,
+          `SELECT seq, json_extract(json, '$.tipo') AS tipo, json_extract(json, '$.equipoId') AS equipoId,
                   json_extract(json, '$.puntos') AS puntos, json_extract(json, '$.anulado') AS anulado
              FROM eventos WHERE partido_id = ? AND json_extract(json, '$.tipo') IN ('punto', 'falta', 'periodo')
             ORDER BY seq LIMIT ?`,
           id, restante + 1,
         ).toArray()
         if (filas.length > restante) throw new LimiteDeEventos()
-        const eventos = filas.map((f) => ({ tipo: f.tipo, equipoId: f.equipoId, puntos: f.puntos, anulado: Boolean(f.anulado) }))
+        const eventos = filas.map((f) => ({ seq: f.seq, tipo: f.tipo, equipoId: f.equipoId, puntos: f.puntos, anulado: Boolean(f.anulado) }))
         const deporte = JSON.parse(p.estado_json).config?.deporte
         escribirResumen(sql, id, resumirPartido({ eventos, localId: p.local_id, visitaId: p.visita_id, deporte }), p.rev)
         return filas.length

@@ -52,6 +52,10 @@ nombre y termina en un código corto, que es lo que de verdad identifica:
 El nombre es solo para quien lee: la búsqueda va siempre por el código. Si un equipo se
 renombra, los links viejos siguen funcionando. `src/lib/enlaces.js`.
 
+Las pantallas del organizador viven en `/organizador/…` (entrada `/organizador/acceso`); `/anthony/…` y `/ligas` siguen
+funcionando como redirecciones y `/deportivo-vip/ligas` es un alias del piloto. Rutas, retirada del acceso del teléfono antes del
+inicio, invitación, esquema 7, actualización entre partidos y reversa: `backend/README.md`.
+
 ## Quién ve qué
 
 | | Invitado | Dueño de la liga |

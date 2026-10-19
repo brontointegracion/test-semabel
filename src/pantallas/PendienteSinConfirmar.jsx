@@ -1,3 +1,4 @@
+import { rutaEquipo } from '../lib/rutas-organizador'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { MAX_LIGAS_PROPIAS, MENSAJES_BLOQUEO, leerRegistros, reintentar, suscribirRegistros } from '../lib/operacion-pendiente'
@@ -132,7 +133,7 @@ export default function PendienteSinConfirmar({ organizadorId, ligaId = null, no
                 <button type="button" className="btn" onClick={() => repetir(f.ligaId)} disabled={ocupado}>
                   {ocupado ? 'Repitiendo…' : 'Repetir la misma solicitud'}
                 </button>
-                <Link className="btn fantasma" to={`/anthony/ligas/${f.ligaId}/equipos/${f.registro.equipoId}`}>Ver la plantilla</Link>
+                <Link className="btn fantasma" to={rutaEquipo(f.ligaId, f.registro.equipoId)}>Ver la plantilla</Link>
               </div>
               <details style={{ marginTop: 10 }}>
                 <summary>Cómo se conserva esto</summary>

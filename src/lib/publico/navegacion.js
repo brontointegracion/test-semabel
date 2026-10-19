@@ -18,7 +18,7 @@ export const iconosTab = {
 }
 
 /** En modo compartido no llevan barra de pestañas: el partido (pantalla de marcador), el control del teléfono y el panel del organizador. */
-export const SIN_TABS_COMPARTIDO = [/^\/liga\/[^/]+\/partido\//, /^\/control\//, /^\/anthony(\/|$)/]
+export const SIN_TABS_COMPARTIDO = [/^\/liga\/[^/]+\/partido\//, /^\/control\//, /^\/anthony(\/|$)/, /^\/organizador(\/|$)/]
 
 /**
  * Rutas ORIGINALES del prototipo que todavía no tienen servidor detrás. En modo compartido NO se montan sus pantallas (usan la base

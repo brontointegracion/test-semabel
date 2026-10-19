@@ -3,7 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import { MENSAJES_BLOQUEO, enviarNueva } from '../lib/operacion-pendiente'
 import { leerLiga, leerPlantilla } from '../lib/roster-api'
 import { invalidar, useSesionServidor } from '../lib/sesion-servidor'
-import { ErrorDeLectura, HojaOrganizador, Protegida, textoDeResultado, useLectura } from './ComunOrganizador'
+import { RUTA_PANEL, rutaLiga } from '../lib/rutas-organizador'
+import { EnlaceVolver, ErrorDeLectura, HojaOrganizador, Protegida, textoDeResultado, useLectura } from './ComunOrganizador'
 import FormularioJugadorCompartido from './FormularioJugadorCompartido'
 import PendienteSinConfirmar, { useRegistros } from './PendienteSinConfirmar'
 
@@ -179,7 +180,7 @@ function ContenidoPlantilla({ ligaId, equipoId, organizadorId, ligas }) {
 
   return (
     <main className="panel">
-      <p className="nav-panel"><Link to={`/anthony/ligas/${ligaId}`}>← {nombreLiga}</Link></p>
+      <p className="nav-panel"><EnlaceVolver to={rutaLiga(ligaId)}>{nombreLiga}</EnlaceVolver></p>
       <h1>{datos?.equipo?.nombre ?? 'Plantilla'}</h1>
       <PendienteSinConfirmar organizadorId={organizadorId} ligaId={ligaId} nombresLigas={nombres} onCambio={refrescarTodo} />
       {aviso && <p className="aviso-panel" role="status">{aviso}</p>}
@@ -244,7 +245,7 @@ export default function PlantillaOrganizador() {
 function ConPermiso({ ligaId, equipoId }) {
   const { datos } = useSesionServidor()
   if (!datos.ligas.includes(ligaId)) {
-    return <main className="panel"><p className="aviso-panel" role="alert">No tienes acceso a esa liga.</p><Link to="/anthony/ligas">← Mis ligas</Link></main>
+    return <main className="panel"><p className="aviso-panel" role="alert">No tienes acceso a esa liga.</p><EnlaceVolver to={RUTA_PANEL}>Mis ligas</EnlaceVolver></main>
   }
   return <ContenidoPlantilla key={`${ligaId}/${equipoId}`} ligaId={ligaId} equipoId={equipoId} organizadorId={datos.organizadorId} ligas={datos.ligas} />
 }

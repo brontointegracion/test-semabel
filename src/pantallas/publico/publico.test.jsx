@@ -55,7 +55,7 @@ describe('Inicio público', () => {
     servidor({ '/v1/ligas/LIGAPUB1/publico': ligaUno() })
     montar('/')
     expect(await screen.findByText('Ahora mismo')).toBeTruthy()
-    expect(screen.getByText('Lo que viene')).toBeTruthy() // el título original de la portada
+    expect(screen.getByText('Próximos partidos')).toBeTruthy() // el título original de la portada
     const vivo = document.querySelector('.hm-marcador')
     expect(vivo.getAttribute('href')).toBe(urlAlfaBeta('V1'))
     expect(within(vivo).getByText('12')).toBeTruthy()
@@ -200,6 +200,130 @@ describe('Liga pública', () => {
     servidor({}) // todo 404
     montar('/liga/LIGAPUB1')
     expect(await screen.findByText('No encontramos esta liga')).toBeTruthy()
+  })
+})
+
+describe('Compartir partido en el marcador público (REPORT_179)', () => {
+  const abrirCon = async (sobre = {}, ruta = '/liga/LIGAPUB1/partido/G1') => {
+    servidor({ '/v1/ligas/LIGAPUB1/publico': ligaConJuegos('G1'), '/v1/ligas/LIGAPUB1/partidos/G1': respuestaJuego(sobre) })
+    montar(ruta)
+    await screen.findByLabelText('Puntos de Alfa Norte')
+  }
+  const enlaceWa = () => screen.getByRole('link', { name: 'Compartir por WhatsApp' }).getAttribute('href')
+  const textoWa = () => decodeURIComponent(enlaceWa().slice('https://wa.me/?text='.length))
+  const canonica = () => `${window.location.origin}${urlAlfaBeta('G1')}`
+  const antesClip = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
+  afterEach(() => { if (antesClip) Object.defineProperty(navigator, 'clipboard', antesClip); else delete navigator.clipboard })
+
+  it('el botón «Compartir partido» abre la hoja sin pedir nada ni abrir WhatsApp; el enlace es el canónico (minúsculas, sufijo estable, sin fecha) del origen ACTUAL', async () => {
+    await abrirCon()
+    const pedidos = llamadas.length
+    const abrir = vi.spyOn(window, 'open').mockImplementation(() => null)
+    fireEvent.click(screen.getByRole('button', { name: 'Compartir partido' }))
+    expect(llamadas.length).toBe(pedidos)
+    expect(abrir).not.toHaveBeenCalled()
+    expect(textoWa()).toContain(canonica())
+    expect(canonica()).toMatch(/^https?:\/\/[^/]+\/liga\/ligapub1\/partido\/alfa-norte-vs-beta-sur-[0-9a-z]{6}$/)
+    expect(canonica()).not.toMatch(/\d{4}-\d{2}-\d{2}/)
+    expect(textoWa()).not.toMatch(/semabel\.com|localhost:8802/)
+    expect(screen.getByLabelText('Enlace del partido').value).toBe(canonica())
+  })
+
+  it('entrando por el id completo del partido (compatibilidad) se comparte igualmente la dirección canónica, no la del id', async () => {
+    await abrirCon({}, '/liga/LIGAPUB1/partido/G1')
+    fireEvent.click(screen.getByRole('button', { name: 'Compartir partido' }))
+    expect(screen.getByLabelText('Enlace del partido').value).toBe(canonica())
+    expect(screen.getByLabelText('Enlace del partido').value).not.toMatch(/partido\/G1$/)
+  })
+
+  it('el texto respeta el estado: en vivo no parece próximo; programado con fecha y sede; sin fecha lo dice; terminado da el resultado', async () => {
+    await abrirCon({ estado: 'vivo' })
+    fireEvent.click(screen.getByRole('button', { name: 'Compartir partido' }))
+    expect(textoWa()).toContain('En vivo ahora.')
+    expect(textoWa()).not.toMatch(/por confirmar|próximo/i)
+    cleanup()
+    await abrirCon({ estado: 'programado', inicioReal: null, programadoPara: '2026-11-01T20:00:00.000Z', sede: 'Cancha A', reloj: { estado: null, restanteMs: null, desdeMs: null }, local: { id: 'E1', nombre: 'Alfa Norte', puntos: 0, faltas: 0 }, visita: { id: 'E2', nombre: 'Beta Sur', puntos: 0, faltas: 0 } })
+    fireEvent.click(screen.getByRole('button', { name: 'Compartir partido' }))
+    expect(textoWa()).toContain('dom 1 nov, 3:00 p. m. (hora de Panamá)')
+    expect(textoWa()).toContain('Sede: Cancha A')
+    cleanup()
+    await abrirCon({ estado: 'programado', inicioReal: null, programadoPara: null, sede: null, reloj: { estado: null, restanteMs: null, desdeMs: null }, local: { id: 'E1', nombre: 'Alfa Norte', puntos: 0, faltas: 0 }, visita: { id: 'E2', nombre: 'Beta Sur', puntos: 0, faltas: 0 } })
+    fireEvent.click(screen.getByRole('button', { name: 'Compartir partido' }))
+    expect(textoWa()).toContain('Fecha y hora por confirmar')
+    expect(textoWa()).toContain('Sede: Por avisar')
+    cleanup()
+    await abrirCon({ estado: 'final', local: { id: 'E1', nombre: 'Alfa Norte', puntos: 31, faltas: 3 }, visita: { id: 'E2', nombre: 'Beta Sur', puntos: 28, faltas: 4 } })
+    fireEvent.click(screen.getByRole('button', { name: 'Compartir partido' }))
+    expect(textoWa()).toContain('Alfa Norte 31–28 Beta Sur')
+    expect(textoWa()).toContain('Resultado final.')
+  })
+
+  it('«Copiar enlace»: copia solo la URL y dice «Enlace copiado.»; si el navegador lo niega, lo dice y deja el campo seleccionable', async () => {
+    await abrirCon()
+    const escribir = vi.fn(async () => {})
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: escribir }, configurable: true })
+    fireEvent.click(screen.getByRole('button', { name: 'Compartir partido' }))
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Copiar enlace' })) })
+    expect(escribir).toHaveBeenCalledWith(canonica())
+    expect(screen.getByText('Enlace copiado.')).toBeTruthy()
+    escribir.mockRejectedValueOnce(new Error('denegado'))
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Copiar enlace' })) })
+    expect(screen.getByText(/No se pudo copiar el enlace/)).toBeTruthy()
+    expect(screen.queryByText('Enlace copiado.')).toBeNull()
+    expect(document.activeElement).toBe(screen.getByLabelText('Enlace del partido'))
+  })
+
+  it('«Salir» y la pantalla completa siguen donde estaban; la hoja no cambia el marcador', async () => {
+    await abrirCon()
+    expect(screen.getByRole('button', { name: 'Pantalla completa' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Ver liga' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Compartir partido' }))
+    expect(screen.getByLabelText('Puntos de Alfa Norte').textContent).toBe('12')
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }))
+    expect(screen.queryByLabelText('Enlace del partido')).toBeNull()
+  })
+})
+
+describe('Marcador público: alcance de las faltas de equipo (REPORT_175)', () => {
+  const lados = (fp) => ({
+    local: { id: 'E1', nombre: 'Alfa Norte', puntos: 12, faltas: 7, faltasPeriodo: fp ? 2 : null },
+    visita: { id: 'E2', nombre: 'Beta Sur', puntos: 9, faltas: 4, faltasPeriodo: fp ? 1 : null },
+  })
+  const ver = async (sobre) => {
+    servidor({ '/v1/ligas/LIGAPUB1/publico': ligaConJuegos('G1'), '/v1/ligas/LIGAPUB1/partidos/G1': respuestaJuego(sobre) })
+    montar('/liga/LIGAPUB1/partido/G1')
+    await screen.findByLabelText('Puntos de Alfa Norte')
+  }
+  const seccion = () => document.querySelector('.faltas-partido')
+  it('«periodo» (Mini): muestra la cuenta del periodo con su propio título, no el total', async () => {
+    await ver({ faltasEquipo: 'periodo', ...lados(true) })
+    expect(screen.getByText('Faltas del período')).toBeTruthy()
+    expect(screen.queryByText('Faltas del partido')).toBeNull()
+    expect(seccion().textContent).toContain('2')
+    expect(seccion().textContent).not.toContain('7')
+  })
+  it('«partido» (Intermedia, Adulto, Veteranos) y servidor anterior sin el campo: total de partido', async () => {
+    await ver({ faltasEquipo: 'partido', ...lados(false) })
+    expect(screen.getByText('Faltas del partido')).toBeTruthy()
+    expect(seccion().textContent).toContain('7')
+    cleanup()
+    await ver({})
+    expect(screen.getByText('Faltas del partido')).toBeTruthy()
+  })
+  it('«no-disponible» (reglas guardadas inválidas): no se inventa un alcance; se dice, y no hay sección de faltas ni total', async () => {
+    await ver({ faltasEquipo: 'no-disponible', ...lados(false) })
+    expect(seccion()).toBeNull()
+    expect(screen.getByText('Faltas de equipo no disponibles')).toBeTruthy()
+    expect(screen.queryByText(/Faltas del (partido|período)/)).toBeNull()
+    expect(screen.getByLabelText('Puntos de Alfa Norte').textContent).toBe('12')
+  })
+  it('«oculto» (Baby): la sección de faltas no existe, el resto del tablero sigue', async () => {
+    await ver({ faltasEquipo: 'oculto', ...lados(false) })
+    expect(seccion()).toBeNull()
+    expect(screen.queryByText(/Faltas del/)).toBeNull()
+    expect(screen.getByLabelText('Puntos de Alfa Norte').textContent).toBe('12')
+    expect(screen.getByLabelText('Reloj del partido')).toBeTruthy()
+    expect(screen.getByText('Pantalla completa')).toBeTruthy()
   })
 })
 

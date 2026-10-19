@@ -14,13 +14,16 @@ export const PANELES = [
   { id: 'defensa', nombre: 'Defensa' },
 ]
 
-/** Marcador y reloj. `local`/`visita`: { puntos, etiqueta, faltas, aria? }. */
+/**
+ * Marcador y reloj. `local`/`visita`: { puntos, etiqueta, faltas, aria?, faltasTexto? }.
+ * `faltas` null = no se muestran las faltas de equipo (categoría Baby); `faltasTexto` cambia la palabra (p. ej. «faltas del período»).
+ */
 export function CabeceraConsola({ local, visita, periodoTexto, relojTexto, anda, final, ariaReloj }) {
   return (
     <div className="cabecera">
       <div>
         <div className="puntos" aria-label={local.aria}>{local.puntos}</div>
-        <div className="corto">{local.etiqueta} · {local.faltas} faltas</div>
+        <div className="corto">{local.etiqueta}{local.faltas === null ? '' : ` · ${local.faltas} ${local.faltasTexto ?? 'faltas'}`}</div>
       </div>
       <div style={{ textAlign: 'center' }}>
         <div className="periodo-etiqueta">{periodoTexto}</div>
@@ -29,7 +32,7 @@ export function CabeceraConsola({ local, visita, periodoTexto, relojTexto, anda,
       </div>
       <div>
         <div className="puntos" aria-label={visita.aria}>{visita.puntos}</div>
-        <div className="corto">{visita.etiqueta} · {visita.faltas} faltas</div>
+        <div className="corto">{visita.etiqueta}{visita.faltas === null ? '' : ` · ${visita.faltas} ${visita.faltasTexto ?? 'faltas'}`}</div>
       </div>
     </div>
   )

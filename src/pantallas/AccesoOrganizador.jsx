@@ -3,10 +3,11 @@ import { Link, Navigate, useLocation } from 'react-router-dom'
 import { MENSAJES } from '../lib/acceso-api'
 import { leerRegistros } from '../lib/operacion-pendiente'
 import { entrar, refrescar, salir, useSesionServidor } from '../lib/sesion-servidor'
+import { RUTA_PANEL, destinoDeRetorno } from '../lib/rutas-organizador'
 import { horaLocal as horaLocalDe12 } from '../lib/publico/formato.js'
 import './AccesoOrganizador.css'
 
-// Entrada del organizador (/anthony/access). La dirección es solo navegación: no da ni pide nada.
+// Entrada del organizador (/organizador/acceso). La dirección es solo navegación: no da ni pide nada.
 // El código vive únicamente en el estado del campo, se limpia al enviar y nunca se guarda ni se muestra de nuevo.
 
 const horaLocal = (ms) => (ms ? horaLocalDe12(ms) : null)
@@ -50,14 +51,15 @@ export default function AccesoOrganizador() {
   if (estado === 'activa') {
     // Si una pantalla protegida nos mandó aquí por una sesión terminada, se vuelve a donde estaba.
     const desde = ubicacion.state?.desde
-    if (typeof desde === 'string' && desde.startsWith('/anthony/') && desde !== '/anthony/access') return <Navigate to={desde} replace />
+    const destino = destinoDeRetorno(desde)
+    if (destino) return <Navigate to={destino} replace />
     const hasta = horaLocal(datos.expiraAbs)
     const sinConfirmar = leerRegistros(datos.organizadorId).registros.length
     return (
       <main className="acceso">
         <h1>Acceso autorizado</h1>
         <p className="sub">Tienes acceso a {datos.ligas.length} {datos.ligas.length === 1 ? 'liga' : 'ligas'}.</p>
-        <p><Link className="btn" to="/anthony/ligas">Ver mis ligas y plantillas</Link></p>
+        <p><Link className="btn" to={RUTA_PANEL}>Ver mis ligas y plantillas</Link></p>
         {sinConfirmar > 0 && (
           <p className="aviso-acceso" role="note">
             Tienes {sinConfirmar} {sinConfirmar === 1 ? 'acción sin confirmar' : 'acciones sin confirmar'}. Cerrar sesión no {sinConfirmar === 1 ? 'la borra' : 'las borra'}:

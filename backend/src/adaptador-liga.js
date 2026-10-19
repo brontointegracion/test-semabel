@@ -2,6 +2,7 @@ import { crearAtribucion } from '../../src/lib/motor/atribucion.js'
 import { crearEstado } from '../../src/lib/motor/estado.js'
 import { contenidoCanonico } from '../../src/lib/motor/sobre.js'
 import { crearPreparacion } from '../../src/lib/motor/preparacion.js'
+import { firmaDeReglas, reglasEfectivas } from '../../src/lib/reglas-categoria.js'
 import { sha256Hex } from './credenciales.js'
 import { escribirResumen, resumirPartido } from './resumen-publico.js'
 
@@ -149,12 +150,26 @@ export function crearAdaptadorLiga({ storage, pausaTrasLeer = null, pausaTrasAut
     }
   }
 
+  /**
+   * Config del partido con las reglas de su categoría. Las reglas YA fijadas en el partido mandan siempre. Un partido todavía
+   * 'programado' sin reglas las toma de la categoría vigente de su liga; como el estado que decide la orden de inicio las
+   * lleva, quedan guardadas (fijadas) en la MISMA confirmación del inicio. Un partido iniciado sin reglas (anterior a esta
+   * función) o con una categoría sin regla explícita no cambia: no se añade nada.
+   */
+  function configConReglas(p, base) {
+    const config = base.config
+    if (config?.reglas !== undefined) return config
+    const liga = fila('SELECT deporte, categoria FROM ligas WHERE id = ?', p.liga_id)
+    const reglas = reglasEfectivas({ config, estadoPartido: base.partido?.estado, deporte: liga?.deporte, categoria: liga?.categoria })
+    return reglas ? { ...config, reglas } : config
+  }
+
   function estadoDe(p) {
     const base = JSON.parse(p.estado_json)
     const eventos = filas('SELECT json FROM eventos WHERE partido_id = ? ORDER BY seq', p.id).map((r) => JSON.parse(r.json))
     return crearEstado({
       gameId: p.id,
-      config: base.config,
+      config: configConReglas(p, base),
       partido: base.partido,
       eventos,
       auditSeq: base.auditSeq,
@@ -178,6 +193,11 @@ export function crearAdaptadorLiga({ storage, pausaTrasLeer = null, pausaTrasAut
     if ('versionPreparacion' in esperado) {
       const vigente = preparacionDe(p)
       if (esperado.versionPreparacion !== (typeof vigente?.version === 'string' ? vigente.version : null)) return false
+    }
+    // Las reglas de categoría que decidió el inicio deben seguir siendo las vigentes (misma transacción que la escritura):
+    // si la categoría o las reglas cambiaron entre la lectura y la confirmación, nada se escribe y se vuelve a decidir.
+    if ('firmaReglas' in esperado) {
+      if (esperado.firmaReglas !== firmaDeReglas(configConReglas(p, JSON.parse(p.estado_json)))) return false
     }
     return true
   }

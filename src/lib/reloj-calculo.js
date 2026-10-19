@@ -9,13 +9,18 @@
 // reloj sobrevive a recargar la página y no se atrasa si el teléfono se duerme.
 // ---------------------------------------------------------------------------
 
+import { estadoDeReglas } from './reglas-categoria.js'
+
 export const PERIODOS = { baloncesto: 4, futsal: 2 }
 export const MINUTOS_POR_PERIODO = { baloncesto: 10, futsal: 20 }
 
 export const nombrePeriodo = (deporte) => (deporte === 'baloncesto' ? 'cuarto' : 'tiempo')
 
 export function duracionMs(liga) {
-  const min = liga?.minutosPorPeriodo ?? MINUTOS_POR_PERIODO[liga?.deporte] ?? 10
+  // Duración explícita del partido; si no hay, la del preset de su categoría (reglas fijadas al iniciar); si no, la del deporte.
+  // Solo reglas VÁLIDAS (estadoDeReglas): unas inválidas no aportan duración (las órdenes que la necesitan se bloquean).
+  const preset = estadoDeReglas(liga).reglas?.minutosPorPeriodo ?? null
+  const min = liga?.minutosPorPeriodo ?? preset ?? MINUTOS_POR_PERIODO[liga?.deporte] ?? 10
   return min * 60 * 1000
 }
 

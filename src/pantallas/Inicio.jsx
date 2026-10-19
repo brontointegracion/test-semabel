@@ -106,7 +106,7 @@ export default function Inicio() {
 
 function Ahora({ partidos, equipos, canchas, ligas, eventos }) {
   if (!partidos.length) {
-    return <Vacio>No hay partidos jugándose en este momento. Prueba «Lo que viene».</Vacio>
+    return <Vacio>No hay partidos jugándose en este momento. Prueba «Próximos partidos».</Vacio>
   }
 
   return (

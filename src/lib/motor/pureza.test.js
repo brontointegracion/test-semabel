@@ -35,7 +35,8 @@ describe('independencia del motor', () => {
     // '../identidad' aporta activoDe (sin imports propios): la misma regla de elegibilidad que usa la app.
     // '../dorsal' y '../prontitud-plantilla' los usa preparacion.js (lectura del número guardado y regla de
     // "listo para comenzar"); su pureza se comprueba abajo, módulo por módulo, no solo por estar en esta lista.
-    const permitidos = new Set(['../reloj-calculo', '../marcador-calculo', '../identidad', '../dorsal', '../prontitud-plantilla'])
+    // '../reglas-categoria' (REPORT_177): la interpretación única de las reglas de categoría guardadas (pura; solo importa categorias.js).
+    const permitidos = new Set(['../reloj-calculo', '../marcador-calculo', '../identidad', '../dorsal', '../prontitud-plantilla', '../reglas-categoria'])
     for (const f of motor) {
       for (const origen of importes(fuente(f))) {
         const ok = origen.startsWith('./') || permitidos.has(origen)

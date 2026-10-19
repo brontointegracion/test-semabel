@@ -42,7 +42,7 @@ describe('textoSede', () => {
 })
 
 describe('«Por avisar» en las superficies públicas', () => {
-  for (const [nombre, ruta] of [['Inicio («Lo que viene»)', '/'], ['liga (pestaña Calendario)', '/liga/LIGAPUB1?pestana=calendario']]) {
+  for (const [nombre, ruta] of [['Inicio («Próximos partidos»)', '/'], ['liga (pestaña Calendario)', '/liga/LIGAPUB1?pestana=calendario']]) {
     it(`${nombre}: el programado sin sede dice «Por avisar»; el que tiene sede muestra su sede; ningún otro estado lo muestra`, async () => {
       servidor({ '/v1/ligas/LIGAPUB1/publico': liga() })
       montar(ruta)

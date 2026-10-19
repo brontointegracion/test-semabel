@@ -27,6 +27,10 @@ import { OBSERVADO_REQUERIDO, REQUIERE_RESTANTE_VISTO, TIPOS } from './tipos'
 //                  falta, la clave se OMITE del sobre normalizado —no se escribe null—, porque el
 //                  contenido canónico de un sobre antiguo no debe cambiar. Que un inicio NUEVO la
 //                  traiga lo exige procesador.js, no la validación.
+//   reglasConfirmadas  Firma (reglas-categoria.js, firmaDeReglas) de las reglas de categoría que la persona veía al confirmar
+//                  el inicio: 'ninguna' o la firma de unas reglas válidas. SOLO 'iniciar-partido', OPCIONAL por la misma
+//                  razón que preparacionVersion (un sobre antiguo no cambia). Un inicio NUEVO cuyo partido tiene reglas la
+//                  necesita y debe coincidir con las que el servidor fija (procesador.js).
 //
 // El sobre NO lleva ninguna credencial: quién es el dispositivo y de qué partido lo
 // decide el adaptador con la credencial del transporte, no un campo que el cliente escribe.
@@ -36,7 +40,7 @@ const MAX_FECHA_MS = 8.64e15
 const CAMPOS = [
   'cmdId', 'gameId', 'deviceId', 'clientSeq', 'tipo', 'datos', 'accionTs',
   'accionTsCrudo', 'ajusteTsMs', 'discontinuidad', 'observado', 'restanteVistoMs', 'atribucionVersion',
-  'preparacionVersion',
+  'preparacionVersion', 'reglasConfirmadas',
 ]
 
 const esEntero = (n) => Number.isSafeInteger(n)
@@ -159,6 +163,11 @@ export function validarSobre(crudo) {
     errores.push('preparacionVersion')
   }
 
+  const { reglasConfirmadas } = crudo
+  if (reglasConfirmadas !== undefined && (crudo.tipo !== 'iniciar-partido' || !esTexto(reglasConfirmadas))) {
+    errores.push('reglasConfirmadas')
+  }
+
   let restanteVistoMs = crudo.restanteVistoMs ?? null
   if (tipoValido && REQUIERE_RESTANTE_VISTO.has(crudo.tipo)) {
     if (!esEntero(restanteVistoMs) || restanteVistoMs < 0) errores.push('restanteVistoMs')
@@ -190,6 +199,7 @@ export function validarSobre(crudo) {
       restanteVistoMs,
       atribucionVersion,
       ...(preparacionVersion === undefined ? {} : { preparacionVersion }),
+      ...(reglasConfirmadas === undefined ? {} : { reglasConfirmadas }),
     },
   }
 }

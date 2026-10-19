@@ -48,7 +48,7 @@ describe('rutas originales sin servidor', () => {
   })
 
   it('la lista cubre las rutas originales que no se montan (y ninguna de las montadas)', () => {
-    const montadas = ['/', '/liga/:ligaId', '/anthony', '/control']
+    const montadas = ['/', '/liga/:ligaId', '/organizador', '/anthony', '/control']
     for (const r of RUTAS_NO_DISPONIBLES) expect(montadas.some((m) => r.ruta === m)).toBe(false)
     expect(RUTAS_NO_DISPONIBLES.map((r) => r.ruta)).toEqual(expect.arrayContaining(['/siguiendo', '/saldo', '/nueva', '/canchas', '/figuras', '/noticias', '/l/:slug', '/p/:slug', '/e/:slug', '/j/:slug', '/b/:codigo', '/p/:slug/consola']))
   })
@@ -71,7 +71,7 @@ describe('pestañas y sesión del servidor', () => {
     expect(llamadas.some((l) => l.startsWith('/v1/organizador'))).toBe(false)
     cleanup()
     servidor()
-    montar('/anthony/access')
+    montar('/organizador/acceso')
     await screen.findByLabelText('Código de acceso')
     expect(document.querySelector('nav.tabbar')).toBeNull()
     expect(SIN_TABS_COMPARTIDO.some((r) => r.test('/liga/L/partido/G'))).toBe(true)
@@ -87,6 +87,7 @@ describe('pestañas y sesión del servidor', () => {
     expect([...document.querySelectorAll('nav.tabbar a')].map((a) => a.textContent)).toEqual(['Inicio', 'Siguiendo'])
     await act(async () => { await refrescar({ conAviso: false }) }) // el servidor reconoce la sesión
     expect([...document.querySelectorAll('nav.tabbar a')].map((a) => a.textContent)).toEqual(['Inicio', 'Mis ligas', 'Siguiendo', 'Saldo'])
+    expect(document.querySelector('nav.tabbar a[href="/organizador"]')?.textContent).toBe('Mis ligas') // la pestaña usa la dirección canónica (REPORT_179)
     expect(document.querySelector('.app').className).toContain('con-cuatro')
   })
 

@@ -1,7 +1,12 @@
 /* Pantalla de puntuación del modo compartido: solo lo que no tiene ya el diseño de la consola (styles.css). */
 .control-partido { padding: 0 0 8px; }
 .control-partido > main, main.control-partido { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-.control-partido .topbar .volver { text-decoration: none; }
+/* «‹ Activación»: el mismo estilo de «volver» que el panel del organizador (rojo, algo más grande, 44 px de alto). */
+.control-partido .topbar .volver {
+  display: inline-flex; align-items: center; box-sizing: border-box; max-width: 100%; min-height: 44px; padding: 8px 14px 8px 2px;
+  font-size: 1.05rem; font-weight: 700; line-height: 1.2; color: var(--acento-ink); text-decoration: none;
+}
+.control-partido .topbar .volver:hover { text-decoration: underline; }
 .cp-avisos { display: flex; flex-direction: column; gap: 8px; }
 .cp-aviso { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line, #ddd); background: var(--paper, #fff); font-size: 0.9rem; line-height: 1.35; }
 .cp-aviso.error { border-color: var(--acento, #D7263D); color: var(--acento-ink, #8b1325); }

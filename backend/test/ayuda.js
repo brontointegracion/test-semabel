@@ -1,6 +1,7 @@
 import { env, exports } from 'cloudflare:workers'
 import { runInDurableObject } from 'cloudflare:test'
 import { construirSobre } from '../../src/lib/motor/reglas.js'
+import { firmaDeReglas } from '../../src/lib/reglas-categoria.js'
 import { SEMILLA_TOKEN, T0, payloadDeLiga, tokenDe } from './fixtures/sintetico.js'
 
 export { T0 }
@@ -56,6 +57,11 @@ export class Telefono {
     const base = opts.estado ?? await this.estado()
     const orden = { cmdId: opts.cmdId ?? `${this.gameId}-c${++this.n}-${Math.random().toString(36).slice(2, 7)}`, tipo, datos, tiempo: opts.tiempo ?? { accionTs: opts.t ?? T0 } }
     if (tipo === 'iniciar-partido') {
+      // Reglas de categoría que «la pantalla mostraba»: por omisión las del estado vigente (como un teléfono al día); solo se
+      // envían si hay reglas (un partido sin ellas conserva el sobre de siempre). `opts.reglasConfirmadas` lo fuerza (null = omitir).
+      const firma = 'reglasConfirmadas' in opts ? opts.reglasConfirmadas : firmaDeReglas(base.config)
+      if (firma != null && firma !== 'ninguna') orden.reglasConfirmadas = firma
+      else if (firma === 'ninguna' && 'reglasConfirmadas' in opts) orden.reglasConfirmadas = firma
       if ('preparacionVersion' in opts) {
         if (opts.preparacionVersion != null) orden.preparacionVersion = opts.preparacionVersion
       } else {

@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { clave } from '../lib/control/activacion-almacen'
 import ControlPartido from './ControlPartido'
+import { reglasDeCategoria } from '../lib/reglas-categoria'
 
 // REPORT_128: la pantalla de puntuación compartida, con un CONTROLADOR simulado (el real se prueba en las pruebas del controlador y
 // en el navegador). Aquí se mira lo que la persona ve y lo que la pantalla le pide al controlador.
@@ -45,6 +46,7 @@ function controladorFalso(inicial) {
     registrar: vi.fn(async () => ({ ok: true })),
     iniciarPartido: vi.fn(async () => ({ ok: true })),
     reintentarAhora: vi.fn(async () => ({ ok: true })),
+    reanudarTrasRechazoDeInicio: vi.fn(async () => ({ ok: true, reanudada: true })),
     recuperarDeNoAutorizado: vi.fn(async () => ({ ok: true })),
     asegurarDatosParaMostrar: vi.fn(async () => ({ ok: true })),
     relojAhora: () => ({ estimadoMs: Date.now(), nivel: actual.reloj.nivel }),
@@ -238,6 +240,125 @@ describe('datos para mostrar', () => {
     await montar(estadoBase({ sesion: sesionBase({ visualizacion: { ...sesionBase().visualizacion, desactualizada: true } }) }))
     expect(aviso('datos-desactualizados')).toBeTruthy()
     expect(boton('#2 Saúl Montero más 2')).toBeTruthy()
+  })
+})
+
+describe('faltas de equipo según las reglas fijadas del partido (REPORT_175)', () => {
+  // Dos faltas de Alfa en el periodo 1, una transición de periodo y una falta de Alfa en el periodo 2; Beta una en el periodo 1.
+  const eventos = [
+    ev({ id: 'f1', seq: 1, tipo: 'falta', puntos: 0, jugadorId: 'J1' }), ev({ id: 'f2', seq: 2, tipo: 'falta', puntos: 0, jugadorId: 'J1' }),
+    ev({ id: 'f3', seq: 3, tipo: 'falta', puntos: 0, equipoId: 'E2', jugadorId: 'K1' }),
+    ev({ id: 'p1', seq: 4, tipo: 'periodo', equipoId: null, jugadorId: null, puntos: 0 }),
+    ev({ id: 'f4', seq: 5, tipo: 'falta', puntos: 0, jugadorId: 'J2', periodo: 2 }),
+  ]
+  const reglas = (faltasEquipo) => ({ ...reglasDeCategoria({ deporte: 'baloncesto', categoria: 'adult' }), faltasEquipo })
+  const con = (config) => estadoBase({ sesion: sesionBase({ provisional: { ...sesionBase().provisional, config: { deporte: 'baloncesto', minutosPorPeriodo: 10, ...config }, eventos } }) })
+
+  it('sin reglas fijadas (partido anterior): total de partido, como siempre', async () => {
+    await montar(con({}))
+    expect(screen.getByText(/Alfa · 3 faltas$/)).toBeTruthy()
+    expect(screen.getByText(/Beta · 1 faltas$/)).toBeTruthy()
+  })
+  it('«partido»: el total acumulado de todo el partido', async () => {
+    await montar(con({ reglas: reglas('partido') }))
+    expect(screen.getByText(/Alfa · 3 faltas$/)).toBeTruthy()
+  })
+  it('«periodo»: solo el periodo actual y la etiqueta lo dice; el historial del jugador (y su límite) sigue siendo de todo el partido', async () => {
+    await montar(con({ reglas: reglas('periodo') }))
+    expect(screen.getByText(/Alfa · 1 faltas del período$/)).toBeTruthy()
+    expect(screen.getByText(/Beta · 0 faltas del período$/)).toBeTruthy()
+  })
+  it('«oculto»: no aparece ningún texto de faltas de equipo en el marcador', async () => {
+    await montar(con({ reglas: reglas('oculto') }))
+    expect(screen.getByText('Alfa', { selector: '.corto' })).toBeTruthy()
+    expect(screen.getByText('Beta', { selector: '.corto' })).toBeTruthy()
+  })
+  it('reglas PRESENTES pero inválidas o no soportadas: no se inventa «partido»; se dice y no se muestran faltas de equipo', async () => {
+    for (const mala of [{ ...reglas('periodo'), version: 99 }, { ...reglas('periodo'), categoria: 'otra' }, { ...reglas('periodo'), faltasEquipo: 'bonus' }, null, 'x']) {
+      await montar(con({ reglas: mala }))
+      expect(document.querySelector('[data-aviso="reglas-invalidas"]'), JSON.stringify(mala)).toBeTruthy()
+      expect(screen.getByText('Alfa', { selector: '.corto' })).toBeTruthy()
+      expect(screen.queryByText(/faltas del período|3 faltas/)).toBeNull()
+      cleanup()
+    }
+  })
+  it('la marca `reglasInvalidas` que envía el servidor se trata igual; sin reglas no hay aviso', async () => {
+    await montar(con({ reglasInvalidas: true }))
+    expect(document.querySelector('[data-aviso="reglas-invalidas"]')).toBeTruthy()
+    cleanup()
+    await montar(con({}))
+    expect(document.querySelector('[data-aviso="reglas-invalidas"]')).toBeNull()
+  })
+})
+
+describe('enlace de volver (REPORT_180)', () => {
+  it('«‹ Activación» es un enlace a la pantalla de activación de ESTE partido (no al historial) y usa el estilo de volver', async () => {
+    await montar(estadoBase())
+    const a = screen.getByRole('link', { name: '‹ Activación' })
+    expect(a.getAttribute('href')).toBe(`/control/${L}/${P}`)
+    expect(a.className).toBe('volver')
+    expect(a.closest('.topbar')).toBeTruthy()
+  })
+})
+
+describe('rechazo definitivo del inicio por reglas de categoría (REPORT_178)', () => {
+  const rechazado = (ultimoRechazo, extra = {}) => estadoBase({ sesion: sesionBase({
+    inicio: 'sin-iniciar', puntuacion: { habilitada: false, motivo: 'inicio-rechazado' }, ultimoRechazo,
+    detenida: { causa: 'rechazo-definitivo', clase: null, subtipo: null, http: null, cmdId: 'c1' }, ...extra,
+  }) })
+  const INICIO = { cmdId: 'c1', tipo: 'iniciar-partido', motivo: 'reglas-desactualizadas' }
+
+  it('explica que el servidor NO inició el partido y que hay que actualizar la preparación; ofrece la acción', async () => {
+    await montar(rechazado(INICIO))
+    const a = aviso('rechazo')
+    expect(a.textContent).toMatch(/reglas de categoría de este partido cambiaron/)
+    expect(a.textContent).toMatch(/NO inició el partido/)
+    expect(a.textContent).toMatch(/actualizar la preparación/)
+    expect(boton('Actualizar la preparación')).toBeTruthy()
+    expect(ctl.reanudarTrasRechazoDeInicio).not.toHaveBeenCalled() // nada automático
+  })
+  it('pide confirmación EN LA PÁGINA: cancelar no llama; confirmar llama una vez con la confirmación explícita y dice que el partido sigue sin iniciar', async () => {
+    const u = userEvent.setup()
+    await montar(rechazado(INICIO))
+    await u.click(boton('Actualizar la preparación'))
+    const grupo = screen.getByRole('group', { name: 'Confirmar la actualización de la preparación' })
+    expect(grupo.textContent).toMatch(/No se inicia el partido ni se cambia nada en el servidor/)
+    expect(grupo.textContent).toMatch(/pulsar «Comenzar el partido» y confirmar otra vez/)
+    await u.click(boton('Cancelar'))
+    expect(ctl.reanudarTrasRechazoDeInicio).not.toHaveBeenCalled()
+    await u.click(boton('Actualizar la preparación'))
+    await u.click(boton('Sí, actualizar'))
+    expect(ctl.reanudarTrasRechazoDeInicio).toHaveBeenCalledTimes(1)
+    expect(ctl.reanudarTrasRechazoDeInicio).toHaveBeenCalledWith({ confirmadoPorOperador: true })
+    expect(await screen.findByText(/El partido NO se ha iniciado/)).toBeTruthy()
+  })
+  it('si no se logra, lo dice sin prometer nada', async () => {
+    const u = userEvent.setup()
+    await montar(rechazado(INICIO))
+    ctl.reanudarTrasRechazoDeInicio.mockResolvedValueOnce({ ok: false, motivo: 'sin-internet' })
+    await u.click(boton('Actualizar la preparación'))
+    await u.click(boton('Sí, actualizar'))
+    expect(await screen.findByText(/Se necesita conexión a internet para actualizar la preparación\. No se hizo nada/)).toBeTruthy()
+  })
+  it('otro rechazo del inicio: se dice y se ofrece actualizar; el de otra orden NO ofrece la acción', async () => {
+    await montar(rechazado({ cmdId: 'c1', tipo: 'iniciar-partido', motivo: 'preparacion-desactualizada' }))
+    expect(aviso('rechazo').textContent).toMatch(/rechazó el inicio del partido/)
+    expect(boton('Actualizar la preparación')).toBeTruthy()
+    cleanup()
+    await montar(rechazado({ cmdId: 'c2', tipo: 'anotar', motivo: 'tiempo-invalido' }, { inicio: 'confirmado' }))
+    expect(aviso('rechazo').textContent).toMatch(/rechazó una acción y las siguientes quedaron sin enviar/)
+    expect(screen.queryByRole('button', { name: 'Actualizar la preparación' })).toBeNull()
+  })
+  it('un rechazo por reglas inválidas (otra orden) explica la restricción y no ofrece la acción', async () => {
+    await montar(rechazado({ cmdId: 'c3', tipo: 'siguiente-periodo', motivo: 'reglas-invalidas' }, { inicio: 'confirmado' }))
+    const t = aviso('rechazo').textContent
+    expect(t).toMatch(/reglas de categoría guardadas para este partido no son válidas/)
+    expect(t).toMatch(/bloquea el inicio, el cambio de periodo y la corrección del reloj/)
+    expect(screen.queryByRole('button', { name: 'Actualizar la preparación' })).toBeNull()
+  })
+  it('sin datos en el teléfono no se inventa un cero de faltas de equipo', async () => {
+    await montar(estadoBase({ sesion: null }))
+    expect([...document.querySelectorAll('.cabecera .corto')].map((e) => e.textContent).join('|')).not.toMatch(/faltas/)
   })
 })
 

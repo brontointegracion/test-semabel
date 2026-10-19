@@ -99,10 +99,12 @@ export const MENSAJES_DE_REGISTRO = Object.freeze({
   'falta-confirmacion': 'Falta tu confirmación.',
   'preparacion-no-disponible': 'La preparación del partido no está disponible todavía. Inténtalo de nuevo en un momento.',
   'estado-no-disponible': 'No se pudo leer el partido en el servidor. Inténtalo de nuevo.',
+  'no-autorizado': 'Este teléfono ya no tiene permiso para este partido (el organizador pudo retirar su acceso): no se puede comenzar ni puntuar desde aquí. No se guardó nada. Avisa al organizador.',
   'plantilla-incompleta': 'No se puede comenzar: hay jugadores activos sin número o con número repetido. Corrige la plantilla e inténtalo de nuevo.',
   'atribucion-no-coincide-con-preparacion': 'La plantilla cambió. Vuelve a intentarlo para actualizarla.',
   'atribucion-no-aplicada': 'No hay espacio en este teléfono para actualizar la plantilla.',
   'ya-iniciado': 'El partido ya está iniciado.',
+  'reglas-invalidas': 'Las reglas de categoría guardadas para este partido no son válidas: no se puede comenzar. Avisa al organizador.',
 })
 
 const RECHAZOS_LOCALES = Object.freeze({
@@ -119,6 +121,9 @@ const RECHAZOS_LOCALES = Object.freeze({
   'jugador-inactivo': 'Ese jugador está inactivo.',
   'partido-no-disponible': 'El partido no admite esa acción ahora.',
   'puntos-invalidos': 'Esos puntos no son válidos en este deporte.',
+  'reglas-invalidas': 'Las reglas de categoría guardadas para este partido no son válidas: esta acción (inicio, cambio de periodo o corrección del reloj sin duración propia) está bloqueada. Los puntos, las faltas y el cierre siguen disponibles. Avisa al organizador.',
+  'reglas-desactualizadas': 'Las reglas de categoría cambiaron desde que se abrió esta pantalla. Actualiza los datos y confirma de nuevo.',
+  'reglas-no-confirmadas': 'Esta pantalla no confirmó las reglas de categoría del partido. Actualiza la aplicación y vuelve a intentarlo.',
 })
 
 /**
@@ -165,7 +170,18 @@ export function situacionDeControl(est) {
   if (divergencia) aviso('divergencia', 'error', 'Los datos de este teléfono no coinciden con el servidor. Avisa al organizador. El partido físico no tiene por qué parar: lo registrado aquí sigue guardado.')
   else if (detenida?.causa === 'transporte' && detenida.clase === 'no-autorizado') aviso('no-autorizado', 'error', 'Este teléfono ya no está autorizado por el servidor. Lo registrado sigue guardado aquí, pero no se enviará. Avisa al organizador.')
   else if (detenida?.causa === 'transporte') aviso('parada', 'error', 'El envío se detuvo por una respuesta inesperada del servidor. Lo registrado sigue guardado aquí, pero no se enviará. Avisa al organizador.')
-  else if (detenida?.causa === 'rechazo-definitivo') aviso('rechazo', 'error', 'El servidor rechazó una acción y las siguientes quedaron sin enviar. Sigue guardado aquí. Avisa al organizador.')
+  else if (detenida?.causa === 'rechazo-definitivo') {
+    const ur = ses.ultimoRechazo
+    if (ur?.tipo === 'iniciar-partido' && ['reglas-desactualizadas', 'reglas-no-confirmadas'].includes(ur.motivo)) {
+      aviso('rechazo', 'error', 'Las reglas de categoría de este partido cambiaron mientras se preparaba el inicio, así que el servidor NO inició el partido y no se guardó ningún cambio. Hay que actualizar la preparación antes de volver a comenzar.')
+    } else if (ur?.motivo === 'reglas-invalidas') {
+      aviso('rechazo', 'error', 'El servidor bloqueó esa acción porque las reglas de categoría guardadas para este partido no son válidas (bloquea el inicio, el cambio de periodo y la corrección del reloj si el partido no tiene duración propia). No se guardó ningún cambio. Los puntos, las faltas y el cierre siguen permitidos en el servidor, pero el envío de este teléfono quedó detenido: lo guardado aquí se conserva. Avisa al organizador.')
+    } else if (ur?.tipo === 'iniciar-partido') {
+      aviso('rechazo', 'error', 'El servidor rechazó el inicio del partido (no se inició y no se guardó ningún cambio). Actualiza la preparación para volver a intentarlo o avisa al organizador.')
+    } else {
+      aviso('rechazo', 'error', 'El servidor rechazó una acción y las siguientes quedaron sin enviar. Sigue guardado aquí. Avisa al organizador.')
+    }
+  }
   else if (detenida) aviso('detenida', 'error', 'El envío está detenido. Lo registrado sigue guardado aquí. Avisa al organizador.')
   if (est.estados?.includes('parada-solo-en-memoria')) aviso('parada-memoria', 'error', 'El envío se detuvo, pero no se pudo dejar anotado: si recargas esta pantalla podría intentar enviar otra vez.')
   if (est.estados?.includes('capacidad-rechazada')) aviso('capacidad', 'aviso', 'No hay espacio en este teléfono para actualizar los datos de la plantilla. El partido sigue funcionando con los que ya tiene.')

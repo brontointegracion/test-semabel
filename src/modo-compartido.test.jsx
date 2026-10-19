@@ -97,11 +97,11 @@ describe('modo compartido', () => {
     unmount()
   })
 
-  it('/anthony/access monta la entrada del organizador (y /anthony redirige a ella)', async () => {
+  it('/organizador/acceso monta la entrada del organizador (y /anthony/access y /anthony redirigen a ella)', async () => {
     compartido()
     vi.resetModules()
     const { default: App } = await import('./App')
-    for (const ruta of ['/anthony/access', '/anthony']) {
+    for (const ruta of ['/organizador/acceso', '/anthony/access', '/anthony']) {
       const { unmount } = render(<MemoryRouter initialEntries={[ruta]}><App /></MemoryRouter>)
       expect(await screen.findByLabelText('Código de acceso')).toBeTruthy()
       unmount()

@@ -1,9 +1,10 @@
+import { reglasDeConfig } from '../reglas-categoria'
 import { crearCandado } from './sesion-candado'
 import { crearClienteSesion } from './sesion-api'
 import { crearEmisor } from './sesion-emisor'
 import { crearRelojTelefono, crearOrden, estimar, evaluarParadaAutomatica, incorporarMuestra, tiempoInformativo } from './reloj-telefono'
 import { construirSesion, evaluarInicio, ordenDeInicio } from './sesion-motor'
-import { actualizarVisualizacion, crearSesion, encolar, leerSesion, reanudarTrasNoAutorizadoSesion, refrescarAntesDelInicioDeSesion } from './sesion-almacen'
+import { actualizarVisualizacion, crearSesion, encolar, leerSesion, reanudarSesion, reanudarTrasNoAutorizadoSesion, refrescarAntesDelInicioDeSesion } from './sesion-almacen'
 import { datosParaMostrar } from './sesion-visualizacion'
 import { leerRegistro } from './activacion-almacen'
 
@@ -159,7 +160,7 @@ export function crearControlador({
   /** Lo que necesita la pantalla del estado provisional (base + órdenes vivas): copia PROFUNDA y congelada, nunca el objeto del motor. */
   const proyeccionProvisional = (e) => (e ? congelar(structuredClone({
     gameId: e.gameId,
-    config: { deporte: e.config.deporte, minutosPorPeriodo: e.config.minutosPorPeriodo ?? null },
+    config: { deporte: e.config.deporte, minutosPorPeriodo: e.config.minutosPorPeriodo ?? null, ...reglasDeConfig(e.config) },
     // (las claves del reloj se copian por nombre: este módulo no escribe el reloj, solo lo lee)
     partido: Object.fromEntries(['estado', 'inicio', 'relojEstado', 'relojRestante', 'relojDesde'].map((k) => [k, e.partido[k] ?? null])),
     equipos: [...e.atribucion.equipos],
@@ -179,6 +180,12 @@ export function crearControlador({
       enviando,
       confirmadas: l.entradas.filter((e) => e.estado === 'confirmada').length,
       rechazadas: l.entradas.filter((e) => e.estado === 'rechazada').length,
+      // El último rechazo definitivo (solo lo necesario para EXPLICARLO): qué orden fue y el motivo que dio el servidor.
+      ultimoRechazo: (() => {
+        const rs = l.entradas.filter((e) => e.estado === 'rechazada')
+        const e = rs.length ? rs[rs.length - 1] : null
+        return e ? { cmdId: e.cmdId, tipo: e.tipo ?? null, motivo: e.recibo?.motivo ?? null } : null
+      })(),
       noAplicadas: l.entradas.filter((e) => e.estado === 'no-aplicada').length,
       detenida: s.detenida ? { causa: s.detenida.causa, clase: s.detenida.clase ?? null, subtipo: s.detenida.subtipo ?? null, http: s.detenida.http ?? null, cmdId: s.detenida.cmdId ?? null } : null,
       divergencia: s.divergencia ? { causa: s.divergencia.causa } : null,
@@ -192,6 +199,62 @@ export function crearControlador({
       ultimoClientSeq: s.base.ultimoClientSeq,
       siguienteSeq: s.siguienteSeq,
     }
+  }
+
+  /**
+   * REPORT_178 — recuperación EXPLÍCITA tras el rechazo definitivo del INICIO (p. ej. «reglas-desactualizadas»): con confirmación de la
+   * persona, lee de nuevo el partido y la preparación y reemplaza la base de la sesión por esa lectura fresca (`reanudarTrasRechazo`:
+   * exige que el cursor del servidor coincida con el de la base, que el partido siga programado y la preparación lista). NO inicia el
+   * partido, NO escribe nada en el servidor y NO reintroduce nada solo: el inicio nuevo lo pide la persona con un cmdId nuevo. Solo se
+   * ofrece cuando lo rechazado fue el inicio (la pantalla no lo ofrece para otras órdenes).
+   */
+  function reanudarTrasRechazoDeInicio({ confirmadoPorOperador } = {}) {
+    const no = soloPropietario()
+    if (no) return Promise.resolve(no)
+    if (confirmadoPorOperador !== true) return Promise.resolve({ ok: false, motivo: 'falta-confirmacion' })
+    if (recuperando || verificando) return Promise.resolve({ ok: false, motivo: 'ocupado' })
+    const g = generacion
+    return enSeccion(async () => {
+      recuperando = true
+      verificando = true // el emisor no se despierta mientras dura
+      publicar()
+      try {
+        if (!propietario(g)) return { ok: false, motivo: 'propiedad-perdida' }
+        if (!enLinea()) return { ok: false, motivo: 'sin-internet' }
+        const ident = identidad()
+        if (!ident) return { ok: false, motivo: 'sin-identidad' }
+        if (emisor) await emisor.reposo()
+        let l = await leerSesion(almacen, id, ctx())
+        if (!propietario(g)) return { ok: false, motivo: 'propiedad-perdida' }
+        if (!l.ok) return { ok: false, motivo: l.motivo }
+        if (l.sesion.deviceId !== ident.deviceId) return { ok: false, motivo: 'dispositivo-distinto' }
+        if (l.sesion.divergencia) return { ok: false, motivo: 'sesion-detenida-por-divergencia' }
+        const ultimo = l.entradas.filter((e) => e.estado === 'rechazada').pop()
+        if (l.sesion.detenida?.causa !== 'rechazo-definitivo' || l.sesion.inicio !== 'sin-iniciar' || ultimo?.tipo !== 'iniciar-partido') return { ok: false, motivo: 'no-reanudable' }
+        const ac = new AbortController()
+        solicitudes.add(ac)
+        let est
+        let prep
+        try {
+          est = await clienteActual.leerEstado({ signal: ac.signal })
+          if (est.clase === 'ok') prep = await clienteActual.leerPreparacion({ signal: ac.signal })
+        } catch { est = { clase: 'incierta' } } finally { solicitudes.delete(ac) }
+        if (!propietario(g)) return { ok: false, motivo: 'propiedad-perdida' }
+        if (est.clase === 'sin-credencial') return { ok: false, motivo: 'no-autorizado' }
+        if (est.clase !== 'ok') return { ok: false, motivo: est.clase === 'demasiado-grande' ? 'estado-demasiado-grande' : 'estado-no-disponible', detalle: est.clase }
+        if (prep?.clase !== 'ok') return { ok: false, motivo: prep?.clase === 'no-disponible' ? 'preparacion-no-disponible' : 'preparacion-no-leida', detalle: prep?.clase ?? null }
+        const r = await reanudarSesion(almacen, { id, revision: l.sesion.revision, cuerpoEstado: est.cuerpo, preparacion: prep.cuerpo.preparacion, confirmadoPorOperador: true, ctx: ctx() })
+        if (!propietario(g)) return { ok: false, motivo: 'propiedad-perdida' }
+        tarea(releer(g)); avisar()
+        if (r.ok) return { ok: true, reanudada: true }
+        return { ok: false, motivo: r.motivo === 'revision-desactualizada' ? 'revision-cambio' : r.motivo, ...(r.detalle !== undefined ? { detalle: r.detalle } : {}) }
+      } catch { return { ok: false, motivo: 'error-interno' } } finally {
+        recuperando = false
+        verificando = false
+        if (despertarDiferido) { despertarDiferido = false; despertarEmisor() }
+        if (!cerrado) publicar()
+      }
+    })
   }
 
   function estado() {
@@ -572,6 +635,8 @@ export function crearControlador({
         if (est.clase === 'ok') prep = await clienteActual.leerPreparacion({ signal: ac.signal })
       } finally { solicitudes.delete(ac) }
       if (!propietario(g)) return { ok: false, motivo: 'propiedad-perdida' }
+      // Un 401 (acceso retirado, vencido o de otro teléfono) NO es «no se pudo leer»: se dice que este teléfono ya no tiene permiso (REPORT_181).
+      if (est.clase === 'sin-credencial') return { ok: false, motivo: 'no-autorizado' }
       if (est.clase !== 'ok') return { ok: false, motivo: est.clase === 'demasiado-grande' ? 'estado-demasiado-grande' : 'estado-no-disponible', detalle: est.clase }
       if (prep.clase !== 'ok') return { ok: false, motivo: prep.clase === 'no-disponible' ? 'preparacion-no-disponible' : 'preparacion-no-leida', detalle: prep.clase }
       let l = await leerSesion(almacen, id, ctx())
@@ -895,6 +960,7 @@ export function crearControlador({
     relojAhora: () => { const e = estimar(reloj, lecturaReloj()); return { estimadoMs: e.estimadoMs ?? null, nivel: e.nivel } },
     verificar,
     recuperarDeNoAutorizado,
+    reanudarTrasRechazoDeInicio,
     reintentarAhora,
     reintentarConConfirmacion,
     remuestrearReloj,

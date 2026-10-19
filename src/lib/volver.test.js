@@ -14,7 +14,7 @@ describe('esDestinoInterno', () => {
     '/\\evil.com', '/\\/evil.com', 'l/liga-1', '', '  /l/x', '/p/a-vs-b-2026-08-20-5680',
     '/p/a-vs-b-5680/consola', '/b/5680', '/ligas', '/nueva', '/l/x/retar', '/l/x/../p/y',
     undefined, null, 5, {}, ['/'],
-    '/liga/platinium-u10/partido/cross-level-vs-deportivo-s0rqrd', '/liga/x/equipo/y/z', '/liga/', '/liga/x/../../anthony', '/liga', '/control/a/b', '/anthony/ligas',
+    '/liga/platinium-u10/partido/cross-level-vs-deportivo-s0rqrd', '/liga/x/equipo/y/z', '/liga/', '/liga/x/../../anthony', '/liga', '/control/a/b', '/anthony/ligas', '/organizador', '/organizador/ligas/x',
   ])('rechaza %j', (r) => expect(esDestinoInterno(r)).toBe(false))
 })
 

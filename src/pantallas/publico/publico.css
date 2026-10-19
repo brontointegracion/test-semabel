@@ -16,6 +16,38 @@
 .publico .nota-seccion { margin: 2px 0 8px; font-size: 0.74rem; color: var(--ink-mute); }
 .publico .hm-marcador { color: inherit; text-decoration: none; display: block; }
 
+/* Marcador público (REPORT_174). Todo acotado a «.publico»: el marcador del prototipo (Partido.jsx) y la consola no cambian.
+   - El ancho de la columna del sitio (760 px) no se aplica a esta página, y el relleno inferior de «.contenido» ya no suma altura a la
+     pantalla completa del marcador (era el scroll de 32 px en 1920×1080).
+   - Cada número se dimensiona por el ANCHO de su propio lado (container query) y por la cantidad de dígitos del marcador mayor
+     (--d, la pone PartidoPublico): ni pisa el reloj ni se corta en el borde con 2 o 3 dígitos, y ambos lados llevan el mismo tamaño. */
+.app:has(.board-pagina.publico) { max-width: none; }
+.app:has(.board-pagina.publico) .contenido { padding-bottom: 0; }
+.publico .board .cuerpo { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+.publico .board .equipo { container-type: inline-size; }
+.publico .board .equipo .puntos {
+  font-size: min(clamp(4.2rem, 27vw, 11rem), calc(100cqw / (var(--d, 2) * 0.72)));
+  white-space: nowrap;
+}
+.publico .board.pantalla-completa .equipo .puntos {
+  font-size: min(clamp(4.5rem, 24vw, 13rem), calc(100cqw / (var(--d, 2) * 0.72)));
+}
+/* Pantalla ancha (televisor, 1280 px y más): todo crece con el ALTO disponible; la estructura es la misma. */
+@media (min-width: 900px) {
+  .publico .board .equipo .puntos,
+  .publico .board.pantalla-completa .equipo .puntos { font-size: min(clamp(8rem, 31vh, 26rem), calc(100cqw / (var(--d, 2) * 0.72))); }
+  .publico .board .equipo .corto.nombre-equipo { font-size: clamp(1.4rem, 3.4vh, 3.2rem); }
+  .publico .board .medio .periodo { font-size: clamp(0.8rem, 1.7vh, 1.5rem); }
+  .publico .board .medio .reloj { font-size: clamp(2.4rem, 7.5vh, 6rem); }
+  .publico .board .medio .nota-estado { font-size: clamp(0.7rem, 1.5vh, 1.3rem); }
+  .publico .board .medio .fecha-programada { font-size: clamp(1rem, 3vh, 2.4rem); }
+  .publico .faltas-partido, .publico .board.pantalla-completa .faltas-partido { font-size: clamp(0.85rem, 1.8vh, 1.5rem); }
+  .publico .faltas-partido .lado b, .publico .board.pantalla-completa .faltas-partido .lado b { font-size: clamp(1.15rem, 2.8vh, 2.4rem); }
+  .publico .faltas-partido .titulo { font-size: clamp(0.62rem, 1.4vh, 1.1rem); }
+  .publico .board .pie { font-size: clamp(0.78rem, 1.7vh, 1.4rem); }
+  .publico .board .board-top { font-size: clamp(0.75rem, 1.7vh, 1.4rem); }
+}
+
 /* Marcador público */
 .publico .board .equipo .corto.nombre-equipo {
   white-space: normal; overflow-wrap: anywhere; line-height: 1.1;

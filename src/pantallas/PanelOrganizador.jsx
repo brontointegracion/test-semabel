@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { leerLiga } from '../lib/roster-api'
+import { rutaLiga } from '../lib/rutas-organizador'
 import { invalidar, salir, useSesionServidor } from '../lib/sesion-servidor'
 import { Protegida } from './ComunOrganizador'
 import PendienteSinConfirmar from './PendienteSinConfirmar'
@@ -32,9 +33,12 @@ function Contenido() {
           const ok = r?.tipo === 'ok' ? r.datos : null
           return (
             <li key={id} className="fila-panel">
-              <Link to={`/anthony/ligas/${id}`}>{ok ? ok.liga.nombre : id}</Link>
+              <strong className="nombre-contexto">{ok ? ok.liga.nombre : id}</strong>
               <div className="sub">
                 {!r ? 'Cargando…' : ok ? `${ok.liga.deporte} · ${ok.equipos.length} equipos` : 'No pudimos cargar esta liga. Abre la liga para reintentar.'}
+              </div>
+              <div className="acciones-fila">
+                <Link className="btn" to={rutaLiga(id)} aria-label={`Administrar liga ${ok ? ok.liga.nombre : id}`}>Administrar liga</Link>
               </div>
             </li>
           )

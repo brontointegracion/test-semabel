@@ -24,7 +24,9 @@ import { TABLAS_LIMITES } from './acceso/limites.js'
 // Versión 6: `cargas` (ver carga.js): identidad durable de las cargas de estructura y de partidos del operador, con la huella del
 // contenido normalizado y el resultado devuelto, para que un reintento exacto sea un éxito sin escrituras y un contenido
 // distinto con el mismo identificador sea un conflicto. La migración SOLO crea la tabla (aditiva): ninguna fila existente cambia.
-export const VERSION_ESQUEMA = 6
+// Versión 7 (REPORT_175): `resumen_partido` recibe las faltas del periodo visible por lado (columnas aditivas con 0 por omisión; los
+// resúmenes existentes dejan de servirse por su versión de proyección y la reparación los reconstruye). Nada se borra.
+export const VERSION_ESQUEMA = 7
 
 const DDL = [
   `CREATE TABLE IF NOT EXISTS meta (
@@ -269,6 +271,17 @@ const MIGRACIONES = [
         creado_en INTEGER NOT NULL
       )`,
     ],
+  },
+  {
+    hasta: 7,
+    sentencias: [],
+    // ADD COLUMN no tiene «IF NOT EXISTS»: se añade solo la columna que falta, así repetir la migración no falla.
+    datos: (sql) => {
+      const columnas = new Set(sql.exec("SELECT name FROM pragma_table_info('resumen_partido')").toArray().map((c) => c.name))
+      for (const c of ['local_faltas_periodo', 'visita_faltas_periodo']) {
+        if (!columnas.has(c)) sql.exec(`ALTER TABLE resumen_partido ADD COLUMN ${c} INTEGER NOT NULL DEFAULT 0`)
+      }
+    },
   },
 ]
 

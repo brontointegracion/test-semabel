@@ -230,7 +230,7 @@ describe('«Salir» de un partido vuelve al Calendario', () => {
   it('un origen inválido en el historial se ignora (ruta externa, partido, esquema peligroso): «Ver liga» → Calendario', async () => {
     servidor(todasLasRutas())
     const ruta = rutaCanonica('PLATINIUM-U10', JUEGOS.final, NOMBRES.final)
-    for (const volverA of ['https://evil.example/', '//evil.example', 'javascript:alert(1)', '/liga/platinium-u10/partido/otro-xxxxxx', '/anthony/ligas']) {
+    for (const volverA of ['https://evil.example/', '//evil.example', 'javascript:alert(1)', '/liga/platinium-u10/partido/otro-xxxxxx', '/anthony/ligas', '/organizador/ligas/x']) {
       montar({ pathname: ruta, state: { volverA } })
       await esperaPartido()
       fireEvent.click(screen.getByRole('button', { name: 'Ver liga' }))

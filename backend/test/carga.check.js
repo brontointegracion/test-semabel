@@ -431,7 +431,7 @@ describe('esquema versión 6: migración aditiva', () => {
       const sql = inst.almacen.sql
       crearEsquema(inst.almacen)
       crearEsquema(inst.almacen)
-      expect(sql.exec("SELECT valor FROM meta WHERE clave = 'esquema'").one().valor).toBe('6')
+      expect(sql.exec("SELECT valor FROM meta WHERE clave = 'esquema'").one().valor).toBe('7')
       expect(sql.exec('SELECT COUNT(*) AS n FROM cargas').one().n).toBe(0)
       return JSON.stringify(['ligas', 'equipos', 'jugadores', 'partidos', 'resumen_partido', 'credenciales'].map((t) => sql.exec(`SELECT * FROM ${t}`).toArray()))
     })

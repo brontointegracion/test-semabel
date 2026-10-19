@@ -110,7 +110,7 @@ describe('actualización aditiva del esquema de una liga', () => {
     const { ligaId } = await ligaSembrada(nuevaLiga())
     const v = await enLiga(ligaId, (inst) => inst.almacen.sql.exec("SELECT valor FROM meta WHERE clave = 'esquema'").one().valor)
     expect(v).toBe(String(VERSION_ESQUEMA))
-    expect(VERSION_ESQUEMA).toBe(6)
+    expect(VERSION_ESQUEMA).toBe(7)
   })
 })
 

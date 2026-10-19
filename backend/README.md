@@ -113,6 +113,40 @@ dirección: teléfonos y organizador que **comparten una dirección** (wifi del 
 también ese cubo, y si falta la cabecera de dirección de Cloudflare todos caen en el mismo cubo `desconocida`. Los umbrales
 no se han cambiado; hay que revisarlos antes del piloto real. Cada intento fallido lee hasta ~500 filas de este cubo.
 
+### Organizer routes, pilot alias, phone withdrawal and invitation (REPORT_179–182)
+
+Addresses are navigation only: the server decides who may see what (`src/lib/rutas-organizador.js`).
+
+| Canonical route | Screen |
+|---|---|
+| `/organizador/acceso` | entry (organizer code) |
+| `/organizador` | "Mis ligas" |
+| `/organizador/ligas/:ligaId` | league (teams and games) |
+| `/organizador/ligas/:ligaId/equipos/:equipoId` | team roster |
+| `/organizador/ligas/:ligaId/partidos/:gameId` | "Acceso de puntuación" for one game |
+| `/control/:ligaId/:gameId` | phone activation screen (unchanged; the console needs an already activated phone) |
+
+- **Legacy compatibility (redirects, never loops):** `/anthony` and `/anthony/access` go to `/organizador/acceso`; `/anthony/ligas`
+  and `/ligas` go to `/organizador`; `/anthony/ligas/:id…` keeps its segments under `/organizador/ligas/`; any other `/anthony/*`
+  goes to `/organizador` (which asks for a session). API paths and internal ids do not change.
+- **`/deportivo-vip/ligas` is a PILOT ALIAS**, a fixed entry in `ALIAS_PILOTO` that lands on the same authenticated entrance as
+  `/ligas`. It grants nothing and does not route by organizer: the session carries no organizer slug, only `organizadorId` and its
+  leagues, so whoever enters sees only the leagues their session owns. No league ids are hard-coded. Adding another alias means
+  editing `ALIAS_PILOTO` and `public/_headers`.
+- **Withdrawing a phone before the game starts** ("Retirar acceso del teléfono", with confirmation; opening the screen changes
+  nothing): `POST /v1/organizador/ligas/:liga/partidos/:game/control/revocar`. Only while the game is `programado` (409 once it has
+  started: there is no mid-game takeover). One transaction revokes the active credential and any unused codes and raises the
+  authorization version; repeating it answers 200 with 0 revoked. A revoked phone cannot start or recover, and a revoked
+  credential is never revived. If the outcome is uncertain the screen offers a read-only "Comprobar estado".
+- **Inviting the person who will score** ("Invitar al árbitro", only while `programado`): "Copiar enlace de activación" copies the
+  absolute activation link of the current origin (no code, token, session, query or fragment); "Compartir invitación por WhatsApp"
+  opens a `wa.me` message with the teams and that link, only when pressed, and never contains the code; "Copiar código" appears
+  only while the newly issued code is on screen, copies exactly that code and issues nothing. The code is shared separately from the
+  link. Activating a phone does not start the game. A browser that already holds an activation for that game cannot activate
+  again: use another phone or browser profile. On a loopback origin (`localhost`, `127.x`, `::1`) the link only works on that
+  computer; the screen says so. Clipboard writes need an explicit click and a browser that allows them; otherwise a selectable
+  field is shown.
+
 ## Plantilla compartida (organizador) y lectura de preparación del teléfono
 
 Solo con conexión: **no existe ninguna cola ni borrador de plantilla en el servidor** (el cuerpo solo admite las claves listadas;
@@ -238,9 +272,12 @@ Pruebas: `test/estado-telefono.check.js` (datos sintéticos; sin Cloudflare).
   modo no hay rol de organizador local ni datos de demostración, y las pantallas públicas del prototipo no se montan
   (se muestra "en preparación") hasta que las lecturas públicas vengan del servidor.
 - Encabezados de los archivos estáticos: `public/_headers` (se copia a `dist`). No se aplican a lo que genera el Worker,
-  que ya pone los suyos. Si `_headers` también se aplica a la respuesta de la caída a `index.html` hay que comprobarlo en
-  Cloudflare. Los encabezados de las cargas dependen de que la política CSP (`connect-src` permite la búsqueda de región
-  `https://ipwho.is`) se compruebe con el navegador real.
+  que ya pone los suyos. Las pantallas del organizador llevan `X-Robots-Tag: noindex` y `Cache-Control: no-store`
+  (`/anthony`, `/anthony/*`, `/control/*`, `/organizador`, `/organizador/*`, `/ligas`, `/ligas/`, `/deportivo-vip/ligas`,
+  `/deportivo-vip/ligas/`). **Verificado solo en local** (REPORT_184): `wrangler dev` con `dist` compilado fuera del repositorio
+  aplica estas reglas también a la respuesta de la caída a `index.html`; en una respuesta desplegada de Cloudflare **no está
+  verificado** y hay que comprobarlo (ver «Smoke check after a deploy» más abajo).
+  La política CSP (`connect-src` permite la búsqueda de región `https://ipwho.is`) también debe comprobarse con el navegador real.
 - `wrangler dev` y el despliegue necesitan que `../dist` exista. `scripts/humo-local.mjs` usa una carpeta temporal.
 
 ### Producción (`env.production`; preparado, NO desplegado)
@@ -262,6 +299,45 @@ y se declaran en el entorno; `migrations` (v1, v2) se heredan del nivel superior
 **Comprobación local sin red ni cuenta** (desde `backend/`): `node_modules/.bin/wrangler deploy --dry-run --env production --outdir RUTA-FUERA-DEL-REPO`
 debe listar los dos objetos y las cinco variables anteriores. Despliegue (manual, por el usuario): siempre con `--env production`; sin
 `--env` se publicaría la configuración local. No usar `wrangler.test.jsonc` ni `env.staging` (activa la siembra).
+
+### Updating between games, schema 7 and rollback (REPORT_175–184)
+
+**What changed in the data layer.** `VERSION_ESQUEMA` is 7: `resumen_partido` gains `local_faltas_periodo` and `visita_faltas_periodo`
+(`INTEGER NOT NULL DEFAULT 0`, added only if missing, in the same single transaction as every migration, so a failure leaves the
+previous version and no new columns; repeating it changes nothing). The projection version of the public summaries goes from 1 to 2:
+version-1 summaries are no longer served (that game reads as unavailable) and the repair at object start rebuilds them from the
+events, within `LIMITES_REPARACION` (300 games, 50,000 events). Events, results, roster edits, receipts and credentials are not
+rewritten. Games started before this release keep their legacy behavior (whole-game team fouls); a still-`programado` game takes its
+league's category rules and they are pinned in the same write that starts it (the start carries the signature of the rules the
+person confirmed; if the category changed in between, the start is refused and nothing is written). An explicit game duration wins
+over the category preset.
+
+**Clients must be updated between games.** The service worker serves the cached build until the page is reloaded. A scoring phone
+still running the previous build cannot start a game that has category rules (the server answers `reglas-no-confirmadas`, and the
+old app shows a generic rejection). An old public page keeps working (it ignores the new fields) but shows the whole-game foul
+total, even for Mini (per period) and Baby (hidden). So: deploy while no game is live, then hard-refresh every scoring phone before
+its next game. Nothing reloads automatically and the service-worker behavior is unchanged.
+
+**Rollback constraints.**
+- Rolling the Worker back restores old CODE only. It does not restore data and does not remove schema 7.
+- Tested locally on synthetic storage (REPORT_176 and REPORT_184, previous code = git HEAD `a1055a30…`): the previous code boots on schema-7
+  storage, keeps `config.reglas` of already pinned games, accepts scoring orders, rebuilds summaries at projection version 1 with
+  correct totals, and the current code then rebuilds them at version 2 with correct per-period counts.
+- That is storage compatibility, not semantic compatibility. The previous code does not know the rules: a game started by it is
+  NOT pinned (it stays legacy after a roll-forward), and it neither shows nor enforces per-period or hidden team fouls.
+- Not tested: any production data, Cloudflare Durable Object behavior, a database restored from backup, or a previous-code run on
+  a deployed Worker. No production backup is assumed to exist; rolling code back never replaces one.
+
+**Smoke check after a deploy (reads only; starts nothing).** Public and static reads need no session: the public home and the two
+league pages load; a known scheduled game opens with its teams and 0–0 (a finished game only if one exists); the public game
+read responds with the new fields; `/organizador/acceso`, `/ligas`, `/deportivo-vip/ligas` and `/anthony` reach the organizer entrance
+and carry `noindex`/`no-store` (check the response headers of the deployed site; local observation is not proof). Logging in as
+organizer creates a session and is a separate, deliberate step. Issuing codes, activating phones, withdrawing access and starting games
+are excluded. The operator gate is verified through the deployed bindings, not through an invented request.
+
+**Still pending (not in this release):** the shirt-name alias display in the scoring console; additional shot-clock and midcourt
+countdowns (the category settings are stored but nothing counts down); media and logos; advertising; the continuous organizer TV
+link; league-wide player statistics; pending schedule work.
 
 ## Carga del operador y ejecutor local de plantillas (herramientas de carga; SOLO sintético hasta nueva autorización)
 

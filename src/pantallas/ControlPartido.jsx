@@ -8,9 +8,10 @@ import {
 } from '../lib/control/sesion-intencion'
 import { compararPorDorsal } from '../lib/dorsal'
 import {
-  PUNTOS_POR_DEPORTE, LIMITE_FALTAS, marcadorEquipo, faltasEquipo, puntosJugador, faltasJugador, periodoVisible, hayQueRehacer,
+  PUNTOS_POR_DEPORTE, LIMITE_FALTAS, marcadorEquipo, faltasEquipo, faltasEquipoPeriodo, puntosJugador, faltasJugador, periodoVisible, hayQueRehacer,
 } from '../lib/marcador-calculo'
 import { PERIODOS, restanteMs, mmss, corriendo, nombrePeriodo, duracionMs } from '../lib/reloj-calculo'
+import { alcanceFaltasDe, reglasDeConfig } from '../lib/reglas-categoria'
 import {
   BarraDeshacer, BotonesPuntos, CabeceraConsola, FilaJugadorConsola, PANELES, PanelReloj, PanelesBarra, RegistroConsola, SelectorLados,
 } from './publico/ConsolaPiezas.jsx'
@@ -46,6 +47,21 @@ const TEXTO_RECUPERACION = {
   'sin-identidad': 'Este teléfono no está activado para este partido.',
   'parada-solo-en-memoria': 'El envío se detuvo pero no quedó anotado: no se puede comprobar desde aquí.',
 }
+// REPORT_178: textos de la actualización explícita de la preparación tras el rechazo del inicio.
+const TEXTO_REANUDACION = {
+  'sin-internet': 'Se necesita conexión a internet para actualizar la preparación. No se hizo nada.',
+  'servidor-no-coincide': 'El servidor tiene otros datos que este teléfono (otra revisión o número de envío). No se hizo nada: avisa al organizador.',
+  'partido-ya-no-programado': 'El partido ya no está programado en el servidor. No se hizo nada: avisa al organizador.',
+  'preparacion-no-disponible': 'La preparación del partido no está disponible todavía. No se hizo nada; inténtalo de nuevo en un momento.',
+  'plantilla-incompleta': 'No se puede comenzar: hay jugadores activos sin número o con número repetido. Corrige la plantilla e inténtalo de nuevo.',
+  'estado-no-disponible': 'No se pudo leer el partido en el servidor. No se hizo nada; inténtalo de nuevo en un momento.',
+  'revision-cambio': 'Algo cambió en este teléfono mientras se actualizaba. No se hizo nada; inténtalo de nuevo.',
+  ocupado: 'Ya se está comprobando. Espera a que termine.',
+  'no-reanudable': 'Esta pantalla ya no necesita actualizarse.',
+}
+const textoDeReanudacion = (r) => (r?.ok
+  ? { tipo: 'ok', texto: 'Preparación actualizada con los datos del servidor. El partido NO se ha iniciado: pulsa «Comenzar el partido» y confirma de nuevo.' }
+  : { tipo: 'error', texto: TEXTO_REANUDACION[r?.motivo] ?? 'No se pudo actualizar la preparación. No se hizo nada y lo guardado aquí se conserva. Avisa al organizador.' })
 const textoDeRecuperacion = (r) => (r?.ok ? { tipo: 'ok', texto: 'El servidor confirmó la autorización de este teléfono. Lo guardado se enviará ahora, en su orden. El servidor puede volver a retirarla en cualquier momento.' }
   : { tipo: 'error', texto: TEXTO_RECUPERACION[r?.motivo] ?? 'No se pudo comprobar. El envío sigue detenido y todo sigue guardado aquí.' })
 
@@ -186,7 +202,12 @@ export default function ControlPartido({ fabrica = controladorDelNavegador }) {
   const viz = ses?.visualizacion ?? null
   const eventos = prov?.eventos ?? []
   const deporte = prov?.config?.deporte ?? 'baloncesto'
-  const liga = { deporte, minutosPorPeriodo: prov?.config?.minutosPorPeriodo ?? null }
+  const liga = { deporte, minutosPorPeriodo: prov?.config?.minutosPorPeriodo ?? null, ...reglasDeConfig(prov?.config) }
+  // Alcance de las faltas de equipo que se muestran (reglas fijadas al iniciar; sin reglas: partido completo, como siempre).
+  const alcanceFaltas = alcanceFaltasDe(prov?.config)
+  const sinFaltas = alcanceFaltas === 'oculto' || alcanceFaltas === 'no-disponible'
+  const faltasDeEquipo = (e) => (sinFaltas ? null : alcanceFaltas === 'periodo' ? faltasEquipoPeriodo(eventos, e.id, deporte) : faltasEquipo(eventos, e.id))
+  const faltasTexto = alcanceFaltas === 'periodo' ? 'faltas del período' : 'faltas'
   const partido = prov?.partido ?? null
   const estadoJuego = partido?.estado ?? null
   const relojAhora = ctlRef.current?.relojAhora?.() ?? { estimadoMs: null, nivel: 'sin-estimacion' }
@@ -223,6 +244,22 @@ export default function ControlPartido({ fabrica = controladorDelNavegador }) {
     } catch { setAviso({ tipo: 'error', texto: 'No se pudo comprobar. El envío sigue detenido y todo sigue guardado aquí.' }) } finally { setOcupados((n) => n - 1) }
   }
 
+  // REPORT_178: tras el rechazo definitivo del INICIO (no de otras órdenes) se ofrece actualizar la preparación, con confirmación.
+  const puedeReanudarInicio = est.propietario === true && ses?.detenida?.causa === 'rechazo-definitivo' && ses.inicio === 'sin-iniciar'
+    && ses.ultimoRechazo?.tipo === 'iniciar-partido' && !ses.divergencia && est.conexion?.enLinea !== false
+  const reanudarInicio = async () => {
+    setConfirmando(null)
+    const ctl = ctlRef.current
+    if (!ctl?.reanudarTrasRechazoDeInicio) return
+    setOcupados((n) => n + 1)
+    try {
+      const m = textoDeReanudacion(await ctl.reanudarTrasRechazoDeInicio({ confirmadoPorOperador: true }))
+      clearTimeout(temporizadorAviso.current)
+      setAviso(m)
+      if (m.tipo !== 'error') temporizadorAviso.current = setTimeout(() => setAviso(null), MS_AVISO * 3)
+    } catch { setAviso({ tipo: 'error', texto: 'No se pudo actualizar la preparación. No se hizo nada y lo guardado aquí se conserva.' }) } finally { setOcupados((n) => n - 1) }
+  }
+
   const registrar = (intencion, opciones) => intentar(intencion, (ctl, cmdId) => ctl.registrar({ tipo: intencion.tipo, datos: intencion.datos, cmdId }), opciones)
 
   const comenzar = async () => {
@@ -254,6 +291,14 @@ export default function ControlPartido({ fabrica = controladorDelNavegador }) {
             <div key={a.id} className={`cp-aviso ${a.nivel}`} role={a.nivel === 'error' ? 'alert' : 'status'} data-aviso={a.id}>
               <span>{a.texto}</span>
               {a.accion === 'reintentar' && sit.puedeActuar && <button type="button" className="btn fantasma" onClick={() => ctlRef.current?.reintentarAhora()}>Reintentar ahora</button>}
+              {a.id === 'rechazo' && puedeReanudarInicio && (confirmando === 'reanudar-inicio' ? (
+                <div className="cp-confirmar" role="group" aria-label="Confirmar la actualización de la preparación">
+                  <p>Se vuelve a leer el partido y su preparación en el servidor (reglas de categoría y plantilla) y esta pantalla pasa a usar esos datos. No se inicia el partido ni se cambia nada en el servidor, y lo guardado aquí se conserva. Después tendrás que pulsar «Comenzar el partido» y confirmar otra vez.</p>
+                  <div className="fila"><button type="button" className="btn" onClick={reanudarInicio}>Sí, actualizar</button><button type="button" className="btn fantasma" onClick={() => setConfirmando(null)}>Cancelar</button></div>
+                </div>
+              ) : (
+                <button type="button" className="btn fantasma" onClick={() => setConfirmando('reanudar-inicio')}>Actualizar la preparación</button>
+              ))}
               {a.id === 'no-autorizado' && puedeRecuperar && (confirmando === 'recuperar' ? (
                 <div className="cp-confirmar" role="group" aria-label="Confirmar la comprobación de la autorización">
                   <p>¿Volver a comprobar la autorización de este teléfono? Se le pregunta al servidor con la misma autorización de siempre (no se renueva ni se cambia nada). Si la acepta, lo guardado aquí se enviará en su orden; si no, el envío sigue detenido y no se pierde nada. El servidor puede retirarla de nuevo en cualquier momento.</p>
@@ -264,9 +309,14 @@ export default function ControlPartido({ fabrica = controladorDelNavegador }) {
               ))}
             </div>
           ))}
-          {aviso && <div className={`cp-aviso ${aviso.tipo === 'error' ? 'error' : aviso.tipo === 'ok' ? 'ok' : 'info'}`} role={aviso.tipo === 'error' ? 'alert' : 'status'} data-aviso="resultado">{aviso.texto}</div>}
+          {aviso && !(aviso.tipo === 'ok' && ses?.detenida?.causa === 'rechazo-definitivo' && /guardad[oa] en este teléfono/.test(aviso.texto)) && <div className={`cp-aviso ${aviso.tipo === 'error' ? 'error' : aviso.tipo === 'ok' ? 'ok' : 'info'}`} role={aviso.tipo === 'error' ? 'alert' : 'status'} data-aviso="resultado">{aviso.texto}</div>}
         </div>
 
+        {ses && alcanceFaltas === 'no-disponible' && (
+          <div className="cp-aviso aviso" role="status" data-aviso="reglas-invalidas">
+            Las reglas de categoría guardadas para este partido no son válidas, así que no se muestran las faltas de equipo y no se puede comenzar, cambiar de periodo ni corregir el reloj si el partido no tiene duración propia. Los puntos, las faltas de jugadores y el cierre siguen disponibles. Avisa al organizador.
+          </div>
+        )}
         {ses && viz && !viz.disponible && est.propietario && (
           <div className="cp-aviso aviso" role="status" data-aviso="sin-datos-de-pantalla">
             Faltan los nombres y números de los jugadores en este teléfono. Se piden al servidor cuando hay conexión; mientras tanto no se puede anotar a jugadores. El reloj y el periodo siguen disponibles.
@@ -277,8 +327,8 @@ export default function ControlPartido({ fabrica = controladorDelNavegador }) {
         )}
 
         <CabeceraConsola
-          local={{ aria: `Puntos de ${equipos[0]?.nombre ?? 'local'}`, puntos: equipos[0] ? marcadorEquipo(eventos, equipos[0].id) : '—', etiqueta: equipos[0]?.nombre ?? '—', faltas: equipos[0] ? faltasEquipo(eventos, equipos[0].id) : 0 }}
-          visita={{ aria: `Puntos de ${equipos[1]?.nombre ?? 'visita'}`, puntos: equipos[1] ? marcadorEquipo(eventos, equipos[1].id) : '—', etiqueta: equipos[1]?.nombre ?? '—', faltas: equipos[1] ? faltasEquipo(eventos, equipos[1].id) : 0 }}
+          local={{ aria: `Puntos de ${equipos[0]?.nombre ?? 'local'}`, puntos: equipos[0] ? marcadorEquipo(eventos, equipos[0].id) : '—', etiqueta: equipos[0]?.nombre ?? '—', faltas: equipos[0] ? faltasDeEquipo(equipos[0]) : null, faltasTexto }}
+          visita={{ aria: `Puntos de ${equipos[1]?.nombre ?? 'visita'}`, puntos: equipos[1] ? marcadorEquipo(eventos, equipos[1].id) : '—', etiqueta: equipos[1]?.nombre ?? '—', faltas: equipos[1] ? faltasDeEquipo(equipos[1]) : null, faltasTexto }}
           periodoTexto={`${periodo}º ${nombrePeriodo(deporte)}`}
           relojTexto={mmss(falta)}
           ariaReloj="Reloj del periodo"

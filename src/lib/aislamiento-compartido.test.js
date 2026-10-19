@@ -88,7 +88,7 @@ describe('aislamiento del modo compartido', () => {
   // REPORT_135: las pantallas públicas están montadas y se alimentan SOLO de las lecturas públicas del servidor.
   describe('pantallas públicas', () => {
     const PUBLICAS = ['pantallas/publico/InicioCompartido.jsx', 'pantallas/publico/LigaCompartida.jsx', 'pantallas/publico/PartidoPublico.jsx', 'pantallas/publico/EquipoPublico.jsx']
-    const PUROS_PERMITIDOS = ['lib/categorias.js', 'lib/enlaces.js', 'lib/reloj-calculo.js', 'lib/tabla-posiciones.js', 'lib/volver.js'] // tabla-posiciones.js: las reglas de la tabla, una sola vez (REPORT_156); enlaces.js (slug) y volver.js (destino de «Salir» validado): puros y sin importaciones (REPORT_158)
+    const PUROS_PERMITIDOS = ['lib/categorias.js', 'lib/enlaces.js', 'lib/reglas-categoria.js', 'lib/reloj-calculo.js', 'lib/rutas-organizador.js', 'lib/tabla-posiciones.js', 'lib/volver.js'] // tabla-posiciones.js: las reglas de la tabla, una sola vez (REPORT_156); enlaces.js (slug) y volver.js (destino de «Salir» validado): puros y sin importaciones (REPORT_158)
     const deLasPublicas = [...new Set(PUBLICAS.flatMap((a) => alcanzables(join(RAIZ, a))))].sort()
     const propios = deLasPublicas.filter((a) => a.startsWith('lib/publico/') || a.startsWith('pantallas/publico/'))
 
@@ -102,7 +102,10 @@ describe('aislamiento del modo compartido', () => {
       expect(deLasPublicas.some((a) => a.startsWith('lib/control/') || a.startsWith('lib/motor/'))).toBe(false)
     })
     it('los cálculos puros permitidos no importan nada', () => {
-      for (const a of PUROS_PERMITIDOS) expect(alcanzables(join(RAIZ, a)), a).toEqual([a])
+      // Única excepción deliberada (REPORT_177): reloj-calculo valida las reglas de categoría con la MISMA función que el resto
+      // (reglas-categoria.js), que a su vez solo importa la lista de categorías. Nada más.
+      const DEPENDENCIAS = { 'lib/reloj-calculo.js': ['lib/categorias.js', 'lib/reglas-categoria.js'], 'lib/reglas-categoria.js': ['lib/categorias.js'] }
+      for (const a of PUROS_PERMITIDOS) expect(alcanzables(join(RAIZ, a)).sort(), a).toEqual([a, ...(DEPENDENCIAS[a] ?? [])].sort())
     })
     it('solo cliente.js pide a la red, y solo las dos lecturas públicas; nadie toca almacenamiento, cookies ni credenciales', () => {
       for (const archivo of propios.filter((a) => /\.jsx?$/.test(a) && !/\.test\./.test(a) && !a.endsWith('datos-prueba.js'))) {

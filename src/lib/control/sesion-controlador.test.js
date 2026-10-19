@@ -230,8 +230,11 @@ describe('inicio, lecturas frescas y compuertas', () => {
     for (let i = 0; i < 10; i += 1) await tick()
     a.f.guiones.preparacion.push(respuesta(503, { error: 'preparacion-no-disponible' }))
     expect(await a.ctl.iniciarPartido({ cmdId: cmd('x'), confirmadoPorOperador: true })).toMatchObject({ ok: false, motivo: 'preparacion-no-disponible' })
-    a.f.guiones.estado.push(respuesta(401, { error: 'no-autorizado' }))
+    a.f.guiones.estado.push(respuesta(503, { error: 'x' }))
     expect(await a.ctl.iniciarPartido({ cmdId: cmd('x'), confirmadoPorOperador: true })).toMatchObject({ ok: false, motivo: 'estado-no-disponible' })
+    // un 401 (acceso retirado, vencido o de otro teléfono) se dice como tal (REPORT_181), igual que en la recuperación y en el emisor; tampoco crea ni encola nada
+    a.f.guiones.estado.push(respuesta(401, { error: 'no-autorizado' }))
+    expect(await a.ctl.iniciarPartido({ cmdId: cmd('x'), confirmadoPorOperador: true })).toMatchObject({ ok: false, motivo: 'no-autorizado' })
     a.f.guiones.estado.push(respuesta(507, { error: 'estado-demasiado-grande' }))
     expect(await a.ctl.iniciarPartido({ cmdId: cmd('x'), confirmadoPorOperador: true })).toMatchObject({ ok: false, motivo: 'estado-demasiado-grande' })
     expect((await leer(a)).motivo).toBe('sesion-inexistente')

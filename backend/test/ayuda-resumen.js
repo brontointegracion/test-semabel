@@ -64,7 +64,7 @@ export const resumenGuardado = (ligaId, gameId) => dentro(ligaId, (inst) => {
   const f = inst.almacen.sql.exec('SELECT * FROM resumen_partido WHERE partido_id = ?', gameId).toArray()[0]
   return f ? {
     rev: f.rev_fuente, localId: f.local_id, visitaId: f.visita_id, localPuntos: f.local_puntos, visitaPuntos: f.visita_puntos,
-    localFaltas: f.local_faltas, visitaFaltas: f.visita_faltas, periodo: f.periodo, version: f.version_proyeccion,
+    localFaltas: f.local_faltas, visitaFaltas: f.visita_faltas, localFaltasPeriodo: f.local_faltas_periodo, visitaFaltasPeriodo: f.visita_faltas_periodo, periodo: f.periodo, version: f.version_proyeccion,
   } : null
 })
 

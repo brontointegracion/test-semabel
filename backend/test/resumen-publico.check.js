@@ -54,12 +54,13 @@ async function verificarTodo(ligaId, gameId = 'P') {
 
 describe('1. derivación y paridad con los eventos autoritativos, orden por orden', () => {
   it('la derivación es la de las cuentas del marcador (anulados no cuentan, periodo con tope)', () => {
-    const ev = (tipo, equipoId, puntos, anulado = false) => ({ tipo, equipoId, puntos, anulado })
+    let n = 0
+    const ev = (tipo, equipoId, puntos, anulado = false) => ({ seq: ++n, tipo, equipoId, puntos, anulado })
     const r = resumirPartido({
       eventos: [ev('punto', 'A', 3), ev('punto', 'B', 2), ev('punto', 'A', 2, true), ev('falta', 'A', 0), ev('falta', 'B', 0, true), ev('periodo', undefined, 0), ev('periodo', undefined, 0, true)],
       localId: 'A', visitaId: 'B', deporte: 'baloncesto',
     })
-    expect(r).toEqual({ localId: 'A', visitaId: 'B', localPuntos: 3, visitaPuntos: 2, localFaltas: 1, visitaFaltas: 0, periodo: 2 })
+    expect(r).toEqual({ localId: 'A', visitaId: 'B', localPuntos: 3, visitaPuntos: 2, localFaltas: 1, visitaFaltas: 0, localFaltasPeriodo: 0, visitaFaltasPeriodo: 0, periodo: 2 })
     const muchos = Array.from({ length: 9 }, () => ev('periodo', undefined, 0))
     expect(resumirPartido({ eventos: muchos, localId: 'A', visitaId: 'B', deporte: 'baloncesto' }).periodo).toBe(4)
     expect(() => resumirPartido({ eventos: [ev('punto', 'A', 'x')], localId: 'A', visitaId: 'B', deporte: 'baloncesto' })).toThrow('resumen-invalido')

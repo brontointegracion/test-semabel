@@ -2,6 +2,7 @@ import {
   advertenciasDeRechazo, aplicarEfectos, decidirOrden,
 } from './reglas'
 import { evaluarPreparacion, preparacionIntegra } from './preparacion'
+import { firmaDeReglas } from '../reglas-categoria'
 import { contenidoCanonico, validarSobre } from './sobre'
 import { VERSION_MOTOR } from './tipos'
 
@@ -61,6 +62,16 @@ function puertaDePreparacion(estado, sobre, ctx, prep) {
     }
     const r = evaluarPreparacion(prep, { gameId: ctx.gameId })
     if (!r.lista) return no(r.motivo, r.detalle ?? {})
+    // Las reglas de categoría que la persona confirmó deben ser EXACTAMENTE las que el servidor va a fijar con este inicio.
+    // Unas reglas inválidas las rechaza decidirOrden con su diagnóstico.
+    const firma = firmaDeReglas(estado.config)
+    if (firma !== 'invalidas') {
+      if (sobre.reglasConfirmadas === undefined) {
+        if (firma !== 'ninguna') return no('reglas-no-confirmadas', { reglasServidor: firma })
+      } else if (sobre.reglasConfirmadas !== firma) {
+        return no('reglas-desactualizadas', { reglasServidor: firma, reglasConfirmadas: sobre.reglasConfirmadas })
+      }
+    }
     return null
   } catch {
     return no('preparacion-no-disponible')

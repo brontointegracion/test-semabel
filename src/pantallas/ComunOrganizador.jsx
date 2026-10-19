@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Navigate, useLocation } from 'react-router-dom'
+import { Link, Navigate, useLocation } from 'react-router-dom'
 import { invalidar, refrescar, useSesionServidor } from '../lib/sesion-servidor'
+import { RUTA_ACCESO } from '../lib/rutas-organizador'
 import { SIN_CONEXION } from '../lib/roster-api'
 import './PanelOrganizador.css'
 
@@ -23,8 +24,16 @@ export function Protegida({ children }) {
     return () => { window.removeEventListener('focus', alVolver); document.removeEventListener('visibilitychange', alVolver) }
   }, [])
   if (estado === 'cargando') return <main className="panel"><p className="sub" role="status">Comprobando…</p></main>
-  if (estado === 'sin-sesion') return <Navigate to="/anthony/access" replace state={{ desde: ubicacion.pathname }} />
+  if (estado === 'sin-sesion') return <Navigate to={RUTA_ACCESO} replace state={{ desde: `${ubicacion.pathname}${ubicacion.search}` }} />
   return children
+}
+
+/**
+ * Enlace al nivel de ARRIBA del panel («‹ Mis ligas», «‹ <liga>»): un enlace a su destino lógico (no el historial del navegador, así no hay
+ * bucles), rojo, algo más grande y con 44 px de alto. Una sola pieza para todas las pantallas del organizador (REPORT_180).
+ */
+export function EnlaceVolver({ to, children }) {
+  return <Link className="enlace-volver" to={to}>‹ {children}</Link>
 }
 
 /** Hoja modal (mismas clases que la del prototipo, sin importar su módulo). */

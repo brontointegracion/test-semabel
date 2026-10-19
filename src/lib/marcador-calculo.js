@@ -32,6 +32,17 @@ export function faltasEquipo(eventos, equipoId) {
   return vivos(eventos, 'falta').filter((e) => e.equipoId === equipoId).length
 }
 
+/**
+ * Faltas vivas de un equipo en el periodo VISIBLE actual (para el alcance 'periodo'). El periodo de cada falta sale de su
+ * lugar en el historial (`periodoEnPosicion`), no de un campo guardado: deshacer o anular una transición de periodo mueve
+ * las faltas con ella, y una falta anulada o rehecha de un periodo anterior no toca la cuenta del actual. Los eventos no
+ * se modifican ni se descartan.
+ */
+export function faltasEquipoPeriodo(eventos, equipoId, deporte) {
+  const actual = periodoVisible(eventos, deporte)
+  return vivos(eventos, 'falta').filter((e) => e.equipoId === equipoId && periodoEnPosicion(eventos, e.seq, deporte) === actual).length
+}
+
 export function puntosJugador(eventos, jugadorId) {
   return vivos(eventos, 'punto')
     .filter((e) => e.jugadorId === jugadorId)

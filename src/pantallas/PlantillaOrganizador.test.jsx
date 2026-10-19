@@ -27,7 +27,7 @@ beforeEach(() => {
 })
 afterEach(() => { cleanup(); candados.quitar(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
-const abrir = (ruta = '/anthony/ligas/LIGA-U10/equipos/E1') => render(<MemoryRouter initialEntries={[ruta]}><AppCompartida /></MemoryRouter>)
+const abrir = (ruta = '/organizador/ligas/LIGA-U10/equipos/E1') => render(<MemoryRouter initialEntries={[ruta]}><AppCompartida /></MemoryRouter>)
 const abrirPlantilla = async () => { abrir(); await screen.findByText('Beto Muestra'); await screen.findByRole('heading', { name: 'Alfa' }) }
 const fila = (nombre) => within(screen.getByText(nombre).closest('li'))
 const hoja = () => within(screen.getByRole('dialog'))
@@ -44,13 +44,15 @@ const op = (req) => req.json.operacionId
 
 describe('navegación autorizada: ligas → equipos → plantilla (solo lecturas del servidor)', () => {
   it('muestra las ligas con su nombre, los equipos con sus conteos y la plantilla separando activos e inactivos', async () => {
-    abrir('/anthony/ligas')
-    const enlace = await screen.findByRole('link', { name: 'Liga Sub-10' })
-    expect(screen.getByRole('link', { name: 'Liga Sub-12' })).toBeTruthy()
+    abrir('/organizador')
+    const enlace = await screen.findByRole('link', { name: 'Administrar liga Liga Sub-10' })
+    expect(screen.getByRole('link', { name: 'Administrar liga Liga Sub-12' })).toBeTruthy()
+    expect(screen.getByText('Liga Sub-10')).toBeTruthy() // el nombre sigue visible como contexto, junto a la acción
     await usuario.click(enlace)
     expect(await screen.findByRole('heading', { name: 'Liga Sub-10' })).toBeTruthy()
     expect(screen.getByText('2 activos · 2 inactivos')).toBeTruthy()
-    await usuario.click(screen.getByRole('link', { name: 'Alfa' }))
+    expect(screen.getByText('Alfa')).toBeTruthy() // el nombre del equipo sigue visible como contexto
+    await usuario.click(screen.getByRole('link', { name: 'Gestionar jugadores de Alfa' }))
     await screen.findByText('Beto Muestra')
     expect(within(screen.getByRole('list', { name: 'Plantilla activa' })).getAllByRole('listitem')).toHaveLength(2)
     expect(within(screen.getByRole('list', { name: 'Jugadores inactivos' })).getAllByRole('listitem')).toHaveLength(2)
@@ -61,7 +63,7 @@ describe('navegación autorizada: ligas → equipos → plantilla (solo lecturas
   })
 
   it('una liga que el organizador no posee no se abre', async () => {
-    abrir('/anthony/ligas/LIGA-AJENA/equipos/E1')
+    abrir('/organizador/ligas/LIGA-AJENA/equipos/E1')
     expect((await screen.findByRole('alert')).textContent).toContain('No tienes acceso a esa liga.')
     expect(srv.peticiones.some((p) => p.url.includes('LIGA-AJENA'))).toBe(false)
   })
@@ -75,9 +77,9 @@ describe('navegación autorizada: ligas → equipos → plantilla (solo lecturas
 
   it('una liga que no se puede leer se muestra por su identificador con aviso, sin inventar nombre', async () => {
     delete srv.estado.ligas['LIGA-U12']
-    abrir('/anthony/ligas')
-    await screen.findByRole('link', { name: 'Liga Sub-10' })
-    expect(screen.getByRole('link', { name: 'LIGA-U12' })).toBeTruthy()
+    abrir('/organizador')
+    await screen.findByRole('link', { name: 'Administrar liga Liga Sub-10' })
+    expect(screen.getByRole('link', { name: 'Administrar liga LIGA-U12' })).toBeTruthy()
     expect(screen.getByText(/No pudimos cargar esta liga/)).toBeTruthy()
   })
 })
@@ -454,7 +456,7 @@ describe('sesión terminada y cierre de sesión con acciones sin confirmar', () 
     await enviarAlta()
     await screen.findByRole('group', { name: /Acción sin confirmar/ })
     cleanup(); __reiniciar()
-    abrir('/anthony/ligas')
+    abrir('/organizador')
     await screen.findByText('Mis ligas')
     expect(screen.getByText(/cerrar sesión no las borra/i)).toBeTruthy()
     await usuario.click(screen.getByRole('button', { name: 'Cerrar sesión' }))
