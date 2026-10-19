@@ -5,7 +5,7 @@ import worker from '../src/worker.js'
 // Variante SOLO de pruebas: hora controlable y una pausa entre leer y confirmar para forzar
 // el entrelazado de otra petición. El código de producción no sabe nada de esto.
 // Se comparte por globalThis: la prueba y el Worker pueden cargar el módulo por separado.
-export const control = (globalThis.__controlPrueba ??= { ahoraMs: null, pausa: null, pausaAut: null, trasConfirmar: null, desfasesAcceso: null, limitesEstado: null, pausaEstado: null, limitesPublicos: null, limitesReparacion: null, limitesEquipo: null })
+export const control = (globalThis.__controlPrueba ??= { ahoraMs: null, pausa: null, pausaAut: null, trasConfirmar: null, desfasesAcceso: null, limitesEstado: null, pausaEstado: null, limitesPublicos: null, limitesReparacion: null, limitesEquipo: null, fallaAsignacion: false })
 
 export class LigaDO extends LigaDOReal {
   ahora() { return control.ahoraMs ?? Date.now() }
@@ -23,6 +23,8 @@ export class LigaDO extends LigaDOReal {
 // `desfasesAcceso` ([ms, …]) adelanta o atrasa el reloj del objeto de acceso en sus próximas lecturas, una por llamada,
 // para simular el desfase entre los relojes de dos objetos.
 export class AccesoDO extends AccesoDOReal {
+  // `fallaAsignacion`: lanza dentro de la transacción de asignarLigas, tras escribir la propiedad y antes del recibo (prueba de reversión).
+  puntoDeFallaAsignacion() { if (control.fallaAsignacion) throw new Error('falla inyectada (prueba)') }
   ahora() {
     const desfase = control.desfasesAcceso?.length ? control.desfasesAcceso.shift() : 0
     return (control.ahoraMs ?? Date.now()) + desfase

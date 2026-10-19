@@ -2,6 +2,8 @@ import { DurableObject } from 'cloudflare:workers'
 import {
   DURACIONES, MAX_SESIONES, REFRESCO_USO_SESION_MS,
 } from './config.js'
+import { canonico } from '../../../src/lib/motor/sobre.js'
+import { sha256Hex } from '../credenciales.js'
 import { aleatorioHex, generarCodigo, hashSecreto, hashesIguales, partirCodigo } from './codigos.js'
 import { crearEsquemaAcceso } from './esquema-acceso.js'
 import { despuesDeFalloDeCodigo, fuenteBloqueada, registrarFalloFuente } from './limites.js'
@@ -16,6 +18,9 @@ import { despuesDeFalloDeCodigo, fuenteBloqueada, registrarFalloFuente } from '.
 
 const COOKIE = /^([0-9a-f]{32})\.([0-9a-f]{64})$/
 const ID_LIGA = /^[A-Za-z0-9_-]{1,64}$/
+const ID_OPERACION = /^[A-Za-z0-9_-]{16,64}$/
+const ID_ORGANIZADOR = /^[A-Za-z0-9_-]{1,64}$/
+const MAX_LIGAS_ASIGNACION = 10
 const FALLO = Object.freeze({ tipo: 'no-autorizado' })
 
 export class AccesoDO extends DurableObject {
@@ -58,6 +63,53 @@ export class AccesoDO extends DurableObject {
       )
       this.#auditar('organizador-creado', { organizadorId: id }, ahora)
       return { ok: true, organizadorId: id, codigo: codigo.texto, expiraEn }
+    })
+  }
+
+  /** Punto de extensión SOLO de pruebas: se llama dentro de la transacción de `asignarLigas`, tras escribir la propiedad y antes del recibo. */
+  puntoDeFallaAsignacion() {}
+
+  /**
+   * AÑADE propiedad de ligas a un organizador EXISTENTE y ACTIVO, indicado de forma explícita (REPORT_187). Solo añade: nunca quita,
+   * transfiere ni reemplaza; no toca el código, sus hashes, la caducidad, las sesiones ni la propiedad ya existente.
+   *   - Recibo por `operacionId` con la huella del contenido (organizador + ligas ordenadas): mismo id y mismo contenido → el resultado
+   *     ORIGINAL con `reproducido: true` y ninguna escritura; mismo id y otro contenido → 409 `operacion-conflicto`, ninguna escritura.
+   *   - Una liga que ya es de OTRO organizador es un conflicto: se rechaza TODO el lote, sin escribir nada (no hay lotes parciales).
+   *   - Una liga que ya es del organizador indicado no es un error: se informa en `yaExistian`.
+   *   - Propiedad + auditoría + recibo se escriben en UNA transacción: si algo falla, no queda nada.
+   * El llamador (la ruta) ya validó la forma y la admisión de las ligas. → { ok:true, … } | { ok:false, error, status }
+   */
+  async asignarLigas({ operacionId, organizadorId, ligas }) {
+    if (typeof operacionId !== 'string' || !ID_OPERACION.test(operacionId)) return { ok: false, status: 422, error: 'operacion-invalida' }
+    if (typeof organizadorId !== 'string' || !ID_ORGANIZADOR.test(organizadorId)) return { ok: false, status: 422, error: 'organizador-invalido' }
+    if (!Array.isArray(ligas) || ligas.length < 1 || ligas.length > MAX_LIGAS_ASIGNACION || !ligas.every((l) => typeof l === 'string' && ID_LIGA.test(l)) || new Set(ligas).size !== ligas.length) {
+      return { ok: false, status: 422, error: 'ligas-invalidas' }
+    }
+    const ordenadas = [...ligas].sort()
+    const huella = await sha256Hex(canonico({ tipo: 'asignar-ligas', organizadorId, ligas: ordenadas }))
+    return this.almacen.transactionSync(() => {
+      const sql = this.almacen.sql
+      const previo = sql.exec('SELECT huella, resultado_json FROM asignaciones_liga WHERE operacion_id = ?', operacionId).toArray()[0]
+      if (previo) {
+        if (previo.huella !== huella) return { ok: false, status: 409, error: 'operacion-conflicto' }
+        return { ...JSON.parse(previo.resultado_json), reproducido: true }
+      }
+      const org = sql.exec('SELECT id FROM organizadores WHERE id = ? AND activo = 1', organizadorId).toArray()[0]
+      if (!org) return { ok: false, status: 409, error: 'organizador-no-activo' }
+      const ajenas = ordenadas.filter((l) => sql.exec('SELECT 1 AS x FROM propiedad WHERE liga_id = ? AND organizador_id <> ? LIMIT 1', l, organizadorId).toArray().length > 0)
+      if (ajenas.length) return { ok: false, status: 409, error: 'liga-con-otro-propietario', ligas: ajenas }
+      const yaExistian = ordenadas.filter((l) => sql.exec('SELECT 1 AS x FROM propiedad WHERE organizador_id = ? AND liga_id = ?', organizadorId, l).toArray().length > 0)
+      const agregadas = ordenadas.filter((l) => !yaExistian.includes(l))
+      const ahora = this.ahora()
+      for (const l of agregadas) sql.exec('INSERT INTO propiedad (organizador_id, liga_id) VALUES (?, ?)', organizadorId, l)
+      this.#auditar('ligas-asignadas', { organizadorId, detalle: agregadas.join(',') }, ahora)
+      this.puntoDeFallaAsignacion()
+      const resultado = {
+        ok: true, organizadorId, agregadas, yaExistian,
+        ligas: sql.exec('SELECT liga_id FROM propiedad WHERE organizador_id = ? ORDER BY liga_id', organizadorId).toArray().map((r) => r.liga_id),
+      }
+      sql.exec('INSERT INTO asignaciones_liga (operacion_id, huella, resultado_json, creado_en) VALUES (?, ?, ?, ?)', operacionId, huella, JSON.stringify(resultado), ahora)
+      return { ...resultado, reproducido: false }
     })
   }
 

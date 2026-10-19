@@ -20,6 +20,7 @@ import {
 //   POST /v1/organizador/ligas/{liga}/partidos/{juego}/control/revocar   SOLO antes del inicio
 //   POST /v1/ligas/{liga}/partidos/{juego}/activar                código del partido + hash del token del teléfono
 //   POST /v1/admin/organizador[/codigo/rotar|/sesiones/cerrar|/desactivar]   operador; DESACTIVADA por defecto
+//   POST /v1/admin/organizador/ligas                              operador: AÑADE ligas a un organizador existente y activo (REPORT_187)
 //
 // No existe ninguna ruta para revocar el control después del inicio, ni para liberar un partido atascado.
 // ---------------------------------------------------------------------------
@@ -32,7 +33,7 @@ const RE_CODIGO = new RegExp(`^/v1/organizador/ligas/(${ID})/partidos/(${ID})/co
 const RE_CONTROL = new RegExp(`^/v1/organizador/ligas/(${ID})/partidos/(${ID})/control$`)
 const RE_REVOCAR = new RegExp(`^/v1/organizador/ligas/(${ID})/partidos/(${ID})/control/revocar$`)
 const RE_ACTIVAR = new RegExp(`^/v1/ligas/(${ID})/partidos/(${ID})/activar$`)
-const RE_ADMIN = /^\/v1\/admin\/organizador(\/codigo\/rotar|\/sesiones\/cerrar|\/desactivar)?$/
+const RE_ADMIN = /^\/v1\/admin\/organizador(\/codigo\/rotar|\/sesiones\/cerrar|\/desactivar|\/ligas)?$/
 
 export const esRutaDeAcceso = (pathname) => RE_LOGIN.test(pathname) || pathname.startsWith('/v1/organizador/')
   || pathname.startsWith('/v1/admin/') || RE_ACTIVAR.test(pathname)
@@ -113,6 +114,18 @@ export async function manejarAcceso(request, env, pathname) {
         if (!Array.isArray(valor?.ligas) || !valor.ligas.every((l) => ligaAdmitida(env, l))) return responder(422, { error: 'ligas-invalidas' })
         const r = await acceso.provisionar({ nombre: valor.nombre, ligas: valor.ligas })
         return r.ok ? responder(201, r) : responder(r.error === 'organizador-existente' ? 409 : 422, { error: r.error })
+      }
+      if (m[1] === '/ligas') {
+        // Cuerpo EXACTO { operacionId, organizadorId, ligas }: el organizador se indica de forma explícita (nunca se deduce) y cada liga debe estar admitida.
+        const v = valor
+        const forma = v !== null && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 3
+          && typeof v.operacionId === 'string' && typeof v.organizadorId === 'string' && Array.isArray(v.ligas)
+        if (!forma) return responder(422, { error: 'payload-invalido' })
+        if (!v.ligas.every((l) => typeof l === 'string' && ligaAdmitida(env, l))) return responder(422, { error: 'ligas-invalidas' })
+        const r = await acceso.asignarLigas({ operacionId: v.operacionId, organizadorId: v.organizadorId, ligas: v.ligas })
+        if (!r.ok) return responder(r.status, { error: r.error, ...(r.ligas ? { ligas: r.ligas } : {}) })
+        const { ok, ...resto } = r
+        return responder(resto.reproducido ? 200 : 201, { ok: true, ...resto })
       }
       if (m[1] === '/codigo/rotar') {
         const r = await acceso.rotarCodigo({ cerrarSesiones: valor?.cerrarSesiones !== false })

@@ -36,12 +36,14 @@
     //  - `ACCESO_ADMIN_HABILITADO` "0" por omisión (puerta del operador cerrada). Se abre SOLO en una ventana de carga, a propósito
     //    y con el secreto ACCESO_ADMIN_TOKEN (`wrangler secret put … --env production`); nunca aquí. PERMITIR_SEMILLA "0" y sin SEMILLA_TOKEN.
     //  - Antes de desplegar hay que compilar `../dist` con las variables públicas (ver README: «Producción»).
+    //  - SIMULACRO-PILOTO (REPORT_186) es una liga FICTICIA de pruebas de punta a punta: solo se admite para enrutar hacia su objeto; no concede
+    //    permisos (la propiedad por organizador sigue siendo la de siempre; ver README, «Simulacro»). Retirarla de esta lista la cierra de nuevo.
     "production": {
       "name": "semabel-production",
       "workers_dev": false,
       "preview_urls": false,
       "routes": [{ "pattern": "semabel.com", "custom_domain": true }],
-      "vars": { "ENTORNO": "produccion", "PERMITIR_SEMILLA": "0", "LIGAS_ADMITIDAS": "PLATINIUM-U10,PLATINIUM-U12", "ACCESO_ORIGEN": "https://semabel.com", "ACCESO_ADMIN_HABILITADO": "0" },
+      "vars": { "ENTORNO": "produccion", "PERMITIR_SEMILLA": "0", "LIGAS_ADMITIDAS": "PLATINIUM-U10,PLATINIUM-U12,SIMULACRO-PILOTO", "ACCESO_ORIGEN": "https://semabel.com", "ACCESO_ADMIN_HABILITADO": "0" },
       "durable_objects": { "bindings": [{ "name": "LIGA", "class_name": "LigaDO" }, { "name": "ACCESO", "class_name": "AccesoDO" }] },
       "assets": { "directory": "../dist", "not_found_handling": "single-page-application", "run_worker_first": ["/v1/*"] }
     }

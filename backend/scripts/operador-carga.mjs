@@ -6,6 +6,7 @@
 //     node scripts/operador-carga.mjs equipos     --equipos LIGA_ID=anexo.json [--equipos …]   (AÑADE equipos a una liga ya cargada; cargaId NUEVO)
 //     node scripts/operador-carga.mjs provisionar --nombre "Nombre" --ligas LIGA_A,LIGA_B
 //     node scripts/operador-carga.mjs recuperar
+//     node scripts/operador-carga.mjs asignar     --organizador org-… --ligas LIGA_A[,LIGA_B]   (AÑADE ligas a un organizador existente; solo añade)
 //     node scripts/operador-carga.mjs verificar   --estructura U10.json [--equipos LIGA_ID=anexo.json] --partidos LIGA_ID=lote.json
 //
 //   Aplicar (explícito): añadir --aplicar --origen ORIGEN --diario RUTA-PRIVADA/diario.json
@@ -18,11 +19,11 @@
 //   Opcional: --tiempo-ms N (1000–60000) tiempo máximo por petición. Sin redirecciones. Con --remoto no se ejecuta con la verificación
 //   TLS desactivada (NODE_TLS_REJECT_UNAUTHORIZED=0) ni con NODE_EXTRA_CA_CERTS.
 import { existsSync, readFileSync, statSync } from 'node:fs'
-import { aplicarCarga, construirPlanCarga, construirPlanOrganizador, resumenDelPlanCarga, verificarCarga } from './lib/operador.js'
+import { aplicarCarga, construirPlanAsignacion, construirPlanCarga, construirPlanOrganizador, resumenDelPlanCarga, verificarCarga } from './lib/operador.js'
 import { almacenDeDiario, leerSecretoDeArchivo, salidaDeCodigoPrivada } from './lib/archivos-privados.mjs'
 import { bloqueoDeEntorno, tiempoValido, validarDestino } from './lib/transporte.js'
 
-const COMANDOS = ['estructura', 'partidos', 'equipos', 'provisionar', 'recuperar', 'verificar']
+const COMANDOS = ['estructura', 'partidos', 'equipos', 'provisionar', 'recuperar', 'asignar', 'verificar']
 const BANDERAS = ['--aplicar', '--leer', '--remoto', '--confirmo-rotacion', '--confirmo-rotacion-repetida']
 const REPETIBLES = ['estructura', 'partidos', 'equipos']
 const MAX_ARCHIVO = 256 * 1024
@@ -52,7 +53,7 @@ for (let i = 0; i < argv.length; i += 1) {
     i += 1
   } else fallar('argumento-desconocido')
 }
-const PERMITIDAS = ['estructura', 'partidos', 'equipos', 'nombre', 'ligas', 'origen', 'diario', 'token-archivo', 'codigo-salida', 'tiempo-ms']
+const PERMITIDAS = ['estructura', 'partidos', 'equipos', 'nombre', 'ligas', 'organizador', 'origen', 'diario', 'token-archivo', 'codigo-salida', 'tiempo-ms']
 for (const k of Object.keys(valores)) if (!PERMITIDAS.includes(k)) fallar('opcion-desconocida', { opcion: k })
 
 function leerArchivo(ruta) {
@@ -76,7 +77,9 @@ if (leyendo && comando !== 'verificar') fallar('leer-solo-con-verificar')
 const remoto = banderas.has('--remoto')
 
 // ---- Plan / simulacro (sin red) ----
-const plan = comando === 'provisionar' || comando === 'recuperar'
+const plan = comando === 'asignar'
+  ? await construirPlanAsignacion({ organizadorId: valores.organizador, ligas: valores.ligas ? valores.ligas.split(',') : undefined })
+  : comando === 'provisionar' || comando === 'recuperar'
   ? await construirPlanOrganizador({ tipo: comando, nombre: valores.nombre, ligas: valores.ligas ? valores.ligas.split(',') : undefined })
   : await construirPlanCarga({ tipo: comando === 'verificar' ? 'estructura' : comando, estructuras, partidos, anexos })
 

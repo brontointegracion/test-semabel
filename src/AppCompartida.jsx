@@ -14,6 +14,8 @@ import LigaCompartida from './pantallas/publico/LigaCompartida'
 import NoDisponible from './pantallas/publico/NoDisponible'
 import { BarraTabs } from './pantallas/publico/Navegacion'
 import PartidoPublico from './pantallas/publico/PartidoPublico'
+import TvPiloto from './pantallas/publico/TvPiloto'
+import { RUTA_TV } from './lib/publico/tv-piloto'
 import { RUTAS_NO_DISPONIBLES, SIN_TABS_COMPARTIDO, TABS } from './lib/publico/navegacion'
 import { useSesionServidor } from './lib/sesion-servidor'
 
@@ -25,6 +27,7 @@ import { useSesionServidor } from './lib/sesion-servidor'
 //   /liga/:ligaId/equipo/:equipoId     equipo; `equipoId` es la clave pública del equipo en la liga o, por compatibilidad, su id completo
 //   /organizador/acceso, /organizador, /organizador/ligas/:l[/equipos/:e | /partidos/:g]   entrada y panel del organizador (la sesión la decide
 //                                      el servidor); …/partidos/:g prepara el acceso de puntuación. /anthony/…, /ligas y el alias de piloto /deportivo-vip/ligas redirigen aquí (REPORT_179/180)
+//   /tv                                entrada corta TEMPORAL del piloto: lista de partidos de una liga configurada (lib/publico/tv-piloto.js)
 //   /control/:ligaId/:partidoId[/marcador]   activación del teléfono y pantalla de puntuación
 // Las rutas ORIGINALES que aún no tienen servidor (lib/publico/navegacion.js) no montan su pantalla del prototipo: responden con un
 // aviso explícito. «/ligas» (Mis ligas) lleva al panel del organizador, que exige sesión del servidor. Nada local concede permisos.
@@ -53,6 +56,8 @@ export default function AppCompartida() {
           <Route path="/liga/:ligaId" element={<LigaCompartida />} />
           <Route path="/liga/:ligaId/partido/:gameId" element={<PartidoPublico />} />
           <Route path="/liga/:ligaId/equipo/:equipoId" element={<EquipoPublico />} />
+          {/* Entrada corta TEMPORAL del piloto (REPORT_186, ver lib/publico/tv-piloto.js): selector público de partidos; sin sesión ni permisos. */}
+          <Route path={RUTA_TV} element={<TvPiloto />} />
           <Route path="/organizador/acceso" element={<AccesoOrganizador />} />
           <Route path="/organizador" element={<PanelOrganizador />} />
           <Route path="/organizador/ligas/:ligaId" element={<LigaOrganizador />} />

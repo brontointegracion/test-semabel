@@ -12,6 +12,7 @@ import { bloqueoDeEntorno, crearTransporte, tiempoValido, validarDestino } from 
 //                      equipos      POST /v1/admin/ligas/{liga}/equipos      AÑADE equipos a una liga ya cargada; `cargaId` NUEVO; idempotente por `cargaId` + contenido
 //                      provisionar  POST /v1/admin/organizador               NO idempotente: solo puede haber UN organizador activo
 //                      recuperar    POST /v1/admin/organizador/codigo/rotar  NO idempotente: cada llamada emite otro código y revoca el anterior
+//                      asignar      POST /v1/admin/organizador/ligas         AÑADE ligas a un organizador existente (id EXPLÍCITO); idempotente por `operacionId` + contenido (200 reproducido)
 //   verificar        Solo lecturas públicas (sin credenciales): compara la liga publicada con los archivos.
 //
 // REGLAS
@@ -172,6 +173,29 @@ export async function construirPlanOrganizador({ tipo, nombre, ligas }) {
   }
 }
 
+const ID_ORGANIZADOR = /^org-[A-Za-z0-9_-]{1,60}$/
+const MAX_LIGAS_ASIGNAR = 10
+
+/**
+ * Plan de ASIGNACIÓN de ligas a un organizador existente (OFFLINE). Exige el id del organizador y la lista de ligas EXPLÍCITOS; el
+ * identificador de la operación sale del CONTENIDO (organizador + ligas ordenadas), nunca de la hora ni del orden: un reintento reenvía
+ * el MISMO cuerpo con el MISMO identificador, y la herramienta nunca crea otro por su cuenta.
+ */
+export async function construirPlanAsignacion({ organizadorId, ligas }) {
+  const problemas = []
+  if (typeof organizadorId !== 'string' || !ID_ORGANIZADOR.test(organizadorId)) problemas.push('organizador')
+  const lista = Array.isArray(ligas) ? ligas : []
+  if (lista.length < 1 || lista.length > MAX_LIGAS_ASIGNAR || !lista.every((l) => typeof l === 'string' && ID.test(l)) || new Set(lista).size !== lista.length) problemas.push('ligas')
+  const ordenadas = problemas.length ? [] : [...lista].sort()
+  const operacionId = problemas.length ? null : `asig-${(await sha256Hex(JSON.stringify(['asignar-ligas', organizadorId, ordenadas]))).slice(0, 40)}`
+  const cuerpo = problemas.length ? '' : JSON.stringify({ operacionId, organizadorId, ligas: ordenadas })
+  const huella = await sha256Hex(`asignar:${cuerpo}`)
+  return {
+    tipo: 'asignar', ok: problemas.length === 0, huella, problemas,
+    usadas: [{ id: `asignar:${operacionId}`, tipo: 'asignar', ruta: '/v1/admin/organizador/ligas', cuerpo, huella, ok: problemas.length === 0, resumen: { tipo: 'asignar', organizadorId: problemas.length ? null : organizadorId, ligas: ordenadas, operacionId } }],
+  }
+}
+
 export const resumenDelPlanCarga = (plan) => ({ tipo: plan.tipo, ok: plan.ok, huella: plan.huella.slice(0, 12), elementos: plan.usadas.map((e) => e.resumen), problemas: plan.problemas })
 
 // ---- Diario -----------------------------------------------------------------------------------------------------------
@@ -252,7 +276,16 @@ export async function aplicarCarga({ plan, almacen, fetch: fCrudo, origen: orige
     } catch { r = { status: 0, json: null } }
     const j = r.json
     let aviso = null
-    if (op.tipo === 'estructura' || op.tipo === 'partidos' || op.tipo === 'equipos') {
+    if (op.tipo === 'asignar') {
+      if ((r.status === 200 || r.status === 201) && esObjeto(j) && j.ok === true && typeof j.reproducido === 'boolean' && Array.isArray(j.ligas)) {
+        op.estado = 'aplicada'
+        op.resultado = { status: r.status, reproducido: j.reproducido, agregadas: j.agregadas ?? [], yaExistian: j.yaExistian ?? [], ligas: j.ligas }
+        if (j.reproducido) cuenta.reproducidas += 1; else cuenta.aplicadas += 1
+      } else if (r.status === 409 || r.status === 422) {
+        // Conflicto de propiedad / de operación / organizador no activo / ligas no admitidas: el servidor NO escribió nada. No se reintenta solo.
+        op.estado = 'rechazada'; op.resultado = { status: r.status, error: String(j?.error ?? 'desconocido').slice(0, 40), ...(Array.isArray(j?.ligas) ? { ligas: j.ligas.filter((x) => typeof x === 'string').slice(0, 10) } : {}) }
+      } else { op.estado = 'incierta'; op.resultado = { status: r.status } }
+    } else if (op.tipo === 'estructura' || op.tipo === 'partidos' || op.tipo === 'equipos') {
       if ((r.status === 200 || r.status === 201) && esObjeto(j) && typeof j.reproducido === 'boolean') {
         op.estado = 'aplicada'; op.resultado = { status: r.status, reproducido: j.reproducido }
         if (j.reproducido) cuenta.reproducidas += 1; else cuenta.aplicadas += 1
@@ -276,7 +309,7 @@ export async function aplicarCarga({ plan, almacen, fetch: fCrudo, origen: orige
     }
     try { await guardar(almacen, diario) } catch { return { estado: 'diario-no-guardado', id: op.id, ...cuenta } }
     if (aviso === 'codigo-no-guardado') return { estado: 'codigo-no-guardado', id: op.id, recuperacion: 'comando recuperar con confirmacion', ...cuenta }
-    if (op.estado === 'rechazada') return { estado: 'detenido-por-rechazo', id: op.id, motivo: op.resultado.error ?? `http-${op.resultado.status}`, ...(aviso ? { aviso } : {}), ...cuenta }
+    if (op.estado === 'rechazada') return { estado: 'detenido-por-rechazo', id: op.id, motivo: op.resultado.error ?? `http-${op.resultado.status}`, ...(op.resultado.ligas ? { ligas: op.resultado.ligas } : {}), ...(aviso ? { aviso } : {}), ...cuenta }
     if (op.estado === 'incierta') return { estado: 'detenido-sin-resolver', id: op.id, motivo: `http-${op.resultado.status}`, ...cuenta }
   }
   return { estado: 'completo', total: diario.ops.length, ...cuenta }

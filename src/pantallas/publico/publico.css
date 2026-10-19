@@ -9,6 +9,9 @@
   font-size: 0.68rem; font-weight: 700; background: var(--surface-2); color: var(--ink-soft);
 }
 
+/* Nombre de la liga en las filas de la portada (REPORT_186): una línea discreta bajo los equipos. */
+.publico .partido .enfrenta .fila-liga-partido { display: block; margin-top: 3px; font-size: 0.68rem; font-weight: 700; color: var(--ink-mute); overflow-wrap: anywhere; }
+
 /* La sede puede ser un nombre largo: se parte en dos líneas en vez de cortarse. */
 .publico .partido .cuando { width: 88px; }
 .publico .partido .cuando .dia { white-space: normal; overflow-wrap: anywhere; line-height: 1.15; }
@@ -103,4 +106,37 @@
   font-weight: 800;
   letter-spacing: -0.02em;
   overflow-wrap: anywhere;
+}
+
+/* Entrada corta /tv del piloto (REPORT_186): enlaces grandes y con foco muy visible para un mando a distancia. Todo acotado a «.tv-pagina». */
+.app:has(.tv-pagina) { max-width: none; }
+.tv-pagina { padding: 12px 16px 24px; }
+.tv-pagina .tv-contenido { max-width: 1500px; margin: 0 auto; }
+.tv-pagina .tv-titulo { margin: 14px 0 2px; font-size: clamp(1.5rem, 4vw, 2.6rem); font-weight: 800; letter-spacing: -0.02em; }
+.tv-pagina .tv-sub { margin: 0 0 10px; color: var(--ink-mute); font-size: clamp(0.9rem, 2.2vw, 1.4rem); }
+.tv-pagina .tv-dia { margin: 14px 0 8px; font-size: clamp(1.05rem, 2.6vw, 1.8rem); font-weight: 800; }
+.tv-pagina .tv-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: 1fr; }
+.tv-pagina .tv-juego {
+  display: grid; gap: 4px; padding: 14px 16px; min-height: 96px; border-radius: 14px; text-decoration: none;
+  background: var(--surface-2); color: inherit; border: 3px solid transparent;
+}
+.tv-pagina .tv-juego:hover { border-color: var(--ink-mute); }
+.tv-pagina .tv-juego:focus-visible { outline: none; border-color: var(--acento); box-shadow: 0 0 0 4px var(--acento); }
+.tv-pagina .tv-liga { font-size: clamp(0.72rem, 1.6vw, 1.05rem); font-weight: 700; color: var(--ink-mute); overflow-wrap: anywhere; } /* sin mayúsculas forzadas: se lee tal cual el nombre de la liga */
+.tv-pagina .tv-equipos { font-size: clamp(1.15rem, 3vw, 2rem); font-weight: 800; line-height: 1.15; overflow-wrap: anywhere; }
+.tv-pagina .tv-equipos i { font-style: normal; font-weight: 600; color: var(--ink-mute); }
+.tv-pagina .tv-hora { font-size: clamp(1rem, 2.4vw, 1.6rem); font-weight: 700; font-variant-numeric: tabular-nums; }
+.tv-pagina .tv-estado { font-size: clamp(0.9rem, 2vw, 1.4rem); font-weight: 700; color: var(--ink-soft); }
+.tv-pagina .tv-juego.vivo .tv-estado { color: var(--acento-ink); }
+/* Pantalla ancha (televisor, 900 px y más): dos partidos por fila; todo crece con el ALTO disponible. */
+@media (min-width: 900px) {
+  .tv-pagina { padding: 18px 40px 28px; }
+  .tv-pagina .tv-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .tv-pagina .tv-juego { min-height: clamp(110px, 17vh, 220px); padding: 18px 22px; }
+  .tv-pagina .tv-titulo { font-size: clamp(1.8rem, 5vh, 3.2rem); }
+  .tv-pagina .tv-dia { font-size: clamp(1.2rem, 3.4vh, 2.2rem); }
+  .tv-pagina .tv-equipos { font-size: clamp(1.5rem, 4.2vh, 3rem); }
+  .tv-pagina .tv-hora { font-size: clamp(1.1rem, 3vh, 2.2rem); }
+  .tv-pagina .tv-estado { font-size: clamp(1rem, 2.6vh, 1.9rem); }
+  .tv-pagina .tv-liga { font-size: clamp(0.8rem, 2vh, 1.4rem); }
 }

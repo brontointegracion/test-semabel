@@ -42,6 +42,13 @@ const DDL = [
     revocada_en INTEGER,
     motivo TEXT
   )`,
+  // Recibos de las asignaciones de ligas del operador (REPORT_187). ADITIVA: solo se crea si falta; un código anterior la ignora.
+  `CREATE TABLE IF NOT EXISTS asignaciones_liga (
+    operacion_id TEXT PRIMARY KEY,
+    huella TEXT NOT NULL,
+    resultado_json TEXT NOT NULL,
+    creado_en INTEGER NOT NULL
+  )`,
   `CREATE TABLE IF NOT EXISTS auditoria_acceso (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     ts INTEGER NOT NULL,

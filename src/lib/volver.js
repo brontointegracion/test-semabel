@@ -18,6 +18,8 @@ const PERMITIDAS = [
   // Modo compartido: la liga (con su pestaña en la búsqueda) y la página de un equipo. El partido queda fuera, como arriba.
   /^\/liga\/[^/]+$/,
   /^\/liga\/[^/]+\/equipo\/[^/]+$/,
+  // Entrada corta del piloto (REPORT_186): «Salir» de un partido abierto desde /tv vuelve a la lista.
+  /^\/tv$/,
 ]
 
 const BASE = 'http://sebel.invalid'

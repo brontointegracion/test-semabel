@@ -284,7 +284,7 @@ Pruebas: `test/estado-telefono.check.js` (datos sintéticos; sin Cloudflare).
 
 Un solo Worker `semabel-production` (nombre estable: el espacio de Durable Objects pertenece al nombre; no cambiarlo después) sirve la
 aplicación, `/v1/*` y los objetos `LigaDO`/`AccesoDO` (SQLite) en `https://semabel.com` (dominio personalizado). `workers_dev` y
-`preview_urls` están en `false`. Variables: `LIGAS_ADMITIDAS=PLATINIUM-U10,PLATINIUM-U12`, `ACCESO_ORIGEN=https://semabel.com`,
+`preview_urls` están en `false`. Variables: `LIGAS_ADMITIDAS=PLATINIUM-U10,PLATINIUM-U12,SIMULACRO-PILOTO` (la tercera es la liga FICTICIA de pruebas, REPORT_186), `ACCESO_ORIGEN=https://semabel.com`,
 `ACCESO_ADMIN_HABILITADO=0` (puerta del operador cerrada), `PERMITIR_SEMILLA=0`. `vars` y `durable_objects` no se heredan entre entornos
 y se declaran en el entorno; `migrations` (v1, v2) se heredan del nivel superior y no se repiten. Secreto (nunca en archivos):
 `ACCESO_ADMIN_TOKEN`, solo cuando se abra una ventana de carga.
@@ -292,9 +292,9 @@ y se declaran en el entorno; `migrations` (v1, v2) se heredan del nivel superior
 **Compilación de la interfaz (desde la RAÍZ del repositorio; sale en `dist/`, que Wrangler lee como `../dist`):**
 
     rm -rf dist
-    VITE_MODO_COMPARTIDO=1 VITE_LIGAS_PUBLICAS=PLATINIUM-U10,PLATINIUM-U12 VITE_PAIS_PILOTO=PA npm run build
+    VITE_MODO_COMPARTIDO=1 VITE_LIGAS_PUBLICAS=PLATINIUM-U10,PLATINIUM-U12,SIMULACRO-PILOTO VITE_PAIS_PILOTO=PA npm run build
 
-(`VITE_LIGAS_PUBLICAS` debe coincidir con `LIGAS_ADMITIDAS`.) El `dist/` que haya en el árbol puede ser antiguo: compilar siempre antes de desplegar.
+(`VITE_LIGAS_PUBLICAS` debe coincidir con `LIGAS_ADMITIDAS`; sin `SIMULACRO-PILOTO` en la compilación, `/tv` responde «no disponible».) El `dist/` que haya en el árbol puede ser antiguo: compilar siempre antes de desplegar.
 
 **Comprobación local sin red ni cuenta** (desde `backend/`): `node_modules/.bin/wrangler deploy --dry-run --env production --outdir RUTA-FUERA-DEL-REPO`
 debe listar los dos objetos y las cinco variables anteriores. Despliegue (manual, por el usuario): siempre con `--env production`; sin
@@ -454,6 +454,77 @@ horas: lo cargado no se edita); (7) `verificar … --leer`; (8) nuevo despliegue
 
 Pruebas: `test/transporte.check.js`, `test/carga-remota.check.js` (workerd; el «borde» simulado traduce `https://semabel.com` al Worker de pruebas, sin red real) y
 `node --test test/cli-carga.node-test.mjs` (línea de comandos contra un servidor 127.0.0.1 simulado).
+
+### Simulacro league and the temporary /tv entrance (REPORT_186)
+
+**Fictional league `SIMULACRO-PILOTO`** ("Simulacro — datos ficticios"; basketball, `mini-basketball`, custom subcategory "Prueba", explicit 2 minutes per
+period; four teams Demo Azul / Verde / Rojo / Amarillo; six invented players each, jerseys 0–5; four `programado` 0–0 games at the fictional venue
+"Cancha de prueba — simulacro"). It is **content**, not code: the repository contains no Simulacro data. The reproducible artifacts (structure payload,
+roster package, explicit identity mapping, two separate games payloads, schedule, SHA-256 manifest) are prepared outside the repository under
+`~/Documents/SEBEL/preparacion/SIMULACRO-PILOTO-<date>/` and are loaded only with the existing operator tools (`operador-carga.mjs estructura|partidos`,
+`runner-plantilla.mjs`), with **new journals** (never reuse local ones). Game ids have no date dependency; every `cargaId` is unique.
+
+**Admission.** `env.production.vars.LIGAS_ADMITIDAS` is now `PLATINIUM-U10,PLATINIUM-U12,SIMULACRO-PILOTO` (exact-equality list; anything else is still the same 404).
+Operator gate stays `ACCESO_ADMIN_HABILITADO=0`, `PERMITIR_SEMILLA=0`; staging, migrations and the Worker name are unchanged.
+Frontend build variables for all three (the build list must equal the Worker list):
+
+    VITE_MODO_COMPARTIDO=1 VITE_LIGAS_PUBLICAS=PLATINIUM-U10,PLATINIUM-U12,SIMULACRO-PILOTO VITE_PAIS_PILOTO=PA npm run build
+
+Fictional vs real: the league name itself says "Simulacro — datos ficticios" (it is data, not a frontend flag), so Home cards, the league page, the calendar,
+the public scoreboard and `/tv` all show it; the real leagues keep their own names. Test: `node --test test/config-produccion.node-test.mjs`.
+
+**Ownership blocker (production loading) — addressed in code by REPORT_187, see «Assigning leagues to the existing organizer» below.** The existing organizer owns leagues through `AccesoDO.propiedad`, written only by `provisionar`, which refuses
+when an active organizer exists; before REPORT_187 there was no operator route to add a league to it. The proposal (route, atomicity, retries, preservation tests) is in
+`~/Documents/SEBEL/preparacion/SIMULACRO-PILOTO-<date>/OWNERSHIP-BLOCKER-AND-PROPOSAL.md`. Nothing was implemented, and no existing organizer was touched.
+
+**`/tv` (temporary pilot entrance).** `src/pantallas/publico/TvPiloto.jsx`, route `/tv` in `AppCompartida.jsx`, target in ONE place:
+`src/lib/publico/tv-piloto.js` (`TV_PILOTO.ligaId`). Public, no login/code/permissions, one public read of the configured league (60 s catalogue cadence); four
+large links grouped by Panama day with teams, 12-hour time, status taken from the server (`Por jugar` / `En vivo` / `Final`) and the league name; each opens the
+EXISTING public scoreboard at its canonical URL (`PartidoPublico`: same layout, fullscreen and wake lock), and «Salir» returns to `/tv`. It never selects or
+switches a game by schedule. States: loading, league not loaded (404), service unavailable, verified empty, and «not available in this build» (no request) when the
+build does not list the league. Limitations: the list refreshes every 60 s; the opened board polls every 5 s once live but every 30 s while the game is still `programado`, so after «Comenzar el partido» the board can keep saying «Por jugar» for up to ~30 s (measured locally, not changed here); one league only; no remote-control handling beyond
+native focus/Enter (first game is focused on load); no `noindex` header for `/tv` (not requested). **To remove or replace it:** delete `tv-piloto.js`, `TvPiloto.jsx`
+(+ its test), the `/tv` route, and the `/tv` entries in `SIN_TABS_COMPARTIDO` (`lib/publico/navegacion.js`) and `PERMITIDAS` (`lib/volver.js`); or change `ligaId` to point it elsewhere.
+
+**Latency baseline.** Manual guide (tap → server confirmation, confirmation → TV, total; polling intervals and their source files):
+`~/Documents/SEBEL/preparacion/SIMULACRO-PILOTO-<date>/LATENCY-MEASUREMENT-GUIDE.md`. No caching or polling change was made.
+
+**Manual load order (NOT executed; needs separate authorization, and the ownership blocker above must be resolved first for the organizer part):**
+(1) build with the three-league variables and deploy; (2) open the operator gate for a window; (3) `estructura` for SIMULACRO-PILOTO (then retry once to see `reproducido`);
+(4) [ownership capability, once reviewed] assign the league to the existing organizer; (5) roster with `runner-plantilla.mjs --aplicar --remoto` using the Simulacro package and
+mapping, then `--verificar`; (6) `partidos` jornada-1 and jornada-2 as separate batches (regenerate jornada-1 first if its time has passed); (7) `verificar … --leer`; (8) close the gate.
+
+### Assigning leagues to the existing organizer (REPORT_187)
+
+**Route** (operator only; same gate as the other `/v1/admin/*` routes: `ACCESO_ADMIN_HABILITADO=1` + Bearer `ACCESO_ADMIN_TOKEN`, closed → the usual 404):
+
+    POST /v1/admin/organizador/ligas
+    { "operacionId": "<16–64 chars [A-Za-z0-9_-]>", "organizadorId": "org-…", "ligas": ["SIMULACRO-PILOTO"] }     // exactly these three keys
+
+- Order: gate (404) → method (405) → Bearer (401; a **cookie alone never works**) → body ≤ 4 KiB → shape (422 `payload-invalido`) → every league **admitted** (`LIGAS_ADMITIDAS`, 422 `ligas-invalidas`) → `AccesoDO.asignarLigas`.
+- `asignarLigas` is ONE `transactionSync`: (1) receipt lookup by `operacionId` (fingerprint = sha-256 of the canonical `{tipo, organizadorId, ligas sorted}`): same content → the ORIGINAL result with `reproducido: true` (200) and no write; other content → 409 `operacion-conflicto`; (2) the explicit organizer must exist AND be active (409 `organizador-no-activo`; it never picks another organizer);
+  (3) a league already owned by a DIFFERENT organizer → 409 `liga-con-otro-propietario` (+ the league ids), whole batch rejected, nothing written; (4) `INSERT` of the missing `propiedad` rows only (leagues the organizer already owns are reported in `yaExistian`), one `ligas-asignadas` audit row, and the receipt — together.
+  Success: 201 `{ ok, organizadorId, agregadas, yaExistian, ligas: <full list after>, reproducido: false }`.
+- It only ADDS ownership: no removal, transfer or replacement; it never touches `organizadores`, `codigos_organizador` (code, hash, expiry) or `sesiones`, nor any league object (rosters, games, events).
+- **Sessions.** Ownership is read from `propiedad` on EVERY session validation (`validarSesion`); nothing is cached in the cookie or the assertion. The SAME existing session sees the new league on its next request, with no re-login (tested end to end); the organizer code keeps working. No authentication change was needed.
+- **Schema.** One additive table, `asignaciones_liga (operacion_id PRIMARY KEY, huella, resultado_json, creado_en)`, created by the existing `CREATE TABLE IF NOT EXISTS` list at object start (no version bump, no data migration; repeating start is a no-op). No receipt storage existed in `AccesoDO` (the `cargas` receipts live in each `LigaDO`), so a table was required. Compatibility: older code ignores the table; rolling the code back leaves the rows and does not revert ownership.
+- **Rejected attempts leave no receipt** (nothing was written); an uncertain result (network, 503 after an injected/real failure) is retried with the SAME body.
+
+**Command** (dry-run by default; same protections as the other operator commands — exact approved origin, normal TLS, no redirects, timeout, token from env or a 0600 file, private write-ahead journal outside any repository):
+
+    node scripts/operador-carga.mjs asignar --organizador org-… --ligas SIMULACRO-PILOTO                       # dry-run: plan + operacionId, no request, no file
+    SEBEL_OPERADOR_TOKEN=… node scripts/operador-carga.mjs asignar --organizador org-… --ligas SIMULACRO-PILOTO \
+        --aplicar --remoto --origen https://semabel.com --diario RUTA-PRIVADA-NUEVA/diario-asignar.json        # production (explicit opt-in)
+
+`--organizador` and `--ligas` are required and explicit. The `operacionId` is `asig-` + the first 40 hex of the sha-256 of `[tipo, organizadorId, ligas sorted]`: stable across retries and independent of order or time; the tool never invents another one.
+Recovery: an uncertain result (`detenido-sin-resolver`; journal `incierta`) is retried by running the SAME command with the SAME journal: the journalled body is re-sent unchanged and the server replays the original if it had been applied. A rejection (`detenido-por-rechazo`; 409/422, nothing written) stops; fix the cause and use a NEW journal file. A journal belonging to another plan is refused. The journal holds ids and the result only, never the token.
+
+**How to obtain the organizer id (no credentials displayed, no production contact from this repo):** with the browser where the organizer is already signed in, open `https://semabel.com/v1/organizador/yo` (an existing authorized read, GET with the session cookie): the JSON has `organizadorId` (and the league list). The id is not a secret. Alternatively, the private journal of the original provisioning (`ops[0].resultado.organizadorId`) has it. Never copy the organizer code or the cookie.
+
+**Manual loading order for the Simulacro (NOT executed; each step needs its own authorization):** (1) review and deploy this release with the three-league build/config; (2) open the operator gate for a window; (3) `estructura` for SIMULACRO-PILOTO (then retry once to see `reproducido`); (4) read the organizer id and run `asignar` (dry-run first, then `--aplicar --remoto`); read `/v1/organizador/yo` again with the same session and check the three leagues;
+(5) roster with `runner-plantilla.mjs --aplicar --remoto` (Simulacro package + mapping, NEW journal) then `--verificar`; (6) games: **`jornada-1` must be regenerated and reviewed first** (its 19 October times have passed; the existing payload is preserved unmodified), `jornada-2` (20 October 10:00 and 10:30 a. m.) can load as prepared; (7) `verificar … --leer`; (8) close the gate.
+
+Tests: `test/asignacion-ligas.check.js` and `test/asignacion-herramienta.check.js` (workerd), `node --test test/cli-asignar.node-test.mjs`.
 
 ## Pruebas locales (runtime de Workers, datos sintéticos)
 

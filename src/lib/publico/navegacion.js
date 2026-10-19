@@ -17,8 +17,8 @@ export const iconosTab = {
   saldo: 'M3 8h18v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm0 0l2.4-4h13.2L21 8M7 14h4',
 }
 
-/** En modo compartido no llevan barra de pestañas: el partido (pantalla de marcador), el control del teléfono y el panel del organizador. */
-export const SIN_TABS_COMPARTIDO = [/^\/liga\/[^/]+\/partido\//, /^\/control\//, /^\/anthony(\/|$)/, /^\/organizador(\/|$)/]
+/** En modo compartido no llevan barra de pestañas: el partido (pantalla de marcador), el control del teléfono, el panel del organizador y la entrada /tv del piloto (REPORT_186). */
+export const SIN_TABS_COMPARTIDO = [/^\/liga\/[^/]+\/partido\//, /^\/control\//, /^\/anthony(\/|$)/, /^\/organizador(\/|$)/, /^\/tv\/?$/]
 
 /**
  * Rutas ORIGINALES del prototipo que todavía no tienen servidor detrás. En modo compartido NO se montan sus pantallas (usan la base

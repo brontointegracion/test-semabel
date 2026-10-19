@@ -7,6 +7,8 @@ describe('esDestinoInterno', () => {
     '/c/cancha-111', '/r/reto-1', '/n/noticia-1', '/cat/futsal/Libre', '/siguiendo', '/figuras', '/noticias',
     // modo compartido (REPORT_158): la liga con su pestaña y la página de un equipo
     '/liga/platinium-u10', '/liga/platinium-u10?pestana=calendario', '/liga/PLATINIUM-U10/equipo/deportivo',
+    // entrada corta del piloto (REPORT_186)
+    '/tv',
   ])('acepta %s', (r) => expect(esDestinoInterno(r)).toBe(true))
 
   it.each([
@@ -14,7 +16,7 @@ describe('esDestinoInterno', () => {
     '/\\evil.com', '/\\/evil.com', 'l/liga-1', '', '  /l/x', '/p/a-vs-b-2026-08-20-5680',
     '/p/a-vs-b-5680/consola', '/b/5680', '/ligas', '/nueva', '/l/x/retar', '/l/x/../p/y',
     undefined, null, 5, {}, ['/'],
-    '/liga/platinium-u10/partido/cross-level-vs-deportivo-s0rqrd', '/liga/x/equipo/y/z', '/liga/', '/liga/x/../../anthony', '/liga', '/control/a/b', '/anthony/ligas', '/organizador', '/organizador/ligas/x',
+    '/liga/platinium-u10/partido/cross-level-vs-deportivo-s0rqrd', '/liga/x/equipo/y/z', '/liga/', '/liga/x/../../anthony', '/liga', '/control/a/b', '/anthony/ligas', '/organizador', '/organizador/ligas/x', '/tv/x', '/tv/', '/tvx', '/tv/../anthony',
   ])('rechaza %j', (r) => expect(esDestinoInterno(r)).toBe(false))
 })
 

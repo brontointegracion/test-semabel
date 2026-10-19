@@ -6,7 +6,8 @@ import { EnlaceConOrigen, EscudoTexto } from './componentes.jsx'
 
 const destino = (p) => p.urlPartido ?? urlPartidoPublico(p.ligaId, p.gameId)
 
-// Tarjetas de partido de la lista (Inicio y Liga). Mismas clases visuales que el prototipo.
+// Tarjetas de partido de la lista (Inicio y Liga). Mismas clases visuales que el prototipo. Las filas de próximos y finales llevan el nombre de
+// su liga (REPORT_186): en la portada se mezclan ligas, y así un partido de la liga ficticia «Simulacro — datos ficticios» no se confunde con uno real.
 
 export function TarjetaVivo({ partido: p, mono, relojConfiable }) {
   const v = vistaReloj({ estado: p.estado, reloj: p.reloj, muestra: p.muestra, mono, relojConfiable })
@@ -55,6 +56,7 @@ export function FilaProgramado({ partido: p, mono }) {
           </div>
         ))}
         {retrasado && <span className="pendiente-comenzar">Pendiente de comenzar</span>}
+        {p.ligaNombre && <span className="fila-liga-partido">{p.ligaNombre}</span>}
       </div>
     </EnlaceConOrigen>
   )
@@ -77,6 +79,7 @@ export function FilaFinal({ partido: p }) {
             <span className="goles">{eq.puntos}</span>
           </div>
         ))}
+        {p.ligaNombre && <span className="fila-liga-partido">{p.ligaNombre}</span>}
       </div>
     </EnlaceConOrigen>
   )
