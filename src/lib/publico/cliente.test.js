@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { LIMITE_BYTES, TIEMPO_ESPERA_MS, pedirJson, reintentoDe, rutaEquipo, rutaJuego, rutaLiga } from './cliente.js'
+import { LIMITE_BYTES, TIEMPO_ESPERA_MS, pedirJson, reintentoDe, rutaEquipo, rutaJuego, rutaJugadores, rutaLiga } from './cliente.js'
 
 const json = (cuerpo, init = {}) => new Response(JSON.stringify(cuerpo), { status: 200, headers: { 'content-type': 'application/json' }, ...init })
 
@@ -7,6 +7,8 @@ describe('rutas', () => {
   it('solo se construyen las dos lecturas públicas, con IDs válidos', () => {
     expect(rutaLiga('LIGAPUB1')).toBe('/v1/ligas/LIGAPUB1/publico')
     expect(rutaJuego('LIGAPUB1', 'G1')).toBe('/v1/ligas/LIGAPUB1/partidos/G1')
+    expect(rutaJugadores('LIGAPUB1')).toBe('/v1/ligas/LIGAPUB1/jugadores/publico')
+    expect(() => rutaJugadores('a/b')).toThrow()
     for (const malo of ['', 'a/b', '..', 'a b', 'x'.repeat(65), 'ñ']) {
       expect(() => rutaLiga(malo), malo).toThrow()
       expect(() => rutaJuego('LIGAPUB1', malo), malo).toThrow()

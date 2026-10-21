@@ -1,11 +1,12 @@
 import { ID_PUBLICO } from './config.js'
 
 // ---------------------------------------------------------------------------
-// Cliente de las lecturas PÚBLICAS. Solo tres rutas, siempre GET, siempre del mismo origen y sin credenciales:
+// Cliente de las lecturas PÚBLICAS. Solo cuatro rutas de la API (más el archivo estático de medios del piloto, ver rutaMedios), siempre GET, siempre del mismo origen y sin credenciales:
 //
 //   GET /v1/ligas/{liga}/publico
 //   GET /v1/ligas/{liga}/partidos/{juego}
 //   GET /v1/ligas/{liga}/equipos/{equipo}/publico
+//   GET /v1/ligas/{liga}/jugadores/publico
 //
 // Nunca envía cookies del organizador ni tokens de partido (`credentials: 'omit'`), no lee eventos crudos ni el estado
 // protegido (/estado, /preparacion, /comandos no se construyen aquí), no guarda nada (ni caché, ni IndexedDB, ni
@@ -26,6 +27,14 @@ export function rutaEquipo(ligaId, equipoId) {
   if (!ID_PUBLICO.test(ligaId) || !ID_PUBLICO.test(equipoId)) throw new Error('id-invalido')
   return `/v1/ligas/${ligaId}/equipos/${equipoId}/publico`
 }
+
+export function rutaJugadores(ligaId) {
+  if (!ID_PUBLICO.test(ligaId)) throw new Error('liga-invalida')
+  return `/v1/ligas/${ligaId}/jugadores/publico`
+}
+
+/** Archivo estático que el piloto edita a mano (logos y patrocinadores): public/medios/manifest.json. Mismo origen, sin credenciales. */
+export const rutaMedios = () => '/medios/manifest.json'
 
 export function rutaJuego(ligaId, gameId) {
   if (!ID_PUBLICO.test(ligaId) || !ID_PUBLICO.test(gameId)) throw new Error('id-invalido')

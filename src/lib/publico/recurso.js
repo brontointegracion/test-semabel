@@ -162,6 +162,15 @@ export function crearRecurso({ clave, cargar, periodoDe, intervaloMinDe }, entor
     },
     /** Pide un refresco ya (respeta los intervalos mínimos y que haya una sola petición en vuelo). */
     solicitar,
+    /**
+     * Recalcula el temporizador pendiente con la cadencia ACTUAL (`periodoDe`/`intervaloMinDe` pueden depender de algo que cambió fuera de este recurso;
+     * REPORT_201). No pide nada por sí misma: solo mueve el próximo disparo, anclado al inicio de la última petición, así que nunca hay dos peticiones
+     * a la vez ni reintentos más rápidos. No toca la espera tras un fallo (el retroceso manda), ni actúa con la pestaña oculta o sin montar.
+     */
+    reprogramar() {
+      if (!activo || estado.fallos > 0) return
+      reprogramar()
+    },
   }
 }
 
@@ -197,4 +206,7 @@ export const espiar = (clave) => registro.get(clave)?.recurso.obtener() ?? ESTAD
 export const recursosActivos = () => registro.size
 
 /** Pide un refresco ya del recurso montado con esa clave (respeta el intervalo mínimo y una sola petición en vuelo). */
+/** Recalcula la cadencia del recurso montado con esa clave (ver `reprogramar`). */
+export const reprogramarRecurso = (clave) => registro.get(clave)?.recurso.reprogramar()
+
 export const refrescarRecurso = (clave) => registro.get(clave)?.recurso.solicitar('manual')

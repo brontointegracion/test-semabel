@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { partidoLiga, reloj, respuestaJuego, respuestaLiga } from './datos-prueba.js'
-import { validarJuego, validarLiga } from './validar.js'
+import { validarJuego, validarJugadores, validarLiga } from './validar.js'
 
 describe('validación de la lectura de la liga', () => {
   it('acepta una respuesta válida y devuelve una COPIA con solo los campos conocidos', () => {
@@ -121,5 +121,56 @@ describe('validación de la lectura de un equipo', () => {
     }
     for (const basura of [null, [], 'x', 5]) expect(validarEquipo(basura, 'LIGAPUB1', 'E1')).toBeNull()
     expect(validarEquipo(respuestaEquipo(), 'LIGAPUB1', '../x')).toBeNull()
+  })
+})
+
+describe('validarJugadores', () => {
+  const e = (rango, id, puntos, faltas = 0, extra = {}) => ({ rango, id, nombre: `N ${id}`, dorsalActual: 3, equipo: { id: 'E1', nombre: 'Alfa' }, enPlantilla: true, puntos, faltas, ...extra })
+  const base = () => ({
+    liga: { id: 'L1', nombre: 'Liga' }, alcance: 'partidos-finales-de-la-liga', agrupacion: 'ficha-y-equipo', partidosFinales: 2,
+    maximosAnotadores: [e(1, 'a', 9), e(2, 'b', 4)], masFaltas: [e(1, 'b', 4, 3)], recortado: false, sinJugador: { puntos: 0, faltas: 0 }, servidorAhoraMs: 1_790_000_000_000,
+  })
+  it('acepta la forma exacta y copia solo los campos conocidos (nada de personaId ni fecha de nacimiento)', () => {
+    const x = base()
+    x.maximosAnotadores[0].personaId = 'persona-secreta'
+    x.maximosAnotadores[0].fechaNacimiento = '2015-01-01'
+    const v = validarJugadores(x, 'L1')
+    expect(v.maximosAnotadores[0]).toEqual(e(1, 'a', 9))
+    expect(JSON.stringify(v)).not.toContain('persona')
+  })
+  it('rechaza otra liga, otro alcance, orden roto, puntos o faltas negativos, valor cero en su lista y tipos incorrectos', () => {
+    expect(validarJugadores(base(), 'L2')).toBeNull()
+    expect(validarJugadores({ ...base(), alcance: 'x' }, 'L1')).toBeNull()
+    expect(validarJugadores({ ...base(), agrupacion: 'nombre' }, 'L1')).toBeNull()
+    expect(validarJugadores({ ...base(), recortado: 'no' }, 'L1')).toBeNull()
+    const orden = base(); orden.maximosAnotadores = [e(1, 'a', 4), e(2, 'b', 9)]
+    expect(validarJugadores(orden, 'L1')).toBeNull()
+    const neg = base(); neg.masFaltas = [e(1, 'b', 4, -1)]
+    expect(validarJugadores(neg, 'L1')).toBeNull()
+    const cero = base(); cero.maximosAnotadores = [e(1, 'a', 0)]
+    expect(validarJugadores(cero, 'L1')).toBeNull()
+    const tipo = base(); tipo.maximosAnotadores = [e(1, 'a', 9, 0, { enPlantilla: 1 })]
+    expect(validarJugadores(tipo, 'L1')).toBeNull()
+    expect(validarJugadores(null, 'L1')).toBeNull()
+    expect(validarJugadores({ ...base(), maximosAnotadores: Array.from({ length: 51 }, (_, i) => e(1, `i${i}`, 5)) }, 'L1')).toBeNull()
+  })
+})
+
+describe('validarJuego: canastas confirmadas (REPORT_191)', () => {
+  const an = (seq, extra = {}) => ({ seq, lado: 'local', puntos: 2, jugador: { nombre: 'Ana Prueba', dorsalActual: 0 }, ...extra })
+  it('servidor anterior (sin el campo) o dato malo: el marcador sigue valiendo y las anotaciones son null (no se actúa)', () => {
+    expect(validarJuego(respuestaJuego(), 'LIGAPUB1', 'G1').anotaciones).toBeNull()
+    for (const malo of ['x', {}, [an(1), an(1)], [an(0)], [an(1, { lado: 'centro' })], [an(1, { puntos: 0 })], [an(1, { puntos: 'dos' })], [an(1, { jugador: null })], [an(1, { jugador: { nombre: '', dorsalActual: 1 } })], [an(1, { jugador: { nombre: 'A', dorsalActual: 100 } })], Array.from({ length: 13 }, (_, i) => an(i + 1))]) {
+      const v = validarJuego(respuestaJuego({ anotaciones: malo }), 'LIGAPUB1', 'G1')
+      expect(v, JSON.stringify(malo)).not.toBeNull()
+      expect(v.anotaciones).toBeNull()
+      expect(v.local.puntos).toBe(12)
+    }
+  })
+  it('lista válida: copia solo los campos aprobados, en el mismo orden', () => {
+    const v = validarJuego(respuestaJuego({ anotaciones: [{ ...an(7), personaId: 'p-secreta', jugadorId: 'J1', cmdId: 'c' }, an(6, { lado: 'visita' })] }), 'LIGAPUB1', 'G1')
+    expect(v.anotaciones).toEqual([an(7), an(6, { lado: 'visita' })])
+    expect(JSON.stringify(v)).not.toMatch(/persona|jugadorId|cmdId/)
+    expect(validarJuego(respuestaJuego({ anotaciones: [] }), 'LIGAPUB1', 'G1').anotaciones).toEqual([])
   })
 })

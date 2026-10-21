@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "semabel": {
+    "logo": "SMB/semabel-transparente.png"
+  },
+  "ligas": {
+    "SIMULACRO-PILOTO": {
+      "patrocinadores": [
+        {
+          "id": "parmigiana",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "La Parmigiana",
+          "descriptor": "Restaurante italiano",
+          "logo": "PARM/parmigiana.jpeg",
+          "fondo": "#000000",
+          "texto": "#FFFFFF",
+          "acento": "#FFFFFF"
+        },
+        {
+          "id": "workings",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "WORKINGS",
+          "logo": "WORKINGS/workings-logo.png",
+          "fondo": "#FFFFFF",
+          "texto": "#000000",
+          "acento": "#000000",
+          "borde": true
+        },
+        {
+          "id": "pce",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "Panama Crystal Engineering",
+          "logo": "PCE/pce-logo.png",
+          "fondo": "#FFFFFF",
+          "texto": "#0B2438",
+          "acento": "#269FC5",
+          "borde": true
+        },
+        {
+          "id": "javier-del-rio",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "Javier del Rio Corp",
+          "logo": "JDR/javier-del-rio.png",
+          "fondo": "#000000",
+          "texto": "#FFFFFF",
+          "acento": "#FFFFFF"
+        },
+        {
+          "id": "deportes-jimmy",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "Deportes Jimmy",
+          "logo": "JIMMY/deportes-jimmy.jpg",
+          "fondo": "#000000",
+          "texto": "#FFFFFF",
+          "acento": "#FFFFFF"
+        },
+        {
+          "id": "pixeles",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "Píxeles & Diseños, S.A.",
+          "logo": "PIXELES/pixeles-logo.png",
+          "fondo": "#FFFFFF",
+          "texto": "#12151C",
+          "acento": "#12151C",
+          "borde": true
+        }
+      ],
+      "organizador": {
+        "logo": "PLATINIUM/platinium-logo.png"
+      }
+    }
+  }
+}

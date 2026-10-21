@@ -10,7 +10,10 @@ import { leerPreparacionTelefono } from './lectura-preparacion.js'
 import { LIMITES_ESTADO_CONTROL, leerEstadoControl } from './lectura-estado-control.js'
 import { candidatosExternos, ejecutarOperacion, huellaDe, leerLiga, leerPlantilla, resolverFichaParaVinculo } from './plantilla.js'
 import { LIMITES_EQUIPO_PUBLICO, leerEquipoPublico } from './proyeccion-equipo.js'
-import { proyectarLigaPublica, proyectarPartidoPublico } from './proyeccion-publica.js'
+import { LIMITES_JUGADORES_PUBLICO, leerJugadoresPublico } from './proyeccion-jugadores.js'
+import { ANOTACIONES_PUBLICAS, proyectarLigaPublica, proyectarPartidoPublico } from './proyeccion-publica.js'
+import { nombrePublico } from './proyeccion-equipo.js'
+import { leerDorsal } from '../../src/lib/dorsal.js'
 import { cargarEquipos, cargarEstructura, cargarPartidos, huellaDeCarga } from './carga.js'
 import { aRespuesta } from './respuestas.js'
 import { LIMITES_REPARACION, repararResumenes, resumenValido } from './resumen-publico.js'
@@ -104,8 +107,35 @@ export class LigaDO extends DurableObject {
     if (!resumenValido(resumen, p)) return RESUMEN_NO_DISPONIBLE
     return {
       status: 200,
-      cuerpo: proyectarPartidoPublico({ fila: p, resumen, liga, local, visita, servidorAhoraMs: this.ahora() }),
+      cuerpo: proyectarPartidoPublico({ fila: p, resumen, liga, local, visita, servidorAhoraMs: this.ahora(), anotaciones: this.anotacionesPublicas(p) }),
     }
+  }
+
+  /**
+   * Últimas canastas confirmadas de un partido EN JUEGO (ver `anotaciones` en proyeccion-publica.js): una lectura acotada por el índice
+   * (partido, seq) y a lo sumo ANOTACIONES_PUBLICAS lecturas de ficha por clave. Solo lectura; nada se guarda.
+   */
+  anotacionesPublicas(p) {
+    let estado
+    try { estado = JSON.parse(p.estado_json).partido?.estado } catch { return [] }
+    if (estado !== 'vivo') return []
+    const sql = this.almacen.sql
+    const filas = sql.exec(
+      `SELECT seq, json_extract(json, '$.equipoId') AS equipo_id, json_extract(json, '$.jugadorId') AS jugador_id, json_extract(json, '$.puntos') AS puntos
+         FROM eventos WHERE partido_id = ? AND json_extract(json, '$.tipo') = 'punto' AND COALESCE(json_extract(json, '$.anulado'), 0) = 0
+        ORDER BY seq DESC LIMIT ?`, p.id, ANOTACIONES_PUBLICAS,
+    ).toArray()
+    const salida = []
+    for (const f of filas) {
+      const lado = f.equipo_id === p.local_id ? 'local' : f.equipo_id === p.visita_id ? 'visita' : null
+      if (lado === null || typeof f.jugador_id !== 'string' || !Number.isSafeInteger(f.puntos) || f.puntos < 1) continue
+      const ficha = sql.exec('SELECT nombre, nombre_pila, apellido1, apellido2, dorsal FROM jugadores WHERE id = ?', f.jugador_id).toArray()[0]
+      const nombre = ficha ? nombrePublico(ficha) : null
+      if (nombre === null) continue
+      const d = leerDorsal(ficha.dorsal)
+      salida.push({ seq: f.seq, lado, puntos: f.puntos, jugador: { nombre, dorsalActual: d.tipo === 'real' ? d.valor : null } })
+    }
+    return salida
   }
 
   /**
@@ -145,6 +175,14 @@ export class LigaDO extends DurableObject {
   async leerEquipoPublico(equipoId) {
     return leerEquipoPublico(this.almacen.sql, equipoId, this.limitesEquipoPublico(), this.ahora())
   }
+
+  /** Rankings públicos de jugadores de toda la liga, de partidos finales (ver proyeccion-jugadores.js). */
+  async leerJugadoresPublico() {
+    return leerJugadoresPublico(this.almacen.sql, this.limitesJugadoresPublico(), this.ahora())
+  }
+
+  /** Topes de esa lectura. Las pruebas los sustituyen; en producción son LIMITES_JUGADORES_PUBLICO. */
+  limitesJugadoresPublico() { return LIMITES_JUGADORES_PUBLICO }
 
   /** Topes de esa lectura. Las pruebas los sustituyen; en producción son LIMITES_EQUIPO_PUBLICO. */
   limitesEquipoPublico() { return LIMITES_EQUIPO_PUBLICO }

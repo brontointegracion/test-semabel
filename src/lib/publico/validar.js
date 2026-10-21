@@ -112,7 +112,24 @@ export function validarJuego(x, ligaId, gameId) {
   const c = comunes(x, true)
   if (!c) return null
   if (faltasEquipo === 'periodo' && (c.local.faltasPeriodo === null || c.visita.faltasPeriodo === null)) return null
-  return { gameId, faltasEquipo, liga: { id: x.liga.id, nombre: x.liga.nombre, ...clas }, servidorAhoraMs: x.servidorAhoraMs, ...c }
+  return { gameId, faltasEquipo, liga: { id: x.liga.id, nombre: x.liga.nombre, ...clas }, servidorAhoraMs: x.servidorAhoraMs, anotaciones: anotacionesDe(x.anotaciones), ...c }
+}
+
+/**
+ * Canastas confirmadas del partido en juego (REPORT_191). Un dato ausente (servidor anterior) o malo NO invalida el marcador: se entrega
+ * `null` y el reconocimiento simplemente no actúa. Se copia solo lo aprobado, campo por campo.
+ */
+function anotacionesDe(x) {
+  if (!Array.isArray(x) || x.length > 12) return null
+  const salida = []
+  const seqs = new Set()
+  for (const a of x) {
+    if (!objeto(a) || !entero(a.seq, 1, 1e9) || seqs.has(a.seq) || !['local', 'visita'].includes(a.lado) || !entero(a.puntos, 1, 9)) return null
+    if (!objeto(a.jugador) || !texto(a.jugador.nombre, 200) || !dorsalONulo(a.jugador.dorsalActual)) return null
+    seqs.add(a.seq)
+    salida.push({ seq: a.seq, lado: a.lado, puntos: a.puntos, jugador: { nombre: a.jugador.nombre, dorsalActual: a.jugador.dorsalActual } })
+  }
+  return salida
 }
 
 const MOTIVOS = ['inactivo', 'otro-equipo', 'no-encontrado']
@@ -170,6 +187,37 @@ export function validarEquipo(x, ligaId, equipoId) {
   return {
     liga: { id: x.liga.id, nombre: x.liga.nombre }, equipo: { id: x.equipo.id, nombre: x.equipo.nombre }, plantilla, historicos, resultados,
     estadisticas: { alcance: e.alcance, partidosFinales: e.partidosFinales, jugadores, sinJugador: { puntos: e.sinJugador.puntos, faltas: e.sinJugador.faltas } },
+    servidorAhoraMs: x.servidorAhoraMs,
+  }
+}
+
+/** Respuesta de GET /v1/ligas/{liga}/jugadores/publico → copia validada o null (campo por campo; nada extra pasa). */
+export function validarJugadores(x, ligaId) {
+  if (!objeto(x) || !ID_PUBLICO.test(ligaId)) return null
+  if (!objeto(x.liga) || x.liga.id !== ligaId || !texto(x.liga.nombre, 200)) return null
+  if (x.alcance !== 'partidos-finales-de-la-liga' || x.agrupacion !== 'ficha-y-equipo') return null
+  if (!entero(x.partidosFinales, 0, 1000) || !entero(x.servidorAhoraMs, 1, 8.64e15) || typeof x.recortado !== 'boolean') return null
+  if (!objeto(x.sinJugador) || !entero(x.sinJugador.puntos, 0, 1e9) || !entero(x.sinJugador.faltas, 0, 1e9)) return null
+  const lista = (xs, campo) => {
+    if (!Array.isArray(xs) || xs.length > 50) return null
+    const salida = []
+    let previo = null
+    for (const e of xs) {
+      if (!objeto(e) || !entero(e.rango, 1, 1000) || !idDeEntidad(e.id) || !textoONulo(e.nombre, 200) || !dorsalONulo(e.dorsalActual)) return null
+      if (!objeto(e.equipo) || !idDeEntidad(e.equipo.id) || !texto(e.equipo.nombre, 200) || typeof e.enPlantilla !== 'boolean') return null
+      if (!entero(e.puntos, 0, 1e9) || !entero(e.faltas, 0, 1e9) || e[campo] < 1) return null
+      if (previo !== null && (e[campo] > previo[campo] || e.rango < previo.rango)) return null
+      previo = e
+      salida.push({ rango: e.rango, id: e.id, nombre: e.nombre, dorsalActual: e.dorsalActual, equipo: { id: e.equipo.id, nombre: e.equipo.nombre }, enPlantilla: e.enPlantilla, puntos: e.puntos, faltas: e.faltas })
+    }
+    return salida
+  }
+  const maximosAnotadores = lista(x.maximosAnotadores, 'puntos')
+  const masFaltas = lista(x.masFaltas, 'faltas')
+  if (!maximosAnotadores || !masFaltas) return null
+  return {
+    liga: { id: x.liga.id, nombre: x.liga.nombre }, alcance: x.alcance, agrupacion: x.agrupacion, partidosFinales: x.partidosFinales,
+    maximosAnotadores, masFaltas, recortado: x.recortado, sinJugador: { puntos: x.sinJugador.puntos, faltas: x.sinJugador.faltas },
     servidorAhoraMs: x.servidorAhoraMs,
   }
 }

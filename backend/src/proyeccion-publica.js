@@ -30,6 +30,12 @@ import { estadoDeReglas, reglasEfectivas } from '../../src/lib/reglas-categoria.
 //                     alcance no es 'periodo'. Los eventos de falta no se tocan al cambiar de periodo.
 //   periodo, reloj    Como en el motor. `reloj.desdeMs`/`restanteMs` se calculan con `servidorAhoraMs`.
 //   servidorAhoraMs   Hora del servidor al responder, para alinear el reloj del visitante.
+//   anotaciones       (solo en la lectura de un partido) Las últimas canastas CONFIRMADAS de un partido 'vivo', de la más nueva a la más
+//                     antigua, con tope (ANOTACIONES_PUBLICAS): [{ seq, lado: 'local' | 'visita', puntos, jugador: { nombre, dorsalActual } }].
+//                     `seq` es la identidad estable del evento dentro del partido (nunca el id interno ni el del comando). Solo eventos de
+//                     punto NO anulados con ficha asignada y nombre público conocido; deshacer o anular un evento lo quita de la
+//                     lista, rehacerlo lo devuelve con el mismo `seq`. En un partido programado o final es []. El nombre es el nombre
+//                     público de la ficha (como en la página del equipo); nunca nombre en camiseta, personaId ni el cuerpo del evento.
 //   rev               Revisión del partido (cambia con cada orden aceptada).
 //   Marcador, faltas y periodo salen de `resumen_partido` (ver resumen-publico.js), derivado de los eventos en la misma
 //   transacción de cada orden aceptada. Si el resumen falta o no corresponde a la revisión/equipos vigentes, la lectura
@@ -38,9 +44,14 @@ import { estadoDeReglas, reglasEfectivas } from '../../src/lib/reglas-categoria.
 //   confianza) y la del servidor vive en la bandeja, que es interna.
 // ---------------------------------------------------------------------------
 
+/** Cuántas canastas recientes se publican de un partido en juego. */
+export const ANOTACIONES_PUBLICAS = 6
+
 export const CAMPOS_PUBLICOS = Object.freeze({
-  raiz: ['gameId', 'rev', 'liga', 'estado', 'inicio', 'programadoPara', 'inicioReal', 'sede', 'periodo', 'reloj', 'servidorAhoraMs', 'faltasAlcance', 'faltasEquipo', 'local', 'visita'],
+  raiz: ['gameId', 'rev', 'liga', 'estado', 'inicio', 'programadoPara', 'inicioReal', 'sede', 'periodo', 'reloj', 'servidorAhoraMs', 'faltasAlcance', 'faltasEquipo', 'anotaciones', 'local', 'visita'],
   liga: ['id', 'nombre', 'categoria', 'subcategoria'],
+  anotacion: ['seq', 'lado', 'puntos', 'jugador'],
+  jugadorAnotacion: ['nombre', 'dorsalActual'],
   reloj: ['estado', 'restanteMs', 'desdeMs'],
   equipo: ['id', 'nombre', 'puntos', 'faltas', 'faltasPeriodo'],
 })
@@ -71,7 +82,7 @@ const inicioRealDe = (p) => (p.estado !== 'programado' ? textoONulo(p.inicio) : 
  * Lectura de UN partido. `fila`: la fila de `partidos`; `resumen`: la fila VÁLIDA de `resumen_partido` (ya comprobada por
  * quien llama); estado y reloj salen de `estado_json` (no tiene eventos), nombres de `liga`, `local` y `visita`.
  */
-export function proyectarPartidoPublico({ fila, resumen, liga, local, visita, servidorAhoraMs }) {
+export function proyectarPartidoPublico({ fila, resumen, liga, local, visita, servidorAhoraMs, anotaciones = [] }) {
   const estadoJson = JSON.parse(fila.estado_json)
   const p = estadoJson.partido ?? {}
   const reglas = reglasEfectivas({ config: estadoJson.config, estadoPartido: p.estado, deporte: liga.deporte, categoria: liga.categoria })
@@ -92,6 +103,7 @@ export function proyectarPartidoPublico({ fila, resumen, liga, local, visita, se
     servidorAhoraMs,
     faltasAlcance: 'partido',
     faltasEquipo,
+    anotaciones,
     local: { id: local.id, nombre: local.nombre, puntos: resumen.local_puntos, faltas: resumen.local_faltas, faltasPeriodo: periodo(resumen.local_faltas_periodo) },
     visita: { id: visita.id, nombre: visita.nombre, puntos: resumen.visita_puntos, faltas: resumen.visita_faltas, faltasPeriodo: periodo(resumen.visita_faltas_periodo) },
   }

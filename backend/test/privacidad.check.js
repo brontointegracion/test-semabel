@@ -31,10 +31,15 @@ describe('lectura pública: solo campos aprobados', () => {
     const texto = await r.text()
     const prohibidos = [
       tokenDe(ligaId, 'P'), tokenDe(ligaId, 'Q'), 'tok-sintetico', 'semilla-sintetica',
-      'tel-P', 'actor-P', 'deviceId', 'persona', 'J1', 'J2', 'Ana', 'Beto', 'Eva', 'dorsal', 'jugador',
+      'tel-P', 'actor-P', 'deviceId', 'persona', 'J1', 'J2', 'Beto', 'Eva',
       'recibo', 'cmdId', a.sobre.cmdId, 'atribucion', 'preparacion', 'token_hash', 'clientSeq', 'bandeja',
     ]
     for (const p of prohibidos) expect(texto, `contiene «${p}»`).not.toContain(p)
+    // REPORT_191: la ÚNICA información de jugador es el nombre público y el número de la canasta confirmada, dentro de `anotaciones`.
+    const cuerpo = JSON.parse(texto)
+    expect(cuerpo.anotaciones).toEqual([{ seq: 1, lado: 'local', puntos: 2, jugador: { nombre: 'Ana Pérez', dorsalActual: 0 } }])
+    const { anotaciones, ...resto } = cuerpo
+    for (const p of ['Ana', 'dorsal', 'jugador']) expect(JSON.stringify(resto), `fuera de anotaciones: «${p}»`).not.toContain(p)
     expect(r.headers.get('cache-control')).toBe('no-store')
     expect(r.headers.get('x-content-type-options')).toBe('nosniff')
   })

@@ -140,3 +140,8 @@
   .tv-pagina .tv-estado { font-size: clamp(1rem, 2.6vh, 1.9rem); }
   .tv-pagina .tv-liga { font-size: clamp(0.8rem, 2vh, 1.4rem); }
 }
+
+/* Ranking de jugadores de la liga: en pantallas estrechas el nombre se parte en vez de cortarse con «…». */
+.publico .jugador-fila .nombre { white-space: normal; overflow-wrap: anywhere; }
+.publico .jugador-fila .nota-ficha { font-size: 0.68rem; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--surface-2); color: var(--ink-soft); white-space: nowrap; }
+.publico .jugador-fila .falta-dato { color: var(--ink-mute); font-style: italic; }

@@ -70,7 +70,7 @@ const calendarioActivo = () => screen.getByRole('button', { name: 'Calendario' }
 const enlaceDePartido = (liga, clave) => document.querySelector(`a.partido[href$="-${sufijoPartido(idJuego(liga, clave))}"]`)
 const rutaCanonica = (liga, clave, nombres) => `/liga/${liga.toLowerCase()}/partido/${nombres}-${sufijoPartido(idJuego(liga, clave))}`
 const NOMBRES = { programado: 'cross-level-vs-deportivo', vivo: 'west-hornets-vs-vip', final: 'deportivo-vs-vip' }
-const esperaPartido = async () => screen.findByText('Faltas del partido')
+const esperaPartido = async () => screen.findByLabelText('Pantalla del marcador')
 
 describe('direcciones canónicas en minúsculas', () => {
   for (const liga of LIGAS) {

@@ -64,6 +64,15 @@ export function fechaCortaPanama(valor) {
   return p ? `${DIAS[p.diaSemana]} ${p.dia} ${MESES[p.mes - 1]}` : null
 }
 
+const DIAS_LARGOS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+const MESES_LARGOS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+
+/** «Miércoles 21 de octubre» (día y mes de Panamá, nombres completos): solo para el marcador grande (REPORT_201). null si la fecha no es válida. */
+export function fechaLargaPanama(valor) {
+  const p = partesPanama(valor)
+  return p ? `${DIAS_LARGOS[p.diaSemana]} ${p.dia} de ${MESES_LARGOS[p.mes - 1]}` : null
+}
+
 /** Clave del día calendario en Panamá: "2026-11-01" (sirve para agrupar y comparar días). */
 export function claveDiaPanama(valor) {
   const p = partesPanama(valor)

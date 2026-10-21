@@ -88,7 +88,7 @@ describe('Inicio público', () => {
     montar('/')
     await screen.findByText('Ahora mismo')
     fireEvent.click(document.querySelector('.hm-marcador'))
-    expect(await screen.findByText('Faltas del partido')).toBeTruthy()
+    expect(await screen.findByLabelText('Pantalla del marcador')).toBeTruthy()
     fireEvent.click(screen.getByText('‹ Salir')) // llegó desde Inicio: vuelve a Inicio
     expect(await screen.findByText('Ahora mismo')).toBeTruthy()
   })
@@ -294,21 +294,21 @@ describe('Marcador público: alcance de las faltas de equipo (REPORT_175)', () =
     montar('/liga/LIGAPUB1/partido/G1')
     await screen.findByLabelText('Puntos de Alfa Norte')
   }
-  const seccion = () => document.querySelector('.faltas-partido')
+  const seccion = () => document.querySelector('.sb-fouls')
+  const cuentas = () => [...document.querySelectorAll('.sb-fouls__value')].map((n) => n.textContent)
   it('«periodo» (Mini): muestra la cuenta del periodo con su propio título, no el total', async () => {
     await ver({ faltasEquipo: 'periodo', ...lados(true) })
-    expect(screen.getByText('Faltas del período')).toBeTruthy()
+    expect(screen.getAllByText('Faltas del período').length).toBe(2) // una por equipo (diseño v0)
     expect(screen.queryByText('Faltas del partido')).toBeNull()
-    expect(seccion().textContent).toContain('2')
-    expect(seccion().textContent).not.toContain('7')
+    expect(cuentas()).toEqual(['2', '1']) // la cuenta del periodo, no el total (7 y 4)
   })
   it('«partido» (Intermedia, Adulto, Veteranos) y servidor anterior sin el campo: total de partido', async () => {
     await ver({ faltasEquipo: 'partido', ...lados(false) })
-    expect(screen.getByText('Faltas del partido')).toBeTruthy()
-    expect(seccion().textContent).toContain('7')
+    expect(screen.getAllByText('Faltas del partido').length).toBe(2)
+    expect(cuentas()).toEqual(['7', '4'])
     cleanup()
     await ver({})
-    expect(screen.getByText('Faltas del partido')).toBeTruthy()
+    expect(screen.getAllByText('Faltas del partido').length).toBe(2)
   })
   it('«no-disponible» (reglas guardadas inválidas): no se inventa un alcance; se dice, y no hay sección de faltas ni total', async () => {
     await ver({ faltasEquipo: 'no-disponible', ...lados(false) })
@@ -331,32 +331,43 @@ describe('Marcador público', () => {
   it('muestra nombres, puntos grandes, periodo, reloj, «Faltas del partido», sede, fecha de Panamá y la marca semabel.com', async () => {
     servidor({ '/v1/ligas/LIGAPUB1/publico': ligaConJuegos('G1', 'G2'), '/v1/ligas/LIGAPUB1/partidos/G1': respuestaJuego() })
     montar('/liga/LIGAPUB1/partido/G1')
-    expect(await screen.findByText('Faltas del partido')).toBeTruthy()
-    expect(screen.getByText('Alfa Norte', { selector: '.corto' })).toBeTruthy()
+    expect(await screen.findByLabelText('Pantalla del marcador')).toBeTruthy()
+    expect(screen.getByText('Alfa Norte', { selector: 'h2 a' })).toBeTruthy()
     expect(screen.getByLabelText('Puntos de Alfa Norte').textContent).toBe('12')
     expect(screen.getByLabelText('Puntos de Beta Sur').textContent).toBe('9')
-    expect(screen.getByText('Periodo 2')).toBeTruthy()
+    expect(screen.getByText('2.º cuarto')).toBeTruthy()
     expect(screen.getByLabelText('Reloj del partido').textContent).toBe('07:00')
     expect(screen.getByText('Reloj detenido')).toBeTruthy()
     expect(screen.getByText('EN VIVO')).toBeTruthy()
     expect(screen.getByText('Cancha A')).toBeTruthy()
-    expect(screen.getByText(/dom 1 nov · 4:30 p. m./)).toBeTruthy() // 21:30Z = 16:30 en Panamá
-    expect(screen.getByText('semabel.com')).toBeTruthy()
+    expect(screen.getByText('Domingo 1 de noviembre')).toBeTruthy() // 21:30Z = 16:30 en Panamá; con el partido en juego no se repite la hora programada
+    expect(screen.queryByText(/4:30 p. m./)).toBeNull()
+    expect(screen.getAllByText('semabel.com').length).toBeGreaterThan(0) // la marca del encabezado (y las promociones de Semabel)
     expect(screen.getByText('Pantalla completa')).toBeTruthy()
     expect(screen.queryByText(/Faltas por periodo|posesión|Última jugada/i)).toBeNull()
     expect(document.title).toContain('Alfa Norte 12-9 Beta Sur')
   })
 
-  it('00:00 no es final; final no muestra reloj; programado atrasado dice «Pendiente de comenzar»', async () => {
+  it('00:00 confirmado no es final: fin de período (descanso) o, en el último, resultado por confirmar; final no muestra reloj; programado atrasado dice «Pendiente de comenzar»', async () => {
     servidor({ '/v1/ligas/LIGAPUB1/publico': ligaConJuegos('G1', 'G2'), '/v1/ligas/LIGAPUB1/partidos/G1': respuestaJuego({ reloj: reloj('detenido', 0) }) })
     montar('/liga/LIGAPUB1/partido/G1')
-    expect(await screen.findByText('Fin del período')).toBeTruthy()
+    expect(await screen.findByText('Final del 2.º cuarto')).toBeTruthy()
+    expect(screen.getByText('Descanso entre períodos')).toBeTruthy()
+    expect(screen.getByLabelText('Puntos de Alfa Norte').textContent).toBe('12') // equipos, marcador y período siguen visibles
     expect(screen.getByText('EN VIVO')).toBeTruthy()
-    expect(screen.queryByText('Final')).toBeNull()
+    expect(screen.queryByText('Resultado final')).toBeNull()
+    expect(screen.queryByLabelText('Reloj del partido')).toBeNull()
+    cleanup()
+    servidor({ '/v1/ligas/LIGAPUB1/publico': ligaConJuegos('G1', 'G2'), '/v1/ligas/LIGAPUB1/partidos/G1': respuestaJuego({ periodo: 4, reloj: reloj('detenido', 0) }) })
+    montar('/liga/LIGAPUB1/partido/G1')
+    expect(await screen.findByText('Final del 4.º cuarto')).toBeTruthy()
+    expect(screen.getByText('Resultado por confirmar')).toBeTruthy()
+    expect(screen.queryByText('Resultado final')).toBeNull() // el cuarto período terminado sin cerrar NO es un resultado final
+    expect(screen.queryByText('Descanso entre períodos')).toBeNull()
     cleanup()
     servidor({ '/v1/ligas/LIGAPUB1/publico': ligaConJuegos('G1', 'G2'), '/v1/ligas/LIGAPUB1/partidos/G1': respuestaJuego({ estado: 'final', reloj: reloj('detenido', 0) }) })
     montar('/liga/LIGAPUB1/partido/G1')
-    expect(await screen.findByText('Final')).toBeTruthy()
+    expect(await screen.findByText('Resultado final')).toBeTruthy()
     expect(screen.queryByLabelText('Reloj del partido')).toBeNull()
     expect(screen.queryByText('EN VIVO')).toBeNull()
     cleanup()
@@ -394,7 +405,7 @@ describe('Marcador público', () => {
     Object.defineProperty(document, 'fullscreenElement', { value: document.body, configurable: true })
     await act(async () => { document.dispatchEvent(new Event('fullscreenchange')) })
     expect(screen.getByText('Salir de pantalla completa')).toBeTruthy()
-    expect(document.querySelector('.board.pantalla-completa')).not.toBeNull()
+    expect(document.querySelector('.sb-app[data-presenting="true"]')).not.toBeNull()
     Object.defineProperty(document, 'fullscreenElement', { value: null, configurable: true })
     delete Element.prototype.requestFullscreen
   })
@@ -470,7 +481,7 @@ describe('reloj alineado con el servidor, frescura y ciclo de vida (tiempo simul
     const durante = screen.getByLabelText('Reloj del partido').textContent
     await avanzar(120_000)
     const despues = screen.getByLabelText('Reloj del partido').textContent
-    expect(screen.getByText('Sin actualizar', { selector: '.nota-estado' })).toBeTruthy()
+    expect(screen.getByText(/^Sin actualizar/, { selector: '.sb-clock-status' })).toBeTruthy()
     // pasados más de 3 periodos sin dato, el reloj deja de avanzar (queda en el último valor confirmado)
     await avanzar(120_000)
     expect(screen.getByLabelText('Reloj del partido').textContent).toBe(despues)
@@ -542,7 +553,7 @@ describe('reloj alineado con el servidor, frescura y ciclo de vida (tiempo simul
     expect(screen.queryByText('Faltas del partido')).toBeNull()
     cleanup()
     montar('/liga/LIGAPUB1/partido/G2')
-    expect(await screen.findByText('Equipo Dos', { selector: '.corto' })).toBeTruthy()
+    expect(await screen.findByText('Equipo Dos', { selector: 'h2 a' })).toBeTruthy()
     soltarG1?.() // la respuesta tardía de G1
     await act(async () => { await Promise.resolve() })
     expect(document.body.textContent).not.toContain('Alfa Norte')

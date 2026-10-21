@@ -13,6 +13,8 @@
 
 export const RUTA_TV = '/tv'
 
+// La transmisión continua de UNA cancha (REPORT_199) vive en tv-secuencia.js: su dirección estable es /tv/cancha y su configuración
+// explícita, VITE_TV_SECUENCIA. Para retirarla: borrar tv-secuencia.js, pantallas/publico/TvCancha.jsx y la ruta de AppCompartida.jsx.
 export const TV_PILOTO = Object.freeze({
   ligaId: 'SIMULACRO-PILOTO',
 })

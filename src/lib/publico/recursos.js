@@ -1,5 +1,5 @@
-import { pedirJson, rutaEquipo, rutaJuego, rutaLiga } from './cliente.js'
-import { validarEquipo, validarJuego, validarLiga } from './validar.js'
+import { pedirJson, rutaEquipo, rutaJuego, rutaJugadores, rutaLiga } from './cliente.js'
+import { validarEquipo, validarJuego, validarJugadores, validarLiga } from './validar.js'
 
 // Definiciones de los dos recursos públicos y su cadencia.
 //
@@ -61,6 +61,19 @@ export function recursoJuego(ligaId, gameId) {
   }
 }
 
+// Transmisión de televisión (REPORT_201): el partido INMEDIATAMENTE siguiente se lee cada 5 s (en lugar de 30 s) mientras la pantalla lo espera, para
+// pasar a él pronto cuando el árbitro lo inicie. `esVigilado()` lo decide quien muestra la secuencia; los demás partidos futuros siguen a 30 s.
+export const PERIODO_VIGILADO_MS = 5_000
+export function recursoJuegoTv(ligaId, gameId, esVigilado) {
+  const base = recursoJuego(ligaId, gameId)
+  const rapido = (datos) => estadoDe(datos) === 'programado' && esVigilado()
+  return {
+    ...base,
+    periodoDe: (datos) => (rapido(datos) ? PERIODO_VIGILADO_MS : base.periodoDe(datos)),
+    intervaloMinDe: (datos) => (rapido(datos) ? PERIODO_VIGILADO_MS : base.intervaloMinDe(datos)),
+  }
+}
+
 export function recursoEquipo(ligaId, equipoId) {
   return {
     clave: `equipo:${ligaId}:${equipoId}`,
@@ -68,6 +81,22 @@ export function recursoEquipo(ligaId, equipoId) {
       const r = await pedirJson(rutaEquipo(ligaId, equipoId), { senal })
       if (r.tipo !== 'ok') return r
       const datos = validarEquipo(r.cuerpo, ligaId, equipoId)
+      return datos ? { ...r, datos } : { tipo: 'malformado' }
+    },
+    periodoDe: () => PERIODO_EQUIPO_MS,
+    intervaloMinDe: () => INTERVALO_MIN_EQUIPO_MS,
+  }
+}
+
+// Rankings de jugadores de la liga (pestaña «Jugadores»): se piden SOLO mientras esa pestaña está abierta, con la cadencia del equipo
+// (no hay sondeo de 5 s: solo cuentan partidos finales). Una lectura de liga, no una por equipo.
+export function recursoJugadores(ligaId) {
+  return {
+    clave: `jugadores:${ligaId}`,
+    async cargar(senal) {
+      const r = await pedirJson(rutaJugadores(ligaId), { senal })
+      if (r.tipo !== 'ok') return r
+      const datos = validarJugadores(r.cuerpo, ligaId)
       return datos ? { ...r, datos } : { tipo: 'malformado' }
     },
     periodoDe: () => PERIODO_EQUIPO_MS,

@@ -140,7 +140,7 @@ describe('/tv: teclado y marcador existente', () => {
     expect(document.activeElement).toBe(enlaces[2])
     await user.keyboard('{Enter}')
     expect(await screen.findByLabelText('Puntos de Demo Azul')).toBeTruthy() // el MISMO marcador público (PartidoPublico)
-    expect(screen.getByText(NOMBRE)).toBeTruthy()
+    expect(screen.getAllByText(NOMBRE).length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: 'Pantalla completa' })).toBeTruthy()
     expect(ubicacion().pathname).toBe(`/liga/simulacro-piloto/partido/demo-azul-vs-demo-rojo-${sufijoPartido(id)}`)
     await user.click(screen.getByRole('button', { name: '‹ Salir' }))

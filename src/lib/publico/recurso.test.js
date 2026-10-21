@@ -339,3 +339,43 @@ describe('recurso de equipo: bajo demanda, refresco manual y como mucho cada 5 m
     expect(e.timers.size).toBe(0)
   })
 })
+
+
+describe('reprogramar (REPORT_201): la cadencia cambia fuera del recurso', () => {
+  it('mueve el temporizador pendiente a la cadencia nueva anclado a la última petición; no pide nada por sí sola ni acumula peticiones', async () => {
+    const e = entornoFalso()
+    let rapido = false
+    const cargar = vi.fn(async () => ok(e, { estado: 'programado' }))
+    const def = { clave: 'k', cargar, periodoDe: () => (rapido ? 5000 : 30_000), intervaloMinDe: () => (rapido ? 5000 : 30_000) }
+    const r = crearRecurso(def, e)
+    r.iniciar()
+    await e.vaciar()
+    expect(cargar).toHaveBeenCalledTimes(1)
+    await e.avanzar(12_000)
+    rapido = true
+    r.reprogramar()
+    expect(cargar).toHaveBeenCalledTimes(1) // por sí sola no pide
+    await e.avanzar(1)
+    expect(cargar).toHaveBeenCalledTimes(2) // ya habían pasado 12 s ≥ 5 s desde la última: toca ya (una sola)
+    await e.avanzar(4_998)
+    expect(cargar).toHaveBeenCalledTimes(2)
+    await e.avanzar(1)
+    expect(cargar).toHaveBeenCalledTimes(3) // y luego cada 5 s
+    expect(e.timers.size).toBe(1) // un solo temporizador pendiente
+    r.detener()
+  })
+  it('no toca la espera tras un fallo, ni actúa con la pestaña oculta o sin iniciar', async () => {
+    const e = entornoFalso()
+    const cargar = vi.fn(async () => ({ tipo: 'red' }))
+    const r = crearRecurso({ clave: 'k', cargar, periodoDe: () => 5000, intervaloMinDe: () => 5000 }, e)
+    r.reprogramar() // sin iniciar: nada
+    expect(e.timers.size).toBe(0)
+    r.iniciar()
+    await e.vaciar()
+    const pendiente = [...e.timers.values()][0].en
+    r.reprogramar() // con fallos: el retroceso manda
+    expect([...e.timers.values()][0].en).toBe(pendiente)
+    expect(cargar).toHaveBeenCalledTimes(1)
+    r.detener()
+  })
+})

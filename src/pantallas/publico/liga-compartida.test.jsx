@@ -136,17 +136,101 @@ describe('Calendario', () => {
   })
 })
 
+const J1 = '/v1/ligas/LIGAPUB1/jugadores/publico'
+const entrada = (rango, id, nombre, dorsalActual, equipo, puntos, faltas, enPlantilla = true) => ({ rango, id, nombre, dorsalActual, equipo, enPlantilla, puntos, faltas })
+const AN = { id: 'E1', nombre: 'Alfa Norte' }
+const BS = { id: 'E2', nombre: 'Beta Sur' }
+const rankings = (extra = {}) => ({
+  liga: { id: 'LIGAPUB1', nombre: 'Liga sintética uno' },
+  alcance: 'partidos-finales-de-la-liga',
+  agrupacion: 'ficha-y-equipo',
+  partidosFinales: 1,
+  maximosAnotadores: [
+    entrada(1, 'J1', 'Ana Prueba', 0, AN, 9, 0),
+    entrada(2, 'K1', 'Eva Visita', 1, BS, 4, 1),
+    entrada(2, 'J2', 'Gemelo Igual', 2, AN, 4, 3, false),
+    entrada(2, 'J7', 'Gemelo Igual', 12, AN, 4, 0),
+    entrada(5, 'J9', null, null, BS, 1, 0),
+  ],
+  masFaltas: [entrada(1, 'J2', 'Gemelo Igual', 2, AN, 4, 3, false), entrada(2, 'K1', 'Eva Visita', 1, BS, 4, 1)],
+  recortado: false,
+  sinJugador: { puntos: 0, faltas: 0 },
+  servidorAhoraMs: 1_790_000_000_000,
+  ...extra,
+})
+
 describe('Jugadores', () => {
-  it('sin finales: el vacío verificado del original; con finales: se explica que falta el resumen de la liga (no un vacío) y se enlazan los equipos', async () => {
-    servidor({ [L1]: respuestaLiga({ partidos: [partidoLiga({ gameId: 'P' })] }) })
+  it('Posiciones no pide el ranking; la pestaña Jugadores hace UNA lectura de liga (ninguna por equipo)', async () => {
+    servidor({ [L1]: conPartidos(), [J1]: rankings() })
+    montar('/liga/LIGAPUB1')
+    await screen.findByText('Equipo')
+    expect(llamadas.map((l) => l.ruta)).toEqual([L1])
+    fireEvent.click(screen.getByRole('button', { name: 'Jugadores' }))
+    expect(await screen.findByText('Máximos anotadores')).toBeTruthy()
+    expect(llamadas.map((l) => l.ruta).sort()).toEqual([J1, L1])
+    expect(llamadas.some((l) => /\/equipos\//.test(l.ruta))).toBe(false)
+    expect(llamadas.every((l) => l.init?.credentials === 'omit')).toBe(true)
+  })
+
+  it('navegación directa a ?pestana=jugadores: dos secciones con nombre, número, equipo y total claramente rotulado; empates con el mismo puesto', async () => {
+    servidor({ [L1]: conPartidos(), [J1]: rankings() })
     montar('/liga/LIGAPUB1?pestana=jugadores')
-    expect(await screen.findByText('Las estadísticas aparecen cuando se juegue el primer partido.')).toBeTruthy()
+    expect(await screen.findByText('Máximos anotadores')).toBeTruthy()
+    expect(screen.getByText('Más faltas')).toBeTruthy()
+    const anot = within(screen.getByRole('list', { name: 'Máximos anotadores' }))
+    const filas = [...document.querySelectorAll('[aria-label="Máximos anotadores"] .jugador-fila')].map((f) => [
+      f.querySelector('.pos').textContent, f.querySelector('.nombre').textContent, f.querySelector('.sub').textContent, f.lastElementChild.textContent])
+    expect(filas).toEqual([
+      ['1', 'Ana Prueba', '#0 · Alfa Norte', '9puntos totales'],
+      ['2', 'Eva Visita', '#1 · Beta Sur', '4puntos totales'],
+      ['2', 'Gemelo IgualFuera de la plantilla', '#2 · Alfa Norte', '4puntos totales'],
+      ['2', 'Gemelo Igual', '#12 · Alfa Norte', '4puntos totales'], // el mismo nombre: otra ficha, otra fila
+      ['5', 'Nombre pendiente', 'Sin número · Beta Sur', '1puntos totales'], // lo que falta se dice, no se inventa
+    ])
+    expect(anot.getAllByText('puntos totales').length).toBe(5)
+    const faltas = [...document.querySelectorAll('[aria-label="Más faltas"] .jugador-fila')].map((f) => f.lastElementChild.textContent)
+    expect(faltas).toEqual(['3faltas personales', '1faltas personales'])
+    expect(screen.getByText(/Solo cuentan los partidos terminados \(1\)/)).toBeTruthy()
+    expect(screen.getByText(/Los programados o en juego no suman/)).toBeTruthy()
+    expect(screen.getByText(/no por su nombre/)).toBeTruthy()
+    expect(document.querySelectorAll('.jugador-fila a, a.jugador-fila').length).toBe(0) // no hay perfiles públicos
+    const texto = document.body.textContent
+    for (const mal of ['por juego', 'promedio', 'asistencias', 'rebotes', 'partidos jugados']) expect(texto).not.toContain(mal)
+  })
+
+  it('sin partidos terminados: vacío verificado que aclara que programados y en juego no cuentan', async () => {
+    servidor({ [L1]: conPartidos(), [J1]: rankings({ partidosFinales: 0, maximosAnotadores: [], masFaltas: [] }) })
+    montar('/liga/LIGAPUB1?pestana=jugadores')
+    expect(await screen.findByText(/Las estadísticas aparecen cuando termine el primer partido\. Los partidos programados o en juego no cuentan\./)).toBeTruthy()
+    expect(screen.queryByText('Máximos anotadores')).toBeNull()
+  })
+
+  it('con partidos terminados pero sin puntos ni faltas: cada lista dice su vacío; lo no atribuido se informa; el recorte se avisa', async () => {
+    servidor({ [L1]: conPartidos(), [J1]: rankings({ maximosAnotadores: [], masFaltas: [], sinJugador: { puntos: 5, faltas: 2 }, recortado: true }) })
+    montar('/liga/LIGAPUB1?pestana=jugadores')
+    expect(await screen.findByText('Todavía no hay puntos anotados en partidos terminados.')).toBeTruthy()
+    expect(screen.getByText('Todavía no hay faltas registradas en partidos terminados.')).toBeTruthy()
+    expect(screen.getByText(/Hay 5 puntos y 2 faltas sin jugador asignado/)).toBeTruthy()
+    expect(screen.getByText('Se muestran solo los primeros puestos.')).toBeTruthy()
+  })
+
+  it('cargando, error del servidor, datos en preparación y respuesta malformada: ninguno inventa un ranking', async () => {
+    let liberar
+    servidor({ [L1]: conPartidos(), [J1]: () => new Promise((r) => { liberar = r }) })
+    montar('/liga/LIGAPUB1?pestana=jugadores')
+    expect(await screen.findByText('Cargando estadísticas…')).toBeTruthy()
+    liberar(respuesta({ error: 'error-interno' }, 500))
+    expect(await screen.findByText(/No se pudo cargar/)).toBeTruthy()
+    expect(screen.queryByText('Máximos anotadores')).toBeNull()
     cleanup()
-    servidor({ [L1]: conPartidos() })
+    servidor({ [L1]: conPartidos(), [J1]: () => respuesta({ error: 'resumen-no-disponible' }, 503) })
     montar('/liga/LIGAPUB1?pestana=jugadores')
-    expect(await screen.findByText(/estadísticas de jugadores de toda la liga todavía no están disponibles aquí/)).toBeTruthy()
-    expect(screen.queryByText(/Máximos anotadores|por juego/)).toBeNull() // nada de clasificaciones inventadas
-    expect([...document.querySelectorAll('.lista-equipos a')].length).toBe(4)
+    expect(await screen.findByText(/Los datos se están preparando/)).toBeTruthy()
+    cleanup()
+    servidor({ [L1]: conPartidos(), [J1]: { ...rankings(), alcance: 'otro' } })
+    montar('/liga/LIGAPUB1?pestana=jugadores')
+    expect(await screen.findByText(/No se pudo cargar/)).toBeTruthy()
+    expect(screen.queryByText('Ana Prueba')).toBeNull()
   })
 })
 

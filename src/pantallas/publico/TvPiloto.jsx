@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { frescura, useMono, useRecurso } from '../../lib/publico/hooks.js'
 import { ligasConfiguradas } from '../../lib/publico/config.js'
 import { partidosDe, pendienteDeComenzar } from '../../lib/publico/agrupar.js'
@@ -6,6 +7,7 @@ import { claveDiaPanama, diaRelativoPanama, fechaCortaPanama, horaPanama } from 
 import { PERIODO_CATALOGO_MS, recursoLiga } from '../../lib/publico/recursos.js'
 import { ahoraServidor } from '../../lib/publico/reloj-servidor.js'
 import { TV_PILOTO } from '../../lib/publico/tv-piloto.js'
+import { RUTA_TV_CANCHA, secuenciaTv } from '../../lib/publico/tv-secuencia.js'
 import { Cargando, EnlaceConOrigen, MarcaPublica, PieFrescura, textoDeError } from './componentes.jsx'
 import './publico.css'
 
@@ -35,6 +37,7 @@ function Mensaje({ children, titulo }) {
 export default function TvPiloto() {
   const config = useMemo(() => ligasConfiguradas(), [])
   const ligaId = TV_PILOTO.ligaId
+  const secuencia = useMemo(() => secuenciaTv(), []) // REPORT_199: solo si la compilación la configura
   // Solo se lee la liga del piloto y solo si la compilación la lista (la misma regla del resto de pantallas públicas).
   const configurada = config.ok && config.ids.includes(ligaId)
   const def = useMemo(() => (configurada ? recursoLiga(ligaId) : null), [configurada, ligaId])
@@ -96,6 +99,7 @@ export default function TvPiloto() {
       <main className="tv-contenido">
         <h1 className="tv-titulo">Partidos en TV</h1>
         <p className="tv-sub">Elige un partido para verlo en pantalla grande.</p>
+        {secuencia.ok && <p className="tv-sub"><Link to={RUTA_TV_CANCHA}>Ver la transmisión de la cancha: sigue sola la secuencia de partidos</Link></p>}
         {grupos.length === 0 && <div className="vacio" role="status">Esta liga no tiene partidos programados todavía.</div>}
         {grupos.map((g) => (
           <section key={g.clave} className="tv-grupo" aria-label={etiquetaDia(g)}>

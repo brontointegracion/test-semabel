@@ -486,6 +486,19 @@ build does not list the league. Limitations: the list refreshes every 60 s; the 
 native focus/Enter (first game is focused on load); no `noindex` header for `/tv` (not requested). **To remove or replace it:** delete `tv-piloto.js`, `TvPiloto.jsx`
 (+ its test), the `/tv` route, and the `/tv` entries in `SIN_TABS_COMPARTIDO` (`lib/publico/navegacion.js`) and `PERMITIDAS` (`lib/volver.js`); or change `ligaId` to point it elsewhere.
 
+**`/tv/cancha` (stable TV URL for ONE court, REPORT_199).** One short URL follows an **explicit, ordered** list of `LIGA/PARTIDO` pairs set at build time:
+`VITE_TV_SECUENCIA="SIMULACRO-PILOTO/<gameId1>,SIMULACRO-PILOTO/<gameId2>"` (full game ids as shown by the public league read; every league must also be in
+`VITE_LIGAS_PUBLICAS`; absent/empty = «Transmisión no configurada»; any malformed, duplicate or unlisted pair discards the whole value = «Configuración no válida»;
+max 8 pairs). A shared court is never inferred from venue text or time. The repository ships NO sequence. Code: `src/lib/publico/tv-secuencia.js` (pure selection +
+parsing), `src/pantallas/publico/TvCancha.jsx` (one subscription per scoped game and per league; the shown game gets its data by props), shared views in
+`PantallaMarcador.jsx` (`MarcoPantalla` stays mounted across games so fullscreen survives). Selection (server-confirmed state only): exactly one `vivo` → that game;
+several `vivo` → explicit conflict screen with links, nothing chosen; none `vivo` → the first game not yet `final` is *pending*: first game pending → its scheduled view;
+otherwise the previous final result with the pending game's teams, date and time as next; all `final` → the last result plus «Sesión completada». A game the server
+does not find → «Partido no encontrado» (never treated as an empty schedule). A failed read keeps the last confirmed data («Sin actualizar») and never advances the
+display. Cadences are the existing ones (live 5 s, `programado` 30 s, final 5 min, league 60 s), so after the referee starts the next game the TV can need up to ~30 s
+to switch. Recognition resets its baseline per game, so nothing is replayed on switch/reload/reconnect. Read-only: GET public reads only. **To remove:** delete
+`tv-secuencia.js`, `TvCancha.jsx` (+ tests), the `/tv/cancha` route and the `/tv(/cancha)` entries in `navegacion.js`/`volver.js`, and the link in `TvPiloto.jsx`.
+
 **Latency baseline.** Manual guide (tap → server confirmation, confirmation → TV, total; polling intervals and their source files):
 `~/Documents/SEBEL/preparacion/SIMULACRO-PILOTO-<date>/LATENCY-MEASUREMENT-GUIDE.md`. No caching or polling change was made.
 
@@ -525,6 +538,15 @@ Recovery: an uncertain result (`detenido-sin-resolver`; journal `incierta`) is r
 (5) roster with `runner-plantilla.mjs --aplicar --remoto` (Simulacro package + mapping, NEW journal) then `--verificar`; (6) games: **`jornada-1` must be regenerated and reviewed first** (its 19 October times have passed; the existing payload is preserved unmodified), `jornada-2` (20 October 10:00 and 10:30 a. m.) can load as prepared; (7) `verificar … --leer`; (8) close the gate.
 
 Tests: `test/asignacion-ligas.check.js` and `test/asignacion-herramienta.check.js` (workerd), `node --test test/cli-asignar.node-test.mjs`.
+
+### Confirmed baskets in the public game read (REPORT_191)
+
+`GET /v1/ligas/{liga}/partidos/{juego}` gains one read-only field, `anotaciones`: the last (up to 6) **confirmed** scoring events of a game that is
+`vivo`, newest first, as `{ seq, lado: 'local' | 'visita', puntos, jugador: { nombre, dorsalActual } }`. `seq` is the stable per-game identity of the
+event (never the internal event id or the command id). Annulled events (undo/annul) are absent; redo brings the same `seq` back. Points without an
+assigned player, or whose player has no public name, are not published. `nombre` is the public team-page name (given name + surnames, never the shirt
+name, personaId or any event body). A scheduled or final game returns `[]`. No storage change; one bounded read by the existing `(partido, seq)` index
+plus at most six player-by-key reads. Used by the big scoreboard for its subtle scoring notice (see `docs/display/medios-piloto.md`).
 
 ## Pruebas locales (runtime de Workers, datos sintéticos)
 

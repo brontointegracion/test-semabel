@@ -87,7 +87,7 @@ describe('sin hora de actualización de rutina', () => {
     sinRutina()
     cleanup()
     montar(`/liga/platinium-u10/partido/${id}-20261024-A-VS-B`)
-    await screen.findByText('Faltas del partido')
+    await screen.findByLabelText('Pantalla del marcador')
     sinRutina()
   })
 })

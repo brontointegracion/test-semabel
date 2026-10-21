@@ -6,10 +6,11 @@ import { etiquetasDe, partidosDe, urlLigaPublica } from '../../lib/publico/agrup
 import { resolverLiga } from '../../lib/publico/urls.js'
 import { urlEquipoPublico } from '../../lib/publico/equipo.js'
 import { fechaCortaPanama, horaPanama, textoSede } from '../../lib/publico/formato.js'
-import { PERIODO_CATALOGO_MS, recursoLiga } from '../../lib/publico/recursos.js'
+import { PERIODO_CATALOGO_MS, PERIODO_EQUIPO_MS, recursoJugadores, recursoLiga } from '../../lib/publico/recursos.js'
 import { tablaDeResultados } from '../../lib/tabla-posiciones.js'
 import { Cargando, EnlaceConOrigen, EscudoTexto, NoEncontrado, PieFrescura, textoDeError, useDireccionCanonica } from './componentes.jsx'
 import { TopbarVolver } from './Navegacion.jsx'
+import JugadoresLiga from './JugadoresLiga.jsx'
 import PaginaLiga, { CalendarioLista, PESTANAS, TablaPosiciones } from './PaginaLiga.jsx'
 
 // ---------------------------------------------------------------------------
@@ -51,6 +52,9 @@ export default function LigaCompartida() {
     return n
   }, { replace: true })
   const [copiado, setCopiado] = useState(false)
+  // Los rankings de jugadores se piden SOLO con la pestaña «Jugadores» abierta: una lectura de toda la liga, no una por equipo.
+  const defJugadores = useMemo(() => (valida && pestana === 'jugadores' ? recursoJugadores(ligaId) : null), [valida, pestana, ligaId])
+  const estadoJugadores = useRecurso(defJugadores)
 
   useEffect(() => {
     if (!estado.datos) return undefined
@@ -126,17 +130,8 @@ export default function LigaCompartida() {
     }
   })
 
-  // Jugadores: el servidor publica puntos y faltas por ficha en la página de cada EQUIPO, no un resumen de toda la liga.
-  const jugadores = finales.length === 0
-    ? <div className="vacio">Las estadísticas aparecen cuando se juegue el primer partido.</div>
-    : (
-      <>
-        <div className="aviso" role="status">
-          Las estadísticas de jugadores de toda la liga todavía no están disponibles aquí. Los puntos y las faltas de cada jugador están en la página de su equipo.
-        </div>
-        {listaEquipos}
-      </>
-    )
+  // Jugadores: máximos anotadores y más faltas de los partidos terminados, calculados por el servidor (ver JugadoresLiga.jsx).
+  const jugadores = <JugadoresLiga estado={estadoJugadores} />
 
   return (
     <PaginaLiga
@@ -172,7 +167,9 @@ export default function LigaCompartida() {
           : <CalendarioLista filas={filasCalendario} ui={UI} />,
         jugadores,
       }}
-      pie={<PieFrescura estado={estado} mono={mono} periodoMs={PERIODO_CATALOGO_MS} saltoMono={saltoMono} />}
+      pie={pestana === 'jugadores'
+        ? <PieFrescura estado={estadoJugadores} mono={mono} periodoMs={PERIODO_EQUIPO_MS} saltoMono={saltoMono} />
+        : <PieFrescura estado={estado} mono={mono} periodoMs={PERIODO_CATALOGO_MS} saltoMono={saltoMono} />}
     />
   )
 }

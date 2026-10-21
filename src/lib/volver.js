@@ -20,6 +20,8 @@ const PERMITIDAS = [
   /^\/liga\/[^/]+\/equipo\/[^/]+$/,
   // Entrada corta del piloto (REPORT_186): «Salir» de un partido abierto desde /tv vuelve a la lista.
   /^\/tv$/,
+  // Transmisión de una cancha (REPORT_199): desde el aviso de conflicto se abre un marcador fijo y «Salir» vuelve a ella.
+  /^\/tv\/cancha$/,
 ]
 
 const BASE = 'http://sebel.invalid'

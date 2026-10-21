@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1200" viewBox="0 0 1920 1200">
+  <title>Sponsor artwork template: expanded slot 8:5</title>
+  <desc>Template for the expanded break/final slot (tile ratio 1.57 to 1.63:1 measured). Guide layer only: hide or delete the group "guias" before exporting. Contains no sponsor branding.</desc>
+  <rect id="fondo" width="1920" height="1200" fill="#FFFFFF"/>
+  <g id="guias" font-family="Arial, Helvetica, sans-serif" font-size="42" fill="#555555">
+    <!-- full image: everything outside the rounded corner is clipped by the card (corner radius 42 px at this size) -->
+    <rect x="1" y="1" width="1918" height="1198" rx="42" fill="none" stroke="#C21F2E" stroke-width="2"/>
+    <!-- recommended safe area (title-safe, 5 % per side): keep names, logos and any text inside -->
+    <rect x="96" y="60" width="1728" height="1080" fill="none" stroke="#1F4FA3" stroke-width="2" stroke-dasharray="14 10"/>
+    <line x1="960" y1="0" x2="960" y2="1200" stroke="#BBBBBB" stroke-width="1"/>
+    <line x1="0" y1="600" x2="1920" y2="600" stroke="#BBBBBB" stroke-width="1"/>
+    <text x="108" y="110">1920 × 1200 px · expanded slot (breaks and final)</text>
+    <text x="108" y="160" fill="#1F4FA3">dashed = safe area (96 px left/right, 60 px top/bottom)</text>
+    <text x="108" y="1128" fill="#C21F2E">red = image edge · corners are rounded (radius ≈ 42 px)</text>
+  </g>
+</svg>

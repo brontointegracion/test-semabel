@@ -14,6 +14,7 @@ export { AccesoDO, LigaDO }
 //   POST /v1/ligas/{ligaId}/partidos/{gameId}/comandos   sobre inmutable + Bearer del partido
 //   GET  /v1/ligas/{ligaId}/partidos/{gameId}            proyección pública
 //   GET  /v1/ligas/{ligaId}/equipos/{equipoId}/publico   lectura pública de un equipo (plantilla activa, resultados y estadísticas básicas)
+//   GET  /v1/ligas/{ligaId}/jugadores/publico            rankings públicos de jugadores de la liga (partidos finales), sin credenciales
 //   GET  /v1/ligas/{ligaId}/publico                      lectura pública de la liga (equipos y partidos), sin credenciales
 //   GET  /v1/ligas/{ligaId}/partidos/{gameId}/preparacion  { preparacion, etiquetas, rev, ultimoClientSeq } + Bearer del partido
 //   GET  /v1/ligas/{ligaId}/partidos/{gameId}/estado       estado autoritativo para el teléfono que controla (ver lectura-estado-control.js) + Bearer del partido
@@ -29,6 +30,7 @@ const ID = '[A-Za-z0-9_-]{1,64}'
 const RE_COMANDO = new RegExp(`^/v1/ligas/(${ID})/partidos/(${ID})/comandos$`)
 const RE_LECTURA = new RegExp(`^/v1/ligas/(${ID})/partidos/(${ID})$`)
 const RE_PUBLICO = new RegExp(`^/v1/ligas/(${ID})/publico$`)
+const RE_JUGADORES = new RegExp(`^/v1/ligas/(${ID})/jugadores/publico$`)
 const RE_EQUIPO = new RegExp(`^/v1/ligas/(${ID})/equipos/(${ID})/publico$`)
 const RE_PREPARACION = new RegExp(`^/v1/ligas/(${ID})/partidos/(${ID})/preparacion$`)
 const RE_ESTADO = new RegExp(`^/v1/ligas/(${ID})/partidos/(${ID})/estado$`)
@@ -105,6 +107,16 @@ async function lecturaEquipo(request, env, ligaId, equipoId) {
   }
 }
 
+async function lecturaJugadores(request, env, ligaId) {
+  if (request.method !== 'GET') return metodoNoPermitido('GET')
+  try {
+    const r = await stubDeLiga(env, ligaId).leerJugadoresPublico()
+    return responder(r.status, r.cuerpo)
+  } catch {
+    return responder(500, { error: 'error-interno' })
+  }
+}
+
 async function preparacion(request, env, ligaId, gameId) {
   if (request.method !== 'GET') return metodoNoPermitido('GET')
   const credencial = tokenDeEncabezado(request.headers.get('authorization'))
@@ -167,6 +179,7 @@ export default {
     if ((m = RE_LECTURA.exec(pathname))) return ligaAdmitida(env, m[1]) ? lectura(request, env, m[1], m[2]) : noEncontrado()
     if ((m = RE_PUBLICO.exec(pathname))) return ligaAdmitida(env, m[1]) ? lecturaLiga(request, env, m[1]) : noEncontrado()
     if ((m = RE_EQUIPO.exec(pathname))) return ligaAdmitida(env, m[1]) ? lecturaEquipo(request, env, m[1], m[2]) : noEncontrado()
+    if ((m = RE_JUGADORES.exec(pathname))) return ligaAdmitida(env, m[1]) ? lecturaJugadores(request, env, m[1]) : noEncontrado()
     // La siembra conserva su orden propio (activación y secreto) y además exige que la liga esté admitida.
     if ((m = RE_PREPARACION.exec(pathname))) return ligaAdmitida(env, m[1]) ? preparacion(request, env, m[1], m[2]) : noEncontrado()
     if ((m = RE_ESTADO.exec(pathname))) return ligaAdmitida(env, m[1]) ? estadoControl(request, env, m[1], m[2]) : noEncontrado()

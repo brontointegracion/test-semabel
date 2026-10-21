@@ -5,7 +5,7 @@ import worker from '../src/worker.js'
 // Variante SOLO de pruebas: hora controlable y una pausa entre leer y confirmar para forzar
 // el entrelazado de otra petición. El código de producción no sabe nada de esto.
 // Se comparte por globalThis: la prueba y el Worker pueden cargar el módulo por separado.
-export const control = (globalThis.__controlPrueba ??= { ahoraMs: null, pausa: null, pausaAut: null, trasConfirmar: null, desfasesAcceso: null, limitesEstado: null, pausaEstado: null, limitesPublicos: null, limitesReparacion: null, limitesEquipo: null, fallaAsignacion: false })
+export const control = (globalThis.__controlPrueba ??= { ahoraMs: null, pausa: null, pausaAut: null, trasConfirmar: null, desfasesAcceso: null, limitesEstado: null, pausaEstado: null, limitesPublicos: null, limitesReparacion: null, limitesEquipo: null, limitesJugadores: null, fallaAsignacion: false })
 
 export class LigaDO extends LigaDOReal {
   ahora() { return control.ahoraMs ?? Date.now() }
@@ -15,6 +15,7 @@ export class LigaDO extends LigaDOReal {
   limitesEstadoControl() { return control.limitesEstado ?? super.limitesEstadoControl() }
   limitesReparacion() { return control.limitesReparacion ?? super.limitesReparacion() }
   limitesEquipoPublico() { return control.limitesEquipo ?? super.limitesEquipoPublico() }
+  limitesJugadoresPublico() { return control.limitesJugadores ?? super.limitesJugadoresPublico() }
   limitesLecturaPublica() { return control.limitesPublicos ?? super.limitesLecturaPublica() }
   async pausaTrasResumirEstado() { if (control.pausaEstado) await control.pausaEstado() }
 }

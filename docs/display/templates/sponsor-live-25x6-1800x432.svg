@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="432" viewBox="0 0 1800 432">
+  <title>Sponsor artwork template: live slot 25:6</title>
+  <desc>Template for the live two-sponsor slot (tile ratio 4.16:1 measured). Guide layer only: hide or delete the group "guias" before exporting. Contains no sponsor branding.</desc>
+  <rect id="fondo" width="1800" height="432" fill="#FFFFFF"/>
+  <g id="guias" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#555555">
+    <!-- full image: everything outside the rounded corner is clipped by the card (corner radius 39 px at this size) -->
+    <rect x="1" y="1" width="1798" height="430" rx="39" fill="none" stroke="#C21F2E" stroke-width="2"/>
+    <!-- recommended safe area (title-safe, 5 % per side): keep names, logos and any text inside -->
+    <rect x="90" y="22" width="1620" height="388" fill="none" stroke="#1F4FA3" stroke-width="2" stroke-dasharray="14 10"/>
+    <line x1="900" y1="0" x2="900" y2="432" stroke="#BBBBBB" stroke-width="1"/>
+    <line x1="0" y1="216" x2="1800" y2="216" stroke="#BBBBBB" stroke-width="1"/>
+    <text x="102" y="48">1800 × 432 px · live slot (two sponsors side by side)</text>
+    <text x="102" y="74" fill="#1F4FA3">dashed = safe area (90 px left/right, 22 px top/bottom)</text>
+    <text x="102" y="398" fill="#C21F2E">red = image edge · corners are rounded (radius ≈ 39 px)</text>
+  </g>
+</svg>

@@ -132,7 +132,11 @@ describe('lecturas: referencia por eventos (antes) frente a resumen almacenado (
         expect(despuesJuego.r.status).toBe(200)
         expect(sinHora(despuesJuego.r.cuerpo)).toEqual(sinHora(antesJuego.cuerpo))
         const sumaJ = sumar(despuesJuego.sentencias)
-        expect(despuesJuego.sentencias.some((s) => s.consulta.includes('FROM eventos'))).toBe(false)
+        // REPORT_191: la lectura de UN partido en juego hace una única lectura acotada de eventos (las últimas canastas confirmadas, por el índice
+        // (partido, seq), LIMIT 6); nunca recorre la historia del partido. La lectura de la LIGA sigue sin tocar `eventos`.
+        const sobreEventos = despuesJuego.sentencias.filter((s) => s.consulta.includes('FROM eventos'))
+        expect(sobreEventos.length).toBeLessThanOrEqual(1)
+        for (const s of sobreEventos) expect(s.consulta).toMatch(/WHERE partido_id = \?[\s\S]*ORDER BY seq DESC LIMIT \?/)
 
         medida({
           caso: 'lectura', partidos, porPartido, eventos: partidos * porPartido,

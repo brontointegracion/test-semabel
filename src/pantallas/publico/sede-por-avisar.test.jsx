@@ -64,7 +64,7 @@ describe('«Por avisar» en las superficies públicas', () => {
     cleanup()
     servidor({ '/v1/ligas/LIGAPUB1/publico': liga(), '/v1/ligas/LIGAPUB1/partidos/VIVO': respuestaJuego({ gameId: 'VIVO', estado: 'vivo', sede: null }) })
     montar('/liga/LIGAPUB1/partido/VIVO')
-    await screen.findByText('Faltas del partido')
+    await screen.findByLabelText('Pantalla del marcador')
     expect(screen.queryByText('Por avisar')).toBeNull()
   })
 })
