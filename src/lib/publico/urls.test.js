@@ -12,13 +12,27 @@ const C2 = 'COL-75646'
 
 describe('liga', () => {
   it('la clave pública es el id en minúsculas; los ids internos no cambian', () => {
-    expect(claveLiga('PLATINIUM-U10')).toBe('platinium-u10')
-    expect(claveLiga('PLATINIUM-U10', ['PLATINIUM-U10', 'PLATINIUM-U12'])).toBe('platinium-u10')
+    expect(claveLiga('PLATINIUM-U10')).toBe('platinum-u10')
+    expect(claveLiga('PLATINIUM-U10', ['PLATINIUM-U10', 'PLATINIUM-U12'])).toBe('platinum-u10')
   })
   it('si dos ids solo difieren por mayúsculas usa el id exacto (no elige uno)', () => {
     expect(claveLiga('Liga-A', ['Liga-A', 'LIGA-A'])).toBe('Liga-A')
     expect(resolverLiga(['Liga-A', 'LIGA-A'], 'liga-a')).toEqual({ ok: false, motivo: 'ambiguo' })
     expect(resolverLiga(['Liga-A', 'LIGA-A'], 'LIGA-A')).toEqual({ ok: true, ligaId: 'LIGA-A' })
+  })
+  it('REPORT_225: clave pública explícita platinum-u10/u12; las rutas antiguas y el id completo resuelven al mismo id interno', () => {
+    const ids = ['PLATINIUM-U10', 'PLATINIUM-U12']
+    expect(claveLiga('PLATINIUM-U12')).toBe('platinum-u12')
+    expect(claveLiga('PLATINIUM-U12', ids)).toBe('platinum-u12')
+    for (const p of ['platinum-u10', 'PLATINUM-U10', 'platinium-u10', 'PLATINIUM-U10']) expect(resolverLiga(ids, p)).toEqual({ ok: true, ligaId: 'PLATINIUM-U10' })
+    for (const p of ['platinum-u12', 'platinium-u12', 'PLATINIUM-U12']) expect(resolverLiga(ids, p)).toEqual({ ok: true, ligaId: 'PLATINIUM-U12' })
+    // fuera de la lista de la compilación: se rechaza, con cualquiera de las dos ortografías
+    expect(resolverLiga(['PLATINIUM-U10'], 'platinum-u12')).toEqual({ ok: false, motivo: 'desconocido' })
+    expect(resolverLiga(['PLATINIUM-U10'], 'platinium-u12')).toEqual({ ok: false, motivo: 'desconocido' })
+    for (const p of ['platinum-u1', 'platinum-u13', 'platinumu10', 'platinum']) expect(resolverLiga(ids, p)).toEqual({ ok: false, motivo: 'desconocido' })
+    // otras ligas conservan su regla (id en minúsculas)
+    expect(claveLiga('SIMULACRO-PILOTO')).toBe('simulacro-piloto')
+    expect(claveLiga('Liga-A', ['Liga-A', 'LIGA-A'])).toBe('Liga-A')
   })
   it('resuelve minúsculas, el id original y rechaza lo desconocido', () => {
     const ids = ['PLATINIUM-U10', 'PLATINIUM-U12']
@@ -60,8 +74,8 @@ describe('sufijo del partido', () => {
     expect(lectura('2026-12-31T23:59:00.000Z', false).get(G1)).toBe(base.get(G1)) // se movió la hora
     expect(lectura(null, false).get(G1)).toBe(base.get(G1)) // se quitó la hora
     expect(lectura('2026-10-24T14:00:00.000Z', true).get(G1)).toBe(base.get(G1)) // otro orden
-    expect(base.get(G1)).toBe('/liga/platinium-u10/partido/cross-level-vs-deportivo-s0rqrd')
-    expect(base.get(G2)).toBe('/liga/platinium-u10/partido/west-hornets-vs-vip-7m21xa')
+    expect(base.get(G1)).toBe('/liga/platinum-u10/partido/cross-level-vs-deportivo-s0rqrd')
+    expect(base.get(G2)).toBe('/liga/platinum-u10/partido/west-hornets-vs-vip-7m21xa')
   })
   it('la dirección nunca lleva la fecha y cabe en 64 caracteres aun con nombres largos', () => {
     expect(claveJuego(G1, { local: 'Cross Level', visita: 'Deportivo' })).not.toMatch(/2026|1024/)

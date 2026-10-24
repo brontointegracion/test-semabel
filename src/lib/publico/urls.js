@@ -1,10 +1,13 @@
 // ---------------------------------------------------------------------------
 // Direcciones PÚBLICAS amigables (REPORT_158). Funciones puras; los ids internos (liga, equipo, partido) NO cambian.
 //
-//   /liga/platinium-u10
-//   /liga/platinium-u10/equipo/deportivo
-//   /liga/platinium-u10/partido/cross-level-vs-deportivo-k3x9ab
+//   /liga/platinum-u10
+//   /liga/platinum-u10/equipo/deportivo
+//   /liga/platinum-u10/partido/cross-level-vs-deportivo-k3x9ab
 //
+//   - REPORT_225: dos ligas tienen una clave pública explícita (ALIAS_PUBLICO_LIGA) distinta de su id en minúsculas: /liga/platinum-u10 y
+//     /liga/platinum-u12 (los ids internos siguen siendo PLATINIUM-*). Las direcciones viejas (/liga/platinium-u10, el id completo) se siguen
+//     resolviendo y los enlaces canónicos existentes las redirigen con replace, conservando lo anidado, la búsqueda y el fragmento.
 //   - Liga y equipo: el mismo id/clave de siempre, en minúsculas. Si dos distintos solo se diferencian por mayúsculas, ese caso usa el
 //     id exacto (nunca se elige uno). Resolver acepta minúsculas, mayúsculas originales y el id completo (compatibilidad).
 //   - Partido: «<local>-vs-<visita>-<sufijo>». SIN fecha. El sufijo sale SOLO del id interno del partido (inmutable): no cambia al
@@ -21,11 +24,14 @@ const MAX_PARAMETRO = 64 // ID_PUBLICO: el parámetro de la ruta nunca pasa de 6
 
 // ---- Liga -----------------------------------------------------------------
 
-/** Clave pública de una liga: su id en minúsculas, o el id exacto si otro id de la lista solo difiere por mayúsculas. */
+/** Claves públicas explícitas (id interno → clave de la dirección). Lista cerrada: ninguna otra liga cambia, y nunca se reemplaza texto en general. */
+export const ALIAS_PUBLICO_LIGA = Object.freeze({ 'PLATINIUM-U10': 'platinum-u10', 'PLATINIUM-U12': 'platinum-u12' })
+
+/** Clave pública de una liga: su alias explícito si lo tiene, si no su id en minúsculas; el id exacto si otro id de la lista solo difiere por mayúsculas o choca con la clave. */
 export function claveLiga(ligaId, todosLosIds = null) {
-  const minus = ligaId.toLowerCase()
+  const minus = Object.hasOwn(ALIAS_PUBLICO_LIGA, ligaId) ? ALIAS_PUBLICO_LIGA[ligaId] : ligaId.toLowerCase()
   if (!Array.isArray(todosLosIds)) return minus
-  return todosLosIds.some((o) => o !== ligaId && o.toLowerCase() === minus) ? ligaId : minus
+  return todosLosIds.some((o) => o !== ligaId && (o.toLowerCase() === minus || o.toLowerCase() === ligaId.toLowerCase())) ? ligaId : minus
 }
 
 /** → { ok: true, ligaId } | { ok: false, motivo: 'desconocido' | 'ambiguo' }. Exacto primero; luego sin distinguir mayúsculas. */
@@ -34,7 +40,10 @@ export function resolverLiga(ids, parametro) {
   if (ids.includes(parametro)) return { ok: true, ligaId: parametro }
   const coinciden = ids.filter((id) => id.toLowerCase() === parametro.toLowerCase())
   if (coinciden.length === 1) return { ok: true, ligaId: coinciden[0] }
-  return { ok: false, motivo: coinciden.length > 1 ? 'ambiguo' : 'desconocido' }
+  if (coinciden.length > 1) return { ok: false, motivo: 'ambiguo' }
+  // Clave pública explícita (sin distinguir mayúsculas): solo si el id interno está en la lista de la compilación.
+  const porAlias = Object.keys(ALIAS_PUBLICO_LIGA).filter((id) => ALIAS_PUBLICO_LIGA[id] === parametro.toLowerCase() && ids.includes(id))
+  return porAlias.length === 1 ? { ok: true, ligaId: porAlias[0] } : { ok: false, motivo: 'desconocido' }
 }
 
 // ---- Equipo ---------------------------------------------------------------

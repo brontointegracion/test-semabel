@@ -77,16 +77,16 @@ describe('sin hora de actualización de rutina', () => {
     sinRutina()
     cleanup()
     for (const p of ['', '?pestana=calendario', '?pestana=jugadores']) {
-      montar(`/liga/platinium-u10${p}`)
+      montar(`/liga/platinum-u10${p}`)
       await screen.findByRole('heading', { level: 2, name: 'Platinium U10 2026' })
       sinRutina()
       cleanup()
     }
-    montar('/liga/platinium-u10/equipo/a')
+    montar('/liga/platinum-u10/equipo/a')
     await screen.findByText('Plantilla')
     sinRutina()
     cleanup()
-    montar(`/liga/platinium-u10/partido/${id}-20261024-A-VS-B`)
+    montar(`/liga/platinum-u10/partido/${id}-20261024-A-VS-B`)
     await screen.findByLabelText('Pantalla del marcador')
     sinRutina()
   })
@@ -95,14 +95,14 @@ describe('sin hora de actualización de rutina', () => {
 describe('«Inicio» y retorno al padre', () => {
   it('la secuencia del usuario: liga → equipo → «Liga» → liga → «‹ Inicio» abre Inicio (no vuelve al equipo)', async () => {
     servidor(rutas())
-    montar('/liga/platinium-u10')
+    montar('/liga/platinum-u10')
     await screen.findByRole('heading', { level: 2, name: 'Platinium U10 2026' })
     fireEvent.click(screen.getByRole('link', { name: 'Cross Level' }))
     await screen.findByText('Plantilla')
-    expect(ubicacion.pathname).toBe('/liga/platinium-u10/equipo/a')
+    expect(ubicacion.pathname).toBe('/liga/platinum-u10/equipo/a')
     fireEvent.click(screen.getByRole('link', { name: '‹ Liga' })) // el padre semántico del equipo es su liga
     await screen.findByRole('heading', { level: 2, name: 'Platinium U10 2026' })
-    expect(ubicacion.pathname).toBe('/liga/platinium-u10')
+    expect(ubicacion.pathname).toBe('/liga/platinum-u10')
     fireEvent.click(screen.getByRole('link', { name: '‹ Inicio' }))
     await screen.findByText('Ligas cerca de ti')
     expect(ubicacion.pathname).toBe('/')
@@ -110,17 +110,17 @@ describe('«Inicio» y retorno al padre', () => {
 
   it('el «Atrás» del navegador no se rompe: tras «‹ Liga», atrás vuelve al equipo', async () => {
     servidor(rutas())
-    montar('/liga/platinium-u10/equipo/a')
+    montar('/liga/platinum-u10/equipo/a')
     await screen.findByText('Plantilla')
     fireEvent.click(screen.getByRole('link', { name: '‹ Liga' }))
     await screen.findByRole('heading', { level: 2, name: 'Platinium U10 2026' })
     await act(async () => { navegar(-1) })
-    await waitFor(() => expect(ubicacion.pathname).toBe('/liga/platinium-u10/equipo/a'))
+    await waitFor(() => expect(ubicacion.pathname).toBe('/liga/platinum-u10/equipo/a'))
   })
 
   it('«Inicio» está en la barra superior de la liga y del equipo (además de la barra de pestañas) y siempre apunta a «/»', async () => {
     servidor(rutas())
-    for (const ruta of ['/liga/platinium-u12', '/liga/platinium-u12/equipo/a']) {
+    for (const ruta of ['/liga/platinum-u12', '/liga/platinum-u12/equipo/a']) {
       montar(ruta)
       await waitFor(() => expect(document.querySelector('.topbar a[href="/"]')).not.toBeNull())
       const superior = [...document.querySelectorAll('.topbar a')].filter((a) => /Inicio/.test(a.textContent))
