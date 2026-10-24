@@ -84,7 +84,10 @@ describe('la secuencia completa en UNA dirección', () => {
     expect(textoTv()).toContain('Alfa Norte')
     expect(textoTv()).toContain('Beta Sur')
     expect(textoTv()).toContain('Por jugar')
-    expect(document.querySelector('.sb-header__day').textContent).toBe('Miércoles 21 de octubre · 8:00 a. m.') // antes de empezar: fecha completa y hora programada
+    expect(document.querySelector('.sb-header__day').textContent).toBe('Miércoles 21 de octubre · 8:00 a. m. aprox.') // antes de empezar: fecha completa y hora programada estimada (REPORT_228)
+    expect(document.querySelector('.sb-sched').textContent).toBe('8:00 a. m.') // la hora grande no cambia
+    expect(document.querySelector('.sb-sched-nota').textContent).toBe('Hora estimada')
+    expect(document.querySelector('.sb-sched + .sb-sched-nota')).not.toBeNull() // justo debajo de la hora grande
     expect(document.querySelector('.sb-band')).not.toBeNull()
     const elMarco = marco()
 
@@ -95,6 +98,8 @@ describe('la secuencia completa en UNA dirección', () => {
     expect(screen.getByLabelText('Reloj del partido').textContent).toMatch(/^0[45]:/)
     expect(screen.getByText('EN VIVO')).toBeTruthy()
     expect(document.querySelector('.sb-header__day').textContent).toBe('Miércoles 21 de octubre') // en juego no se repite la hora programada
+    expect(textoTv()).not.toContain('aprox.')
+    expect(textoTv()).not.toContain('Hora estimada')
 
     // Pausa ordinaria: se queda el marcador con «Reloj detenido».
     ponerJuego(A, vivo(A, { reloj: reloj('detenido', 240000) }))
@@ -102,12 +107,16 @@ describe('la secuencia completa en UNA dirección', () => {
     expect(marco().getAttribute('data-vista')).toBe('juego')
     expect(screen.getByText('Reloj detenido')).toBeTruthy()
     expect(textoTv()).not.toContain('Resultado final')
+    expect(textoTv()).not.toContain('aprox.')
+    expect(textoTv()).not.toContain('Hora estimada')
 
     // Final de período confirmado por el servidor (detenido en 00:00): la vista de descanso existente.
     ponerJuego(A, vivo(A, { periodo: 1, reloj: reloj('detenido', 0) }))
     await avanzar(5_000)
     expect(marco().getAttribute('data-vista')).toBe('fin-periodo')
     expect(document.querySelector('.sb-header__day').textContent).toBe('Miércoles 21 de octubre') // tampoco en el descanso
+    expect(textoTv()).not.toContain('aprox.')
+    expect(textoTv()).not.toContain('Hora estimada')
 
     // Final del primero con el segundo sin empezar: resultado final + equipos, fecha y hora del siguiente.
     ponerJuego(A, base(A, { estado: 'final', inicioReal: E[A].programadoPara, periodo: 4, reloj: reloj('detenido', 0), local: { ...E[A].local, puntos: 31, faltas: 5 }, visita: { ...E[A].visita, puntos: 28, faltas: 6 } }))
@@ -118,6 +127,10 @@ describe('la secuencia completa en UNA dirección', () => {
     for (const n of ['Gama Este', 'Delta Oeste']) expect(textoTv()).toContain(n)
     expect(textoTv()).toMatch(/Miércoles 21 de octubre/i)
     expect(textoTv()).toMatch(/9:00 a\. m\./)
+    expect(document.querySelector('.sb-next__time').textContent).toBe('9:00 a. m.') // la hora grande del próximo no cambia
+    expect(document.querySelector('.sb-next__time + .sb-next__aprox').textContent).toBe('aprox.') // REPORT_228
+    expect(document.querySelector('.sb-header__day').textContent).toBe('Miércoles 21 de octubre · 8:00 a. m.') // el final conserva su encabezado (sin «aprox.»)
+    expect(textoTv()).not.toContain('Hora estimada')
     expect(textoTv()).not.toContain('Sesión completada')
     expect(document.querySelector('.sb-stage')).not.toBeNull() // la rotación grande de patrocinio/promoción
 
@@ -493,11 +506,34 @@ describe('fecha del encabezado (REPORT_201)', () => {
   it('hora programada solo antes de empezar (y en el final); en juego, pausas y descansos no; sin fecha, honesto', async () => {
     const { fechaDeEncabezado } = await import('./PantallaMarcador.jsx')
     const P = '2026-10-21T13:00:00.000Z'
-    expect(fechaDeEncabezado({ estado: 'programado', programadoPara: P, inicioReal: null })).toBe('Miércoles 21 de octubre · 8:00 a. m.')
+    expect(fechaDeEncabezado({ estado: 'programado', programadoPara: P, inicioReal: null })).toBe('Miércoles 21 de octubre · 8:00 a. m. aprox.')
     expect(fechaDeEncabezado({ estado: 'vivo', programadoPara: P, inicioReal: P })).toBe('Miércoles 21 de octubre')
     expect(fechaDeEncabezado({ estado: 'final', programadoPara: P, inicioReal: P })).toBe('Miércoles 21 de octubre · 8:00 a. m.')
     expect(fechaDeEncabezado({ estado: 'programado', programadoPara: null, inicioReal: null })).toBe('Fecha por confirmar')
     expect(fechaDeEncabezado({ estado: 'vivo', programadoPara: null, inicioReal: P })).toBe('Miércoles 21 de octubre')
     expect(fechaDeEncabezado({ estado: 'vivo', programadoPara: null, inicioReal: null })).toBeNull()
+  })
+})
+
+describe('hora estimada (REPORT_228)', () => {
+  it('sin hora programada: «Fecha por confirmar», «—» y ningún «aprox.» ni «Hora estimada»', async () => {
+    ponerJuego(A, base(A, { programadoPara: null }))
+    montar()
+    await avanzar(1_000)
+    expect(document.querySelector('.sb-header__day').textContent).toBe('Fecha por confirmar')
+    expect(document.querySelector('.sb-sched').textContent).toBe('—')
+    expect(textoTv()).not.toContain('aprox.')
+    expect(textoTv()).not.toContain('Hora estimada')
+  })
+  it('el próximo sin hora sigue en «Por confirmar» sin «aprox.»; el final conserva su presentación', async () => {
+    ponerJuego(A, base(A, { estado: 'final', inicioReal: E[A].programadoPara, periodo: 4, reloj: reloj('detenido', 0), local: { ...E[A].local, puntos: 31, faltas: 5 }, visita: { ...E[A].visita, puntos: 28, faltas: 6 } }))
+    ponerJuego(B, base(B, { programadoPara: null }))
+    montar()
+    await avanzar(5_000)
+    expect(textoTv()).toContain('Próximo partido')
+    expect(textoTv()).toContain('Por confirmar')
+    expect(document.querySelector('.sb-next__time').textContent).toBe('—')
+    expect(document.querySelector('.sb-next__aprox')).toBeNull()
+    expect(textoTv()).not.toContain('aprox.')
   })
 })

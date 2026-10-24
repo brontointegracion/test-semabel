@@ -34,7 +34,7 @@ function Mensaje({ titulo, children }) {
 }
 
 // Fecha y hora del siguiente partido, separadas (la tarjeta pinta la hora grande y la fecha pequeña encima). Sin hora programada: «Por confirmar».
-const cuandoDe = (d) => (d.programadoPara ? { fecha: fechaLargaPanama(d.programadoPara), hora: horaPanama(d.programadoPara) } : { fecha: 'Por confirmar', hora: '—' })
+const cuandoDe = (d) => (d.programadoPara ? { fecha: fechaLargaPanama(d.programadoPara), hora: horaPanama(d.programadoPara), aprox: true } : { fecha: 'Por confirmar', hora: '—' })
 
 export default function TvCancha() {
   const nav = useNavigate()

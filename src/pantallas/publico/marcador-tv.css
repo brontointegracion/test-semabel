@@ -1170,6 +1170,9 @@
 .sb-header__brand .sb-brand { padding-left: 0; border-left: 0; }
 .sb-stale { font-size: calc(var(--u) * 1.8); font-weight: 700; color: var(--sb-red); line-height: 1.15; white-space: nowrap; }
 .sb-clock-status[data-tone='alerta'] { color: var(--sb-red); }
+.sb-sched-nota,
+.sb-next__aprox { font-size: calc(var(--u) * 2.4); font-weight: 700; color: var(--sb-ink-2); line-height: 1.15; text-align: center; }
+.sb-next__aprox { text-align: right; }
 .sb-clock-note { font-size: calc(var(--u) * 2.4); font-weight: 700; color: var(--sb-ink-2); text-align: center; line-height: 1.15; }
 .sb-sched { font-family: var(--sb-display); font-size: calc(var(--u) * 12); font-weight: 700; line-height: 0.9; }
 
@@ -1190,6 +1193,8 @@
   .sb-header__brand { padding-left: 0; border-left: 0; }
   .sb-stale { font-size: 12px; white-space: normal; }
   .sb-clock-note { font-size: 12px; }
+  .sb-sched-nota, .sb-next__aprox { font-size: 12px; }
+  .sb-next__aprox { text-align: left; }
   .sb-sched { font-size: 36px; }
   .sb-card__note { font-size: 16px; }
   .sb-team { container-type: normal; }

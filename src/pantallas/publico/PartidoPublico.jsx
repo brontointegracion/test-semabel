@@ -76,7 +76,7 @@ export default function PartidoPublico({ alcanceProximo = null }) {
     const sig = proximoPartido(estadoLiga.datos.partidos, actual, alcanceProximo)
     if (sig) {
       const nombres = new Map(estadoLiga.datos.equipos.map((e) => [e.id, e.nombre]))
-      proximo = { local: nombres.get(sig.local.id) ?? sig.local.id, visita: nombres.get(sig.visita.id) ?? sig.visita.id, hora: horaPanama(sig.programadoPara) }
+      proximo = { local: nombres.get(sig.local.id) ?? sig.local.id, visita: nombres.get(sig.visita.id) ?? sig.visita.id, hora: horaPanama(sig.programadoPara), aprox: true }
     }
   }
 

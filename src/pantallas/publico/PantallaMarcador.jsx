@@ -30,6 +30,10 @@ const IconoPausa = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="1em" height="1em"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
 )
 
+// REPORT_228: texto de la hora PROGRAMADA (estimada). Aparte de todo formato de cuenta atrás o reloj.
+export const HORA_APROX = 'aprox.'
+export const ETIQUETA_HORA_ESTIMADA = 'Hora estimada'
+
 /**
  * Fecha del encabezado (REPORT_201): «Miércoles 21 de octubre» en Panamá. La hora programada acompaña SOLO antes de empezar y en el resultado final;
  * con el partido en juego (también en pausas y descansos) no se repite. Sin fecha: «Fecha por confirmar» antes de empezar; en los demás estados, nada.
@@ -37,7 +41,9 @@ const IconoPausa = () => (
 export function fechaDeEncabezado(d) {
   if (d.programadoPara) {
     const dia = fechaLargaPanama(d.programadoPara)
-    return d.estado === 'vivo' ? dia : `${dia} · ${horaPanama(d.programadoPara)}`
+    if (d.estado === 'vivo') return dia
+    // «aprox.»: la hora programada es una estimación de inicio, solo antes de empezar (el resultado final conserva su texto).
+    return `${dia} · ${horaPanama(d.programadoPara)}${d.estado === 'programado' ? ` ${HORA_APROX}` : ''}`
   }
   if (d.inicioReal) return fechaLargaPanama(d.inicioReal)
   return d.estado === 'programado' ? 'Fecha por confirmar' : null
@@ -166,6 +172,7 @@ export function ContenidoPartido({ ligaId, gameId, def, estado, deporte, idsEqui
     <>
       <p className="sb-period">Por jugar</p>
       <p className="sb-sched">{d.programadoPara ? horaPanama(d.programadoPara) : '—'}</p>
+      {d.programadoPara && <p className="sb-sched-nota">{ETIQUETA_HORA_ESTIMADA}</p>}
       {retrasado && <p className="sb-clock-note">Pendiente de comenzar</p>}
     </>
   )
