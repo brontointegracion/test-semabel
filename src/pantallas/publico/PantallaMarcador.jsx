@@ -43,7 +43,11 @@ export function fechaDeEncabezado(d) {
   return d.estado === 'programado' ? 'Fecha por confirmar' : null
 }
 
-export function MarcoPantalla({ vista, enVivo, liga, botonSalir, compartir = null, children }) {
+/**
+ * `enlaceLiga` (REPORT_226): dirección pública de la liga del partido que se muestra, o null (por omisión: ningún otro consumidor cambia). Solo la usa la TV:
+ * «Ver estadísticas de la liga» junto a «Inicio», en otra pestaña (la TV no se mueve de su pantalla).
+ */
+export function MarcoPantalla({ vista, enVivo, liga, botonSalir, compartir = null, enlaceLiga = null, children }) {
   const contenedor = useRef(null)
   const [completa, setCompleta] = useState(false)
 
@@ -78,6 +82,11 @@ export function MarcoPantalla({ vista, enVivo, liga, botonSalir, compartir = nul
     <div className="board-pagina publico sb-app" ref={contenedor} data-presenting={completa} data-vista={vista}>
       <div className="sb-toolbar">
         {botonSalir}
+        {enlaceLiga && (
+          <a className="btn fantasma sb-enlace-estadisticas" href={enlaceLiga} target="_blank" rel="noopener noreferrer" aria-label="Ver estadísticas de la liga (se abre en otra pestaña)" data-enlace="estadisticas-liga">
+            Ver estadísticas de la liga <span aria-hidden="true">↗</span>
+          </a>
+        )}
         <span className="sb-toolbar__liga">{liga}</span>
         {enVivo && <span className="pill vivo"><i className="punto" />EN VIVO</span>}
         <button className="btn fantasma" onClick={pantallaCompleta}>Pantalla completa</button>

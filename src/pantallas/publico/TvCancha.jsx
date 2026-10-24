@@ -6,6 +6,7 @@ import { recursoJuegoTv, recursoLiga } from '../../lib/publico/recursos.js'
 import { espiar, reprogramarRecurso } from '../../lib/publico/recurso.js'
 import { elegirVistaTv, indiceVigilado, secuenciaTv } from '../../lib/publico/tv-secuencia.js'
 import { ligasConfiguradas } from '../../lib/publico/config.js'
+import { urlLigaPublica } from '../../lib/publico/agrupar.js'
 import { salidaDeTvCancha } from '../../lib/publico/tv-piloto.js'
 import { vistaDelMarcador } from '../../lib/publico/vista-marcador.js'
 import { EnlaceConOrigen, textoDeError } from './componentes.jsx'
@@ -69,6 +70,7 @@ export default function TvCancha() {
   let vista = 'mensaje'
   let enVivo = false
   let liga = 'Transmisión en TV'
+  let enlaceLiga = null // solo con UN partido en pantalla (también su último resultado con el próximo en vista previa, o la sesión completada)
 
   if (!cfg.ok) {
     contenido = cfg.error === 'sin-configurar'
@@ -112,6 +114,7 @@ export default function TvCancha() {
     vista = vistaDelMarcador({ estado: d.estado, periodo: d.periodo, reloj: d.reloj, deporte })
     enVivo = d.estado === 'vivo'
     liga = d.liga.nombre
+    enlaceLiga = urlLigaPublica(pares[indice].ligaId)
     const sig = sel.proximo !== null ? estados[sel.proximo].datos : null
     const proximo = sig ? { local: sig.local.nombre, visita: sig.visita.nombre, ...cuandoDe(sig) } : null
     let sinProximo = null
@@ -127,5 +130,5 @@ export default function TvCancha() {
     )
   }
 
-  return <MarcoPantalla vista={vista} enVivo={enVivo} liga={liga} botonSalir={botonSalir}>{contenido}</MarcoPantalla>
+  return <MarcoPantalla vista={vista} enVivo={enVivo} liga={liga} botonSalir={botonSalir} enlaceLiga={enlaceLiga}>{contenido}</MarcoPantalla>
 }

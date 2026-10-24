@@ -58,6 +58,40 @@
   margin: 0;
 }
 
+/* REPORT_226: «Ver estadísticas de la liga» es un enlace con aspecto de botón. Su tamaño replica el del título de la liga junto al logo
+   (.sb-header__org-name: calc(var(--u) * 2.9), 14px en teléfono). La barra queda fuera del lienzo y no tiene --u, así que se reconstruye
+   la altura del lienzo (16:9 dentro del área, con su relleno de 20px y la barra de ~48px) y se aplica el mismo 2.9 %. */
+.sb-app {
+  --sb-lienzo-alto: min(calc(100dvh - 88px), calc((100vw - 40px) * 9 / 16));
+  --sb-titulo-liga: calc(var(--sb-lienzo-alto) * 0.029);
+}
+
+.sb-toolbar a.sb-enlace-estadisticas {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  flex: none;
+  width: auto;
+  min-height: 36px;
+  padding: 6px 14px;
+  font-size: var(--sb-titulo-liga);
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--sb-red);
+  text-decoration: none;
+  white-space: nowrap;
+  border-color: var(--sb-red);
+}
+
+.sb-toolbar a.sb-enlace-estadisticas:hover {
+  background: var(--sb-soft);
+}
+
+.sb-toolbar a.sb-enlace-estadisticas:focus-visible {
+  outline: 3px solid var(--sb-red);
+  outline-offset: 2px;
+}
+
 .sb-app[data-presenting='true'] .sb-toolbar {
   display: none;
 }
@@ -1176,6 +1210,7 @@
 .sb-next__team span[data-largo='true'] { font-size: calc(var(--u) * 3.4); line-height: 1; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; text-wrap: balance; }
 
 @media (max-width: 640px) {
+  .sb-app { --sb-titulo-liga: 14px; } /* igual que .sb-header__org-name en teléfono */
   .sb-toolbar { flex-wrap: wrap; }
   .sb-toolbar__liga { display: none; } /* el encabezado del marcador ya dice la liga */
   .sb-toolbar .pill { margin-left: auto; }
