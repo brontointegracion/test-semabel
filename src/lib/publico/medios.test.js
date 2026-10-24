@@ -184,3 +184,23 @@ describe('logo de Semabel en el manifiesto (raíz «semabel.logo»)', () => {
     expect(mediosDeLiga({ version: 1, semabel: 'x', ligas: {} }, 'A').semabelLogo).toBeNull()
   })
 })
+
+describe('opción «nombreEnBanda» (REPORT_211)', () => {
+  const v = (o) => patrocinadorValido({ id: 'x', ...o })
+  const base = { formato: 'tarjeta', nombre: 'Casa de campo RODSAN', logo: 'RODSAN/rodsan-logo-recorte-v2.jpeg', disposicion: 'logo' }
+  it('solo existe con disposición «logo», logo válido y nombre; solo el booleano true; en cualquier otro caso se descarta y la tarjeta es idéntica a la de siempre', () => {
+    expect(v({ ...base, nombreEnBanda: true }).nombreEnBanda).toBe(true)
+    for (const mal of [false, 'true', 1, 'si', null, undefined, {}, []]) expect('nombreEnBanda' in v({ ...base, nombreEnBanda: mal }), String(mal)).toBe(false)
+    expect('nombreEnBanda' in v({ ...base, disposicion: undefined, nombreEnBanda: true })).toBe(false) // sin disposición «logo»
+    expect('nombreEnBanda' in v({ ...base, disposicion: 'otra', nombreEnBanda: true })).toBe(false)
+    expect('nombreEnBanda' in v({ ...base, logo: 'https://x.com/l.png', nombreEnBanda: true })).toBe(false) // logo externo = sin logo
+    expect('nombreEnBanda' in v({ formato: 'arte', imagen: 'L/a.png', logo: 'L/l.png', disposicion: 'logo', nombre: 'A', nombreEnBanda: true })).toBe(false)
+    // sin pedirla, el resultado es EXACTAMENTE el de antes (ninguna clave nueva)
+    expect(Object.keys(v(base))).toEqual(Object.keys(v({ ...base, nombreEnBanda: false })))
+    expect(Object.keys(v(base))).not.toContain('nombreEnBanda')
+  })
+  it('no depende del id: cualquier patrocinador puede pedirla, y ninguno la obtiene sin pedirla', () => {
+    expect(patrocinadorValido({ ...base, id: 'otro', nombreEnBanda: true }).nombreEnBanda).toBe(true)
+    expect(patrocinadorValido({ ...base, id: 'rodsan' }).nombreEnBanda).toBeUndefined()
+  })
+})

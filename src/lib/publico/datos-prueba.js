@@ -56,3 +56,23 @@ export function respuestaEquipo({ ligaId = 'LIGAPUB1', equipoId = 'E1', servidor
     servidorAhoraMs, ...sobre,
   }
 }
+
+/**
+ * Respuesta sintética de GET /v1/ligas/{liga}/jugadores/publico (REPORT_215). `anotadores`: [{ id, nombre, dorsalActual, equipo: {id, nombre}, puntos, faltas?, enPlantilla?, rango? }] YA en
+ * el orden del servidor (valor descendente); el `rango` se calcula con empates compartidos («1, 2, 2, 4») salvo que se dé.
+ */
+export function respuestaJugadores({ id = 'LIGAPUB1', nombre = 'Liga sintética uno', partidosFinales = 1, anotadores = [], masFaltas = [], recortado = false, servidorAhoraMs = SERVIDOR_MS, sinJugador = { puntos: 0, faltas: 0 } } = {}) {
+  let previo = null; let puesto = 0
+  const fila = (e, i, campo) => {
+    if (previo === null || e[campo] !== previo[campo]) puesto = i + 1
+    previo = e
+    return { rango: e.rango ?? puesto, id: e.id, nombre: e.nombre ?? null, dorsalActual: e.dorsalActual ?? null, equipo: e.equipo, enPlantilla: e.enPlantilla ?? true, puntos: e.puntos ?? 0, faltas: e.faltas ?? 0 }
+  }
+  const a = anotadores.map((e, i) => fila(e, i, 'puntos'))
+  previo = null
+  const f = masFaltas.map((e, i) => fila(e, i, 'faltas'))
+  return {
+    liga: { id, nombre }, alcance: 'partidos-finales-de-la-liga', agrupacion: 'ficha-y-equipo', partidosFinales,
+    maximosAnotadores: a, masFaltas: f, recortado, sinJugador, servidorAhoraMs,
+  }
+}

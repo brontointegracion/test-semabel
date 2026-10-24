@@ -40,8 +40,9 @@ const etiquetaDeporte = (d) => (d === 'baloncesto' ? 'Baloncesto' : 'Fútbol sal
  *   categoriaLink    { deporte, categoria } o null
  *   ligas            nodo de «Ligas cerca de ti»;  figuras, buscador: nodos
  *   claseRaiz        clase extra de la raíz (el modo compartido usa «publico»);  pie: nodo al final (frescura de los datos)
+ *   pieEnlaces       nodo opcional bajo todo lo demás: enlaces discretos del pie (modo compartido: «Contacto»; REPORT_214)
  */
-export default function PortadaInicio({ claseRaiz = '', pie = null, marca, hayLigas, vacioLigas = null, totales, filtros, aviso = null, ahora, viene, categoriaLink = null, ligas, figuras, buscador }) {
+export default function PortadaInicio({ claseRaiz = '', pie = null, pieEnlaces = null, marca, hayLigas, vacioLigas = null, totales, filtros, aviso = null, ahora, viene, categoriaLink = null, ligas, figuras, buscador }) {
   const { provincias, categorias, region, cambiarProvincia, cambiarDeporte, cambiarCategoria } = filtros
   const deportes = filtros.deportes ?? DEPORTES
   const provincia = region.provincia || 'todas'
@@ -178,6 +179,7 @@ export default function PortadaInicio({ claseRaiz = '', pie = null, marca, hayLi
         </>
       )}
       {pie}
+      {pieEnlaces}
     </div>
   )
 }
@@ -264,6 +266,62 @@ export function Podio({ figuras, pendiente = null, enlaces, ui }) {
       <Link to="/figuras" className="btn fantasma" style={{ marginTop: 10 }}>
         Ver la tabla completa
       </Link>
+    </section>
+  )
+}
+
+/**
+ * «Figuras del barrio» del modo compartido (REPORT_215): el MISMO diseño del podio (filas `.escalon`), pero un podio por LIGA, porque las estadísticas de ligas distintas no son
+ * comparables entre sí y no se presentan como una clasificación global. Cada fila enlaza al equipo (destino amigable existente; no hay ruta de perfil de jugador).
+ *   grupos   [{ liga: { id, nombre }, estado: 'cargando' | 'error' | 'sin-partidos' | 'sin-puntos' | 'ok', mensaje?, entradas, masEmpatados, enlaceLiga }]
+ *   enlaces  { equipo({ ligaId, id }) → ruta };  ui.Escudo
+ */
+export function PodioPorLiga({ grupos, enlaces, ui }) {
+  const { Escudo } = ui
+  const conDatos = grupos.filter((g) => g.estado === 'ok')
+  const cargando = grupos.some((g) => g.estado === 'cargando')
+  const fallan = grupos.filter((g) => g.estado === 'error')
+  const sinEstadisticas = grupos.length > 0 && grupos.every((g) => g.estado === 'sin-partidos' || g.estado === 'sin-puntos')
+  return (
+    <section className="hm-figuras">
+      <h2 className="seccion">Figuras del barrio</h2>
+      <p className="sub" style={{ marginTop: -6, marginBottom: 10 }}>
+        Los que más anotan: puntos totales en partidos terminados. Cada liga va por separado; sus números no se mezclan.
+      </p>
+      {cargando && conDatos.length === 0 && <div className="vacio" role="status">Cargando las figuras…</div>}
+      {sinEstadisticas && <div className="vacio">Las figuras aparecen cuando termine el primer partido. Los partidos programados o en juego no cuentan.</div>}
+      {fallan.length > 0 && (
+        <div className="aviso" role="status">{`No se pudieron cargar las figuras de ${fallan.map((g) => g.liga.nombre).join(', ')}.${conDatos.length > 0 ? ' Las demás ligas se muestran con lo último confirmado.' : ''}`}</div>
+      )}
+      {grupos.map((g) => (g.estado === 'ok' || g.estado === 'sin-partidos' || g.estado === 'sin-puntos') && !(sinEstadisticas) && (
+        <div key={g.liga.id} className="figuras-liga" role="group" aria-label={`Figuras de ${g.liga.nombre}`}>
+          <h3 className="figuras-liga-nombre">{g.liga.nombre}</h3>
+          {g.estado !== 'ok'
+            ? <p className="sub">{g.estado === 'sin-partidos' ? 'Todavía no hay partidos terminados en esta liga.' : 'Todavía no hay puntos anotados en partidos terminados de esta liga.'}</p>
+            : (
+              <>
+                <div className="podio">
+                  {g.entradas.map((f) => (
+                    <Link key={`${f.id}|${f.equipo.id}`} to={enlaces.equipo({ ligaId: g.liga.id, id: f.equipo.id })} className={`escalon p${f.rango}`}>
+                      <span className="puesto" aria-label={`Puesto ${f.rango}`}>{f.rango}</span>
+                      <Escudo equipo={f.equipo} />
+                      <span className="quien">
+                        {f.nombre ?? 'Nombre pendiente'}
+                        <span className="equipo-nombre">{f.dorsalActual === null ? 'Sin número' : `#${f.dorsalActual}`} · {f.equipo.nombre}{f.enPlantilla ? '' : ' · Fuera de la plantilla'}</span>
+                      </span>
+                      <span className="escalon-valor">
+                        <span className="cifra">{f.puntos}</span>
+                        <span className="unidad">puntos totales</span>
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+                {g.masEmpatados > 0 && <p className="sub">Hay {g.masEmpatados} {g.masEmpatados === 1 ? 'jugador más' : 'jugadores más'} con estos puestos; están en la tabla de la liga.</p>}
+              </>
+            )}
+          <Link to={g.enlaceLiga} className="btn fantasma" style={{ marginTop: 8 }}>Ver la tabla de {g.liga.nombre}</Link>
+        </div>
+      ))}
     </section>
   )
 }

@@ -14,7 +14,9 @@ import { ID_PUBLICO, ligasConfiguradas } from './config.js'
 // ---------------------------------------------------------------------------
 
 export const RUTA_TV_CANCHA = '/tv/cancha'
-export const MAX_PARTIDOS_SECUENCIA = 8
+// REPORT_209: de 8 a 10 para el evento real (diez partidos en una cancha, dos ligas). Solo cambia el tope: la elección, el conflicto, la lectura rápida del
+// próximo partido y la tolerancia a fallos no dependen de este número. El tope del texto (MAX × 131) crece con él.
+export const MAX_PARTIDOS_SECUENCIA = 10
 
 /** → { ok: true, pares: [{ ligaId, gameId }] } | { ok: false, error: 'sin-configurar' | 'configuracion-invalida' } */
 export function interpretarSecuencia(crudo, idsLigas) {

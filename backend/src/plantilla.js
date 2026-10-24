@@ -209,7 +209,7 @@ export function leerPlantilla(storage, { asercion, ligaId, equipoId, ahoraFn }) 
     const { estado } = comprobar(asercion, ligaId, ahoraFn)
     if (estado !== ASERCION.OK) return corte(estado)
     const sql = storage.sql
-    const equipo = sql.exec('SELECT id, nombre FROM equipos WHERE id = ? AND liga_id = ?', equipoId, ligaId).toArray()[0]
+    const equipo = sql.exec('SELECT id, nombre, rama FROM equipos WHERE id = ? AND liga_id = ?', equipoId, ligaId).toArray()[0] // `rama`: metadato nullable (REPORT_220)
     if (!equipo) return { tipo: 'no-encontrado' }
     const filas = filasDeEquipo(sql, equipoId)
     const par = (r) => ({ local: fichaDeFila(r), vista: vistaDeFila(r) })

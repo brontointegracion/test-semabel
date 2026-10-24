@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clasificar, etiquetasDe, partidosDe, pendienteDeComenzar, textoPeriodo } from './agrupar.js'
+import { clasificar, etiquetasDe, partidosDe, pendienteDeComenzar, textoPeriodo, separarPorVenir } from './agrupar.js'
 import { partidoLiga, reloj, respuestaLiga, SERVIDOR_MS } from './datos-prueba.js'
 import { validarLiga } from './validar.js'
 import { crearMuestra } from './reloj-servidor.js'
@@ -68,5 +68,36 @@ describe('agrupación de partidos', () => {
     expect(textoPeriodo('futsal', 1)).toBe('1º tiempo')
     expect(textoPeriodo('otro', 3)).toBe('Periodo 3')
     expect(SERVIDOR_MS).toBeGreaterThan(0)
+  })
+})
+
+describe('separarPorVenir (REPORT_213): «Próximos partidos» sin los programados cuya hora ya pasó', () => {
+  const ahora = Date.parse('2026-11-01T22:00:00.000Z')
+  const muestra = { servidorAhoraMs: ahora, monoMedio: 1000, incertidumbreMs: 5 }
+  const g = (gameId, programadoPara, extra = {}) => ({ gameId, estado: 'programado', programadoPara, muestra, ...extra })
+  const ids = (l) => l.map((p) => p.gameId)
+
+  it('frontera: un milisegundo antes se excluye; justo a la hora y después se conservan; el orden de entrada se mantiene', () => {
+    const lista = [g('antes', '2026-11-01T21:59:59.999Z'), g('justo', '2026-11-01T22:00:00.000Z'), g('despues', '2026-11-01T22:00:00.001Z'), g('manana', '2026-11-02T15:00:00.000Z')]
+    const r = separarPorVenir(lista, 1000) // mono = monoMedio → «ahora» del servidor = 22:00:00.000
+    expect(ids(r.porVenir)).toEqual(['justo', 'despues', 'manana'])
+    expect(ids(r.pasados)).toEqual(['antes'])
+  })
+  it('«ahora» avanza con el reloj monotónico, no con el del dispositivo: medio minuto después, «justo» ya pasó', () => {
+    const r = separarPorVenir([g('justo', '2026-11-01T22:00:00.000Z'), g('mas', '2026-11-01T22:05:00.000Z')], 1000 + 30_000)
+    expect(ids(r.pasados)).toEqual(['justo'])
+    expect(ids(r.porVenir)).toEqual(['mas'])
+  })
+  it('sin hora (se queda, al final, para rotularse «Fecha por confirmar») y sin hora del servidor para comparar (no se esconde lo que no se puede probar)', () => {
+    const lista = [g('fechado', '2026-11-03T15:00:00.000Z'), g('sinhora', null), g('sinmuestra', '2020-01-01T00:00:00.000Z', { muestra: null })]
+    const r = separarPorVenir(lista, 1000)
+    expect(ids(r.porVenir)).toEqual(['fechado', 'sinhora', 'sinmuestra'])
+    expect(r.pasados).toEqual([])
+  })
+  it('es una función de lista de programados: un partido en vivo con hora pasada nunca pasa por aquí (clasificar lo deja en «vivos»)', () => {
+    const vivo = { gameId: 'v', estado: 'vivo', programadoPara: '2026-11-01T10:00:00.000Z', muestra }
+    const { vivos, proximos } = clasificar([vivo, g('p', '2026-11-01T10:00:00.000Z')])
+    expect(ids(vivos)).toEqual(['v'])
+    expect(ids(separarPorVenir(proximos, 1000).porVenir)).toEqual([])
   })
 })

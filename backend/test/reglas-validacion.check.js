@@ -268,7 +268,7 @@ describe('3. migración 7: fallo → todo se deshace → recuperación → repet
     expect(r.trasFallo.version).toBe('6')
     expect(r.trasFallo.columnas.some((c) => COLUMNAS.includes(c))).toBe(false) // la primera columna también se deshizo
     expect(r.trasFallo.datos).toBe(r.datosAntes)
-    expect(r.trasRecuperar.version).toBe('7')
+    expect(r.trasRecuperar.version).toBe('9')
     expect(COLUMNAS.every((c) => r.trasRecuperar.columnas.includes(c))).toBe(true)
     expect(r.trasRepetir).toEqual(r.trasRecuperar)
     const despues = await foto(ligaId)

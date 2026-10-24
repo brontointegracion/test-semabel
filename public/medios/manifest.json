@@ -11,7 +11,6 @@
           "formato": "tarjeta",
           "disposicion": "logo",
           "nombre": "La Parmigiana",
-          "descriptor": "Restaurante italiano",
           "logo": "PARM/parmigiana.jpeg",
           "fondo": "#000000",
           "texto": "#FFFFFF",
@@ -73,6 +72,326 @@
       ],
       "organizador": {
         "logo": "PLATINIUM/platinium-logo.png"
+      }
+    },
+    "PLATINIUM-U10": {
+      "patrocinadores": [
+        {
+          "id": "parmigiana",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "La Parmigiana",
+          "logo": "PARM/parmigiana.jpeg",
+          "fondo": "#000000",
+          "texto": "#FFFFFF",
+          "acento": "#FFFFFF"
+        },
+        {
+          "id": "workings",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "WORKINGS",
+          "logo": "WORKINGS/workings-logo.png",
+          "fondo": "#FFFFFF",
+          "texto": "#000000",
+          "acento": "#000000",
+          "borde": true
+        },
+        {
+          "id": "pce",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "Panama Crystal Engineering",
+          "logo": "PCE/pce-logo.png",
+          "fondo": "#FFFFFF",
+          "texto": "#0B2438",
+          "acento": "#269FC5",
+          "borde": true
+        },
+        {
+          "id": "javier-del-rio",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "Javier del Rio Corp",
+          "logo": "JDR/javier-del-rio.png",
+          "fondo": "#000000",
+          "texto": "#FFFFFF",
+          "acento": "#FFFFFF"
+        },
+        {
+          "id": "deportes-jimmy",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "Deportes Jimmy",
+          "logo": "JIMMY/deportes-jimmy.jpg",
+          "fondo": "#000000",
+          "texto": "#FFFFFF",
+          "acento": "#FFFFFF"
+        },
+        {
+          "id": "pixeles",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "Píxeles & Diseños, S.A.",
+          "logo": "PIXELES/pixeles-logo.png",
+          "fondo": "#FFFFFF",
+          "texto": "#12151C",
+          "acento": "#12151C",
+          "borde": true
+        },
+        {
+          "id": "rodsan",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "Casa de campo RODSAN",
+          "logo": "RODSAN/rodsan-logo-recorte-v2.jpeg",
+          "fondo": "#323436",
+          "texto": "#FFFFFF",
+          "acento": "#FFFFFF",
+          "nombreEnBanda": true
+        },
+        {
+          "id": "effort-bull-kennels",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "Effort Bull Kennels",
+          "logo": "EFFORT/effort-bull-kennels.jpeg",
+          "fondo": "#000000",
+          "texto": "#FFFFFF",
+          "acento": "#FFFFFF"
+        },
+        {
+          "id": "adminplayers",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "AdminPlayers",
+          "logo": "ADMINPLAYERS/adminplayers-recorte.jpeg",
+          "fondo": "#000000",
+          "texto": "#FFFFFF",
+          "acento": "#FFFFFF"
+        },
+        {
+          "id": "panteras",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "Club Deportivo Panteras",
+          "logo": "PANTERAS/panteras-logo.png",
+          "fondo": "#FFFFFF",
+          "texto": "#111111",
+          "acento": "#111111"
+        },
+        {
+          "id": "bethancourt-asociados",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "Bethancourt & Asociados",
+          "logo": "BETHANCOURT/bethancourt-asociados-blanco.png",
+          "fondo": "#FFFFFF",
+          "texto": "#111111",
+          "acento": "#111111"
+        },
+        {
+          "id": "symisa",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "SYMISA",
+          "logo": "SYMISA/symisa.jpeg",
+          "fondo": "#FFFFFF",
+          "texto": "#111111",
+          "acento": "#111111"
+        }
+      ],
+      "organizador": {
+        "logo": "PLATINIUM/platinium-logo.png"
+      },
+      "equipos": {
+        "PLATINIUM-U10-DEPORTIVO": {
+          "logo": "EQUIPOS/deportivo-vip.jpg"
+        },
+        "PLATINIUM-U10-VIP": {
+          "logo": "EQUIPOS/deportivo-vip.jpg"
+        },
+        "PLATINIUM-U10-UNITY-BASKETBALL": {
+          "logo": "EQUIPOS/unity-basketball.jpg"
+        },
+        "PLATINIUM-U10-CORRECAMINOS": {
+          "logo": "EQUIPOS/correcaminos.jpg"
+        },
+        "PLATINIUM-U10-HARDWORK-BASKETBALL": {
+          "logo": "EQUIPOS/hardwork.jpg"
+        },
+        "PLATINIUM-U10-WEST-HORNETS": {
+          "logo": "EQUIPOS/west-hornets.jpg"
+        },
+        "PLATINIUM-U10-GRIZZLIES": {
+          "logo": "EQUIPOS/grizzlies.jpg"
+        },
+        "PLATINIUM-U10-GRILLOS-VIP": {
+          "logo": "EQUIPOS/grillos-vip.jpg"
+        },
+        "PLATINIUM-U10-CROSS-LEVEL": {
+          "logo": "EQUIPOS/cross-level.jpg"
+        }
+      }
+    },
+    "PLATINIUM-U12": {
+      "patrocinadores": [
+        {
+          "id": "parmigiana",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "La Parmigiana",
+          "logo": "PARM/parmigiana.jpeg",
+          "fondo": "#000000",
+          "texto": "#FFFFFF",
+          "acento": "#FFFFFF"
+        },
+        {
+          "id": "workings",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "WORKINGS",
+          "logo": "WORKINGS/workings-logo.png",
+          "fondo": "#FFFFFF",
+          "texto": "#000000",
+          "acento": "#000000",
+          "borde": true
+        },
+        {
+          "id": "pce",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "Panama Crystal Engineering",
+          "logo": "PCE/pce-logo.png",
+          "fondo": "#FFFFFF",
+          "texto": "#0B2438",
+          "acento": "#269FC5",
+          "borde": true
+        },
+        {
+          "id": "javier-del-rio",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "Javier del Rio Corp",
+          "logo": "JDR/javier-del-rio.png",
+          "fondo": "#000000",
+          "texto": "#FFFFFF",
+          "acento": "#FFFFFF"
+        },
+        {
+          "id": "deportes-jimmy",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "Deportes Jimmy",
+          "logo": "JIMMY/deportes-jimmy.jpg",
+          "fondo": "#000000",
+          "texto": "#FFFFFF",
+          "acento": "#FFFFFF"
+        },
+        {
+          "id": "pixeles",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "Píxeles & Diseños, S.A.",
+          "logo": "PIXELES/pixeles-logo.png",
+          "fondo": "#FFFFFF",
+          "texto": "#12151C",
+          "acento": "#12151C",
+          "borde": true
+        },
+        {
+          "id": "rodsan",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "Casa de campo RODSAN",
+          "logo": "RODSAN/rodsan-logo-recorte-v2.jpeg",
+          "fondo": "#323436",
+          "texto": "#FFFFFF",
+          "acento": "#FFFFFF",
+          "nombreEnBanda": true
+        },
+        {
+          "id": "effort-bull-kennels",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "Effort Bull Kennels",
+          "logo": "EFFORT/effort-bull-kennels.jpeg",
+          "fondo": "#000000",
+          "texto": "#FFFFFF",
+          "acento": "#FFFFFF"
+        },
+        {
+          "id": "adminplayers",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "AdminPlayers",
+          "logo": "ADMINPLAYERS/adminplayers-recorte.jpeg",
+          "fondo": "#000000",
+          "texto": "#FFFFFF",
+          "acento": "#FFFFFF"
+        },
+        {
+          "id": "panteras",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "Club Deportivo Panteras",
+          "logo": "PANTERAS/panteras-logo.png",
+          "fondo": "#FFFFFF",
+          "texto": "#111111",
+          "acento": "#111111"
+        },
+        {
+          "id": "bethancourt-asociados",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "Bethancourt & Asociados",
+          "logo": "BETHANCOURT/bethancourt-asociados-blanco.png",
+          "fondo": "#FFFFFF",
+          "texto": "#111111",
+          "acento": "#111111"
+        },
+        {
+          "id": "symisa",
+          "formato": "tarjeta",
+          "disposicion": "logo",
+          "nombre": "SYMISA",
+          "logo": "SYMISA/symisa.jpeg",
+          "fondo": "#FFFFFF",
+          "texto": "#111111",
+          "acento": "#111111"
+        }
+      ],
+      "organizador": {
+        "logo": "PLATINIUM/platinium-logo.png"
+      },
+      "equipos": {
+        "PLATINIUM-U12-DEPORTIVO-VIP": {
+          "logo": "EQUIPOS/deportivo-vip.jpg"
+        },
+        "PLATINIUM-U12-UNITY-BASKETBALL": {
+          "logo": "EQUIPOS/unity-basketball.jpg"
+        },
+        "PLATINIUM-U12-CORRECAMINOS": {
+          "logo": "EQUIPOS/correcaminos.jpg"
+        },
+        "PLATINIUM-U12-HARDWORK-BASKETBALL": {
+          "logo": "EQUIPOS/hardwork.jpg"
+        },
+        "PLATINIUM-U12-HARDWORK-WEST": {
+          "logo": "EQUIPOS/hardwork.jpg"
+        },
+        "PLATINIUM-U12-WEST-HORNETS": {
+          "logo": "EQUIPOS/west-hornets.jpg"
+        },
+        "PLATINIUM-U12-GRIZZLIES": {
+          "logo": "EQUIPOS/grizzlies.jpg"
+        },
+        "PLATINIUM-U12-GRILLOS-VIP": {
+          "logo": "EQUIPOS/grillos-vip.jpg"
+        },
+        "PLATINIUM-U12-WEST-BOYS": {
+          "logo": "EQUIPOS/west-boys.jpg"
+        }
       }
     }
   }

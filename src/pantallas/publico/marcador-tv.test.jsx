@@ -772,3 +772,94 @@ describe('marcas del encabezado: logo de Semabel y emblema del organizador (REPO
     }
   })
 })
+
+describe('«nombreEnBanda»: nombre grande junto al logo SOLO en la banda en vivo (REPORT_211)', () => {
+  const rod = { id: 'rodsan', formato: 'tarjeta', disposicion: 'logo', nombreEnBanda: true, nombre: 'Casa de campo RODSAN', logo: 'RODSAN/rodsan-logo-recorte-v2.jpeg', fondo: '#303435', texto: '#FFFFFF', acento: '#FFFFFF' }
+  const parm = { id: 'parm', formato: 'tarjeta', disposicion: 'logo', nombre: 'La Parmigiana', descriptor: 'Restaurante italiano', logo: 'PARM/parmigiana.jpeg', fondo: '#000000', texto: '#FFFFFF', acento: '#FFFFFF' }
+  const servir = (patrocinadores, juego = respuestaJuego()) => servidor({ [LIGA]: liga(), [JUEGO]: juego, [MEDIOS]: { version: 1, ligas: { LIGAPUB1: { patrocinadores } } } })
+
+  it('banda en vivo: logo completo + el nombre como texto grande (oculto a lectores: el grupo ya lo dice) y sin título repetido', async () => {
+    servir([rod])
+    montar(); await screen.findByLabelText('Puntos de Alfa Norte'); await act(async () => { await Promise.resolve() })
+    const t = document.querySelector('.sb-band [data-patrocinador="rodsan"]')
+    expect(t.classList.contains('sb-sponsor--nombre-en-banda')).toBe(true)
+    expect(t.getAttribute('aria-label')).toBe('Casa de campo RODSAN')
+    expect(t.querySelector('img.sb-sponsor__logo-grande').getAttribute('src')).toBe('/medios/RODSAN/rodsan-logo-recorte-v2.jpeg')
+    const texto = t.querySelector('.sb-sponsor__nombre-en-banda')
+    expect(texto.textContent).toBe('Casa de campo RODSAN')
+    expect(texto.getAttribute('aria-hidden')).toBe('true')
+    expect(texto.style.color).toBe('rgb(255, 255, 255)')
+    expect(t.querySelector('.sb-sponsor__name')).toBeNull()
+    expect(t.querySelector('.sb-sponsor__descriptor')).toBeNull()
+  })
+
+  it('descansos y final: el logo grande y centrado SIN el texto del nombre (no se repite ni se reduce el logo para hacerle sitio)', async () => {
+    servir([rod], respuestaJuego({ estado: 'final', reloj: reloj('detenido', 0) }))
+    montar(); await screen.findByText('Resultado final'); await act(async () => { await Promise.resolve() })
+    const t = document.querySelector('.sb-stage .sb-sponsor--large[data-patrocinador="rodsan"]')
+    expect(t.dataset.disposicion).toBe('logo')
+    expect(t.classList.contains('sb-sponsor--nombre-en-banda')).toBe(false)
+    expect(t.querySelector('.sb-sponsor__nombre-en-banda')).toBeNull()
+    expect(t.querySelector('.sb-sponsor__descriptor')).toBeNull()
+    expect(t.querySelector('img').getAttribute('alt')).toBe('Casa de campo RODSAN')
+  })
+
+  it('los demás patrocinadores no cambian (sin la opción no hay clase ni texto nuevo) y, si el logo falla, cae a la tarjeta normal con el nombre', async () => {
+    servir([parm, rod])
+    montar(); await screen.findByLabelText('Puntos de Alfa Norte'); await act(async () => { await Promise.resolve() })
+    const p = document.querySelector('.sb-band [data-patrocinador="parm"]')
+    expect(p.classList.contains('sb-sponsor--nombre-en-banda')).toBe(false)
+    expect(p.querySelector('.sb-sponsor__nombre-en-banda')).toBeNull()
+    expect(p.querySelector('.sb-sponsor__descriptor').textContent).toBe('Restaurante italiano')
+    fireEvent.error(document.querySelector('img[src="/medios/RODSAN/rodsan-logo-recorte-v2.jpeg"]'))
+    const r = document.querySelector('.sb-band [data-patrocinador="rodsan"]')
+    expect(r.dataset.disposicion).toBeUndefined()
+    expect(r.querySelector('.sb-sponsor__name').textContent).toBe('Casa de campo RODSAN')
+    expect(r.querySelector('.sb-sponsor__nombre-en-banda')).toBeNull()
+  })
+
+  it('CSS: la regla del texto solo existe para la banda; en el teléfono el texto se oculta y el logo queda completo; no hay reglas por id', () => {
+    const css = readFileSync(join(import.meta.dirname, 'marcador-tv.css'), 'utf8')
+    const bloque = css.slice(css.indexOf('«nombreEnBanda» (REPORT_211)'), css.indexOf('Logo real de Semabel en las tarjetas'))
+    expect(bloque).toMatch(/\.sb-sponsor--logo\.sb-sponsor--band\.sb-sponsor--nombre-en-banda/)
+    expect(bloque).not.toMatch(/sb-sponsor--large/) // ningún cambio para los descansos y el final
+    expect(bloque).toMatch(/max-width: 640px\) \{[^}]*\.sb-sponsor__nombre-en-banda \{ display: none; \}/s)
+    expect(bloque).not.toMatch(/rodsan|data-patrocinador/i)
+  })
+})
+
+describe('logos de equipo compartidos entre equipos distintos (REPORT_216)', () => {
+  const servirEquipos = (equipos) => servidor({ [LIGA]: liga(), [JUEGO]: respuestaJuego(), [MEDIOS]: { version: 1, ligas: { LIGAPUB1: { equipos } } } })
+
+  it('dos equipos distintos pueden apuntar al MISMO archivo: cada uno lleva su propio escudo, sus iniciales de respaldo y su marcador (nada se fusiona)', async () => {
+    servirEquipos({ E1: { logo: 'EQUIPOS/compartido.jpg' }, E2: { logo: 'EQUIPOS/compartido.jpg' } })
+    montar()
+    await screen.findByLabelText('Puntos de Alfa Norte')
+    await act(async () => { await Promise.resolve() })
+    const casa = document.querySelector('.sb-team[data-side="home"]'); const visita = document.querySelector('.sb-team[data-side="away"]')
+    expect(casa.querySelector('.sb-crest__img').getAttribute('src')).toBe('/medios/EQUIPOS/compartido.jpg')
+    expect(visita.querySelector('.sb-crest__img').getAttribute('src')).toBe('/medios/EQUIPOS/compartido.jpg')
+    expect(casa.querySelector('.sb-crest').textContent).toBe('AN') // iniciales propias de cada equipo
+    expect(visita.querySelector('.sb-crest').textContent).toBe('BS')
+    expect(screen.getByLabelText('Puntos de Alfa Norte')).toBeTruthy()
+    expect(screen.getByLabelText('Puntos de Beta Sur')).toBeTruthy()
+  })
+
+  it('si el archivo compartido falta o está roto, cada equipo cae a sus propias iniciales; un equipo sin registro no se ve afectado', async () => {
+    servirEquipos({ E1: { logo: 'EQUIPOS/compartido.jpg' }, E2: { logo: 'EQUIPOS/compartido.jpg' } })
+    montar()
+    await screen.findByLabelText('Puntos de Alfa Norte')
+    await act(async () => { await Promise.resolve() })
+    for (const img of [...document.querySelectorAll('.sb-team .sb-crest__img')]) fireEvent.error(img)
+    expect(document.querySelectorAll('.sb-crest--img').length).toBe(0)
+    expect(document.querySelector('.sb-team[data-side="home"] .sb-crest').textContent).toBe('AN')
+    expect(document.querySelector('.sb-team[data-side="away"] .sb-crest').textContent).toBe('BS')
+    expect(document.querySelector('.sb-team img')).toBeNull() // nunca un icono roto
+  })
+
+  it('CSS: el escudo con imagen la muestra entera (object-fit: contain), sin límites que la recorten', () => {
+    const css = readFileSync(join(import.meta.dirname, 'marcador-tv.css'), 'utf8')
+    expect(css).toMatch(/\.sb-crest__img \{[^}]*object-fit: contain/)
+    expect(css).not.toMatch(/\.sb-crest__img \{[^}]*object-fit: (cover|fill)/)
+  })
+})

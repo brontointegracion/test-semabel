@@ -59,8 +59,7 @@ Files in `public/medios/` are copied into the build. The PWA precaches only `png
 
 ## What the user still has to provide
 
-Nothing is configured for the real leagues (`PLATINIUM-U10`, `PLATINIUM-U12`, `SIMULACRO-PILOTO`): there are no team logos,
-organizer logos or sponsor artwork in the repository. Until they are supplied the scoreboard shows initials crests and the Semabel promotion.
+**Team logos** are not configured for any league (initials crests are shown). The organizer emblem and the twelve approved sponsors are registered for the real leagues (REPORT_212, below).
 
 ## Fonts
 
@@ -90,12 +89,32 @@ The pieces below are pure and take explicit inputs, so a future "organizer TV" s
 **Shared branding (root, every league):**
 * `semabel.logo` = `SMB/semabel-transparente.png` (652×333, RGBA, real alpha): used by Semabel's own promotional cards and the dashboard header. The older opaque `semabel-logo.png` is NOT shipped.
 
-**Registered only for `SIMULACRO-PILOTO` (one league entry; no other league, no scratch/fictional sponsors):**
-* organizer emblem: `PLATINIUM/platinium-logo.png` (354×353);
-* six sponsors, in this order (`formato: tarjeta`, `disposicion: logo`): `parmigiana` (La Parmigiana, `PARM/parmigiana.jpeg`), `workings` (WORKINGS, `WORKINGS/workings-logo.png`),
-  `pce` (Panama Crystal Engineering, `PCE/pce-logo.png`), `javier-del-rio` (Javier del Rio Corp, `JDR/javier-del-rio.png`), `deportes-jimmy` (Deportes Jimmy, `JIMMY/deportes-jimmy.jpg`),
-  `pixeles` (Píxeles & Diseños, S.A., `PIXELES/pixeles-logo.png`).
+**Registered media (REPORT_209 and REPORT_212):**
+* `SIMULACRO-PILOTO` (unchanged): organizer emblem `PLATINIUM/platinium-logo.png` (354×353) and six sponsors.
+* `PLATINIUM-U10` and `PLATINIUM-U12` (two identical entries): the same emblem and **twelve sponsors**, in this order (all `formato: tarjeta`, `disposicion: logo`, no `descriptor`; the sponsor name is only
+  accessible text, the lettering lives in the image): `parmigiana` (La Parmigiana, `PARM/parmigiana.jpeg`), `workings` (WORKINGS), `pce` (Panama Crystal Engineering), `javier-del-rio` (Javier del Rio Corp),
+  `deportes-jimmy` (Deportes Jimmy), `pixeles` (Píxeles & Diseños, S.A.), then the six added in REPORT_212:
 
-The other admitted leagues (`PLATINIUM-U10`, `PLATINIUM-U12`) get only Semabel's own promotion plus the shared Semabel logo, exactly as before. Files were copied byte-identically from the scratch fixture
-(`~/Documents/SEBEL/rehearsals/REPORT_191/medios-fixture/`); only referenced files are present (guarded by `src/lib/publico/medios-produccion.test.js`). Largest asset: `JDR/javier-del-rio.png`
-(1.27 MB; the PWA precache limit is 2 MiB per png, so a bigger png would fail `vite build`; jpg/webp are not precached).
+| id | name | file | px | bytes |
+|---|---|---|---|---|
+| `rodsan` | Casa de campo RODSAN | `RODSAN/rodsan-logo-recorte-v2.jpeg` (square crop of the complete badge; `nombreEnBanda: true`, background `#323436`) | 802×802 | 177 015 |
+| `effort-bull-kennels` | Effort Bull Kennels | `EFFORT/effort-bull-kennels.jpeg` | 1156×988 | 156 242 |
+| `adminplayers` | AdminPlayers | `ADMINPLAYERS/adminplayers-recorte.jpeg` | 653×668 | 99 684 |
+| `panteras` | Club Deportivo Panteras | `PANTERAS/panteras-logo.png` | 1598×1480 | 179 964 |
+| `bethancourt-asociados` | Bethancourt & Asociados | `BETHANCOURT/bethancourt-asociados-blanco.png` | 931×762 | 354 257 |
+| `symisa` | SYMISA | `SYMISA/symisa.jpeg` | 849×829 | 36 483 |
+
+**Team logos (REPORT_216).** `PLATINIUM-U10` and `PLATINIUM-U12` register `equipos` entries (`{ "logo": "EQUIPOS/<slug>.jpg" }`, no colour) for **eighteen separate team IDs** that reuse **nine** image files; sharing a file never merges teams
+(each ID keeps its own record, name, initials fallback and history). Mapping (confirmed by the user and matching the labels printed beside each image in the proposal PDF's schedule table): `deportivo-vip.jpg` ← U10 Deportivo, U10 VIP, U12 Deportivo VIP;
+`unity-basketball.jpg` ← U10/U12 Unity Basketball; `correcaminos.jpg` ← U10/U12 Correcaminos; `hardwork.jpg` ← U10/U12 Hardwork Basketball, U12 Hardwork West; `west-hornets.jpg` ← U10/U12 West Hornets; `grizzlies.jpg` ← U10/U12 Grizzlies;
+`grillos-vip.jpg` ← U10/U12 Grillos VIP; `cross-level.jpg` ← U10 Cross Level; `west-boys.jpg` ← U12 West Boys. The files are the embedded JPEG originals extracted from that PDF unchanged (1271–1536 px tall, 1.6 MB in total); the PDF itself is used only as a
+logo source (its dates and fixtures are outdated and are not imported) and is kept outside the repository, as are the extracted originals and the contact sheet. The scoreboard already consumed `equipos` logos (crest with `object-fit: contain`; a missing or broken file falls back to the team's initials).
+JPEGs are not in the PWA precache glob, so these logos load on first use and are not available offline. `SIMULACRO-PILOTO` has no team logos.
+**Visual approval (recorded in REPORT_217):** the user approved all nine team logos and all eighteen mappings from REPORT_216 after reviewing the contact sheet, **including West Boys as supplied** (its original artwork keeps a small text fragment at the bottom edge; it stays unedited).
+This is a visual approval of the artwork and mappings only; it is not a production or physical-device acceptance, and nothing is deployed.
+
+`La Parmigiana` has no descriptor («Restaurante italiano» was removed in REPORT_209). Files were copied byte-identically from the review fixture (`~/Documents/SEBEL/rehearsals/REPORT_191/medios-fixture/`);
+originals, superseded crops, PDFs and backup manifests are NOT shipped; only referenced files are present (guarded by `src/lib/publico/medios-produccion.test.js`). Largest asset: `JDR/javier-del-rio.png`
+(1.27 MB; the PWA precache limit is 2 MiB per file, so a bigger png would fail `vite build`). **Precache:** the PWA precaches only `png|svg|js|css|html|woff2` (`vite.config.js`), so the two new PNGs
+(Panteras, Bethancourt: +0.51 MiB) join the precache while every `.jpg/.jpeg` (including the earlier Parmigiana and Jimmy, and now RODSAN, Effort Bull, AdminPlayers, SYMISA) is fetched from the network on first use and is
+not available offline. The six sponsors requested later that were still missing in REPORT_209 are now supplied (items 7–12 above).

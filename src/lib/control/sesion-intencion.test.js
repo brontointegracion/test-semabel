@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  INTENCIONES, MENSAJES_DE_REGISTRO, crearRegistroDeIntenciones, estadoDeEvento, mensajeDeResultado, nuevoCmdId, restanteDeTexto, situacionDeControl,
+  INTENCIONES, MENSAJES_DE_REGISTRO, crearRegistroDeIntenciones, estadoDeEvento, mensajeDeResultado, nuevoCmdId, restanteDeTexto, situacionDeControl, normalizarTiempoReloj, MENSAJES_TIEMPO_RELOJ,
 } from './sesion-intencion'
 
 // REPORT_128: el mapeo PURO de la intención del operador al controlador y los textos que ve.
@@ -77,7 +77,26 @@ describe('corrección del reloj', () => {
     expect(restanteDeTexto('00:00', 600000)).toEqual({ ok: true, restanteMs: 0 })
     expect(restanteDeTexto('10:00', 600000)).toEqual({ ok: true, restanteMs: 600000 })
     expect(restanteDeTexto('10:01', 600000)).toEqual({ ok: false, motivo: 'fuera-de-rango' })
-    for (const mal of ['', '8', '8:5', '08:60', '-1:00', 'ab:cd', '08:30:00', null, undefined, '8,5']) expect(restanteDeTexto(mal, 600000), String(mal)).toEqual({ ok: false, motivo: 'formato' })
+    for (const mal of ['', '8', '8:5', '-1:00', 'ab:cd', '08:30:00', null, undefined, '8,5']) expect(restanteDeTexto(mal, 600000), String(mal)).toEqual({ ok: false, motivo: 'formato' })
+    expect(restanteDeTexto('08:60', 600000)).toEqual({ ok: false, motivo: 'segundos' }) // antes «formato»; ahora dice cuál es el problema
+  })
+  it('REPORT_210: sin dos puntos, 3 o 4 dígitos son «mss» / «mmss»: 845 y 0845 → 08:45; 1000 → 10:00; nada se adivina', () => {
+    expect(normalizarTiempoReloj('845')).toEqual({ ok: true, texto: '08:45' })
+    expect(normalizarTiempoReloj('0845')).toEqual({ ok: true, texto: '08:45' })
+    expect(normalizarTiempoReloj(' 845 ')).toEqual({ ok: true, texto: '08:45' })
+    expect(normalizarTiempoReloj('1000')).toEqual({ ok: true, texto: '10:00' })
+    expect(normalizarTiempoReloj('000')).toEqual({ ok: true, texto: '00:00' })
+    expect(normalizarTiempoReloj('8:05')).toEqual({ ok: true, texto: '08:05' })
+    expect(normalizarTiempoReloj('08:30')).toEqual({ ok: true, texto: '08:30' })
+    expect(restanteDeTexto('845', 600000)).toEqual({ ok: true, restanteMs: 525000 })
+    expect(restanteDeTexto('0845', 600000)).toEqual({ ok: true, restanteMs: 525000 })
+    expect(restanteDeTexto('1000', 600000)).toEqual({ ok: true, restanteMs: 600000 })
+    expect(restanteDeTexto('1001', 600000)).toEqual({ ok: false, motivo: 'fuera-de-rango' }) // nunca se recorta a 10:00
+    expect(restanteDeTexto('2000', 600000)).toEqual({ ok: false, motivo: 'fuera-de-rango' })
+    for (const ambiguo of ['8', '45', '84', '08450', '8 45', '8-45', '08.45', '84a', '+845']) expect(normalizarTiempoReloj(ambiguo), ambiguo).toEqual({ ok: false, motivo: 'formato' }) // uno o dos dígitos: no se sabe si son minutos o segundos
+    for (const mal of ['860', '0860', '08:60', '8:99', '1099']) expect(normalizarTiempoReloj(mal), mal).toEqual({ ok: false, motivo: 'segundos' }) // nunca 860 → 09:00
+    expect(Object.keys(MENSAJES_TIEMPO_RELOJ).sort()).toEqual(['formato', 'fuera-de-rango', 'segundos'])
+    for (const m of Object.values(MENSAJES_TIEMPO_RELOJ)) expect(m).toMatch(/[a-z]{4}/)
   })
 })
 

@@ -16,6 +16,8 @@ import { pedirJson, rutaMedios } from './cliente.js'
 //                { id, formato, nombre*, descriptor, logo, fondo, texto, acento, borde, disposicion }        (* obligatorio)
 //                `disposicion: "logo"` (solo con `logo` válido): variante con el LOGO como protagonista (REPORT_194): el logo completo ocupa la tarjeta, el nombre queda
 //                solo como texto accesible (el logo ya lo lleva) y el rubro se pinta como texto. Sin ella, la tarjeta es la de siempre.
+//                `nombreEnBanda: true` (solo con `disposicion: "logo"`; REPORT_211): en la banda EN VIVO del televisor el nombre se pinta además como texto grande junto al logo (logo casi
+//                a toda la altura, conjunto centrado); en los descansos, el final y el teléfono el logo va solo, grande y centrado, sin repetir el nombre. Cualquier otro valor se descarta.
 //   "arte"     Arte terminado: una imagen local ya compuesta, mostrada sin deformarla y sobre su propio fondo.
 //                { id, formato, imagen*, imagenGrande, fondo, nombre, descriptor, texto, acento, borde }   (nombre y colores solo se usan si la imagen falla)
 // Sin `formato` se deduce como antes: con `imagen` válida es «arte»; si no, «tarjeta». Así los manifiestos del REPORT_191 (id, nombre, descriptor,
@@ -55,7 +57,8 @@ export function patrocinadorValido(p) {
   // «arte» necesita una imagen válida; sin ella, con nombre, cae a «tarjeta» (como el REPORT_191 mostraba el nombre cuando faltaba la imagen).
   const formato = pedido === 'arte' || (pedido === null && imagen) ? (imagen ? 'arte' : (nombre ? 'tarjeta' : null)) : (nombre ? 'tarjeta' : null)
   if (formato === null) return null
-  return { id: p.id, formato, nombre, descriptor, logo, imagen, imagenGrande, fondo: color(p.fondo), texto: color(p.texto), acento: color(p.acento), borde: p.borde === true, disposicion: formato === 'tarjeta' && logo && DISPOSICIONES.includes(p.disposicion) ? p.disposicion : null }
+  return { id: p.id, formato, nombre, descriptor, logo, imagen, imagenGrande, fondo: color(p.fondo), texto: color(p.texto), acento: color(p.acento), borde: p.borde === true, disposicion: formato === 'tarjeta' && logo && DISPOSICIONES.includes(p.disposicion) ? p.disposicion : null,
+    ...(formato === 'tarjeta' && logo && p.disposicion === 'logo' && p.nombreEnBanda === true && nombre !== null ? { nombreEnBanda: true } : {}) }
 }
 
 // Contraste WCAG entre dos #RRGGBB (para no dejar un texto ilegible sobre su fondo).

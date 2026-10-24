@@ -7,9 +7,9 @@ import { esSede, insertarPartidoProgramado, normalizarProgramado } from './semil
 // Carga de ESTRUCTURA y de PARTIDOS por el operador (dos llamadas separadas; ninguna toca jugadores, credenciales ni
 // organizadores). No es un marco de importación ni una API de edición: solo AÑADE.
 //
-//   estructura  { cargaId, liga:{ id, nombre, deporte, categoria?, subcategoria?, minutosPorPeriodo? }, equipos:[{ id, nombre }] }
+//   estructura  { cargaId, liga:{ id, nombre, deporte, categoria?, subcategoria?, minutosPorPeriodo? }, equipos:[{ id, nombre, rama? }] }
 //   partidos    { cargaId, minutosPorPeriodo, partidos:[{ id, localId, visitaId, programadoPara?, sede? }] }
-//   equipos     { cargaId, equipos:[{ id, nombre }] }   AÑADE equipos a una liga ya cargada (cargaId NUEVO; nunca toca lo existente)
+//   equipos     { cargaId, equipos:[{ id, nombre, rama? }] }   (rama opcional: 'masculino' | 'femenino' | 'mixta'; ver ramas-equipos.js)   AÑADE equipos a una liga ya cargada (cargaId NUEVO; nunca toca lo existente)
 //
 // TODO se valida ANTES de escribir (validarEstructura / validarPartidos son puras). Cada petición es UNA transactionSync:
 // o queda todo o no cambia nada. La identidad durable es `cargaId` (tabla `cargas`) con la huella del contenido NORMALIZADO
@@ -37,7 +37,11 @@ const RE_ISO = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,3})
 
 const esObjeto = (v) => v !== null && typeof v === 'object' && !Array.isArray(v)
 const soloClaves = (o, permitidas) => Object.keys(o).every((k) => permitidas.includes(k))
-const esNombre = (v) => typeof v === 'string' && v.trim() === v && v.length >= 1 && v.length <= 80 && !CONTROL.test(v)
+// La rama (REPORT_220) es OPCIONAL por equipo. Un equipo SIN rama se normaliza exactamente como antes (sin la clave `rama`), de modo que la huella de las cargas
+// anteriores no cambia y su reintento sigue siendo un éxito idempotente.
+const RAMAS_VALIDAS = ['masculino', 'femenino', 'mixta']
+const equipoNormalizado = (q) => ({ id: q.id, nombre: q.nombre, ...(q.rama !== undefined ? { rama: q.rama } : {}) })
+export const esNombre = (v) => typeof v === 'string' && v.trim() === v && v.length >= 1 && v.length <= 80 && !CONTROL.test(v)
 // La misma clave de unicidad que la creación de ligas de la aplicación (NuevaLiga.jsx): recortado y en minúsculas.
 const claveNombre = (n) => n.trim().toLowerCase()
 const minutosValidos = (v) => Number.isSafeInteger(v) && v >= 1 && v <= 120
@@ -82,7 +86,8 @@ export function validarEstructura(p, ligaIdDeLaRuta) {
     const ids = new Set()
     const nombres = new Set()
     for (const q of equipos) {
-      if (!esObjeto(q) || !soloClaves(q, ['id', 'nombre'])) { e.push('equipos.forma'); continue }
+      if (!esObjeto(q) || !soloClaves(q, ['id', 'nombre', 'rama'])) { e.push('equipos.forma'); continue }
+      if (q.rama !== undefined && !RAMAS_VALIDAS.includes(q.rama)) e.push('equipos.rama') // opcional; NUNCA null ni un valor por omisión
       if (typeof q.id !== 'string' || !ID.test(q.id)) e.push('equipos.id')
       else if (ids.has(q.id)) e.push('equipos.id-duplicado')
       else ids.add(q.id)
@@ -104,7 +109,7 @@ export function validarEstructura(p, ligaIdDeLaRuta) {
         id: liga.id, nombre: liga.nombre, deporte: liga.deporte, minutosPorPeriodo: liga.minutosPorPeriodo ?? null,
         categoria: clasificacion?.categoria ?? null, subcategoria: clasificacion?.subcategoria ?? null,
       },
-      equipos: equipos.map((q) => ({ id: q.id, nombre: q.nombre })).sort((a, b) => (a.id < b.id ? -1 : 1)),
+      equipos: equipos.map(equipoNormalizado).sort((a, b) => (a.id < b.id ? -1 : 1)),
     },
   }
 }
@@ -186,7 +191,8 @@ export function validarEquiposAnexos(p, ligaIdDeLaRuta) {
     const ids = new Set()
     const nombres = new Set()
     for (const q of equipos) {
-      if (!esObjeto(q) || !soloClaves(q, ['id', 'nombre'])) { e.push('equipos.forma'); continue }
+      if (!esObjeto(q) || !soloClaves(q, ['id', 'nombre', 'rama'])) { e.push('equipos.forma'); continue }
+      if (q.rama !== undefined && !RAMAS_VALIDAS.includes(q.rama)) e.push('equipos.rama') // opcional; NUNCA null ni un valor por omisión
       if (typeof q.id !== 'string' || !ID.test(q.id)) e.push('equipos.id')
       else if (ids.has(q.id)) e.push('equipos.id-duplicado')
       else ids.add(q.id)
@@ -197,7 +203,7 @@ export function validarEquiposAnexos(p, ligaIdDeLaRuta) {
     if (!e.length && hayClavesAmbiguas(ligaIdDeLaRuta, [...ids])) e.push('equipos.clave-ambigua')
   }
   if (e.length) return { ok: false, errores: acotar(e) }
-  return { ok: true, normalizado: { cargaId: p.cargaId, equipos: equipos.map((q) => ({ id: q.id, nombre: q.nombre })).sort((a, b) => (a.id < b.id ? -1 : 1)) } }
+  return { ok: true, normalizado: { cargaId: p.cargaId, equipos: equipos.map(equipoNormalizado).sort((a, b) => (a.id < b.id ? -1 : 1)) } }
 }
 
 /** Huella del contenido normalizado, ligada al tipo de carga y a la liga. */
@@ -233,7 +239,7 @@ export function cargarEstructura(storage, { normalizado: n, huella, ahora }) {
       'INSERT INTO ligas (id, nombre, deporte, minutos_por_periodo, categoria, subcategoria_json) VALUES (?, ?, ?, ?, ?, ?)',
       liga.id, liga.nombre, liga.deporte, liga.minutosPorPeriodo, liga.categoria, liga.subcategoria === null ? null : JSON.stringify(liga.subcategoria),
     )
-    for (const q of n.equipos) sql.exec('INSERT INTO equipos (id, liga_id, nombre) VALUES (?, ?, ?)', q.id, liga.id, q.nombre)
+    for (const q of n.equipos) sql.exec('INSERT INTO equipos (id, liga_id, nombre, rama) VALUES (?, ?, ?, ?)', q.id, liga.id, q.nombre, q.rama ?? null)
     return guardarCarga(sql, n.cargaId, 'estructura', huella, { ok: true, cargaId: n.cargaId, tipo: 'estructura', ligaId: liga.id, equipos: n.equipos.length }, ahora)
   })
 }
@@ -294,7 +300,7 @@ export function cargarEquipos(storage, { ligaId, normalizado: n, huella, ahora }
     if (n.equipos.some((q) => idsActuales.has(q.id))) return rechazo(409, 'equipo-existente')
     if (n.equipos.some((q) => nombresActuales.has(claveNombre(q.nombre)))) return rechazo(409, 'nombre-existente')
     if (hayClavesAmbiguas(ligaId, [...idsActuales, ...n.equipos.map((q) => q.id)], idsActuales.size)) return rechazo(409, 'clave-publica-ambigua')
-    for (const q of n.equipos) sql.exec('INSERT INTO equipos (id, liga_id, nombre) VALUES (?, ?, ?)', q.id, ligaId, q.nombre)
+    for (const q of n.equipos) sql.exec('INSERT INTO equipos (id, liga_id, nombre, rama) VALUES (?, ?, ?, ?)', q.id, ligaId, q.nombre, q.rama ?? null)
     return guardarCarga(sql, n.cargaId, 'equipos', huella, {
       ok: true, cargaId: n.cargaId, tipo: 'equipos', ligaId, agregados: n.equipos.length, equipos: n.equipos, totalEquipos: actuales.length + n.equipos.length,
     }, ahora)

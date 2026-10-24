@@ -17,6 +17,9 @@ import { leerDorsal } from '../../src/lib/dorsal.js'
 import { cargarEquipos, cargarEstructura, cargarPartidos, huellaDeCarga } from './carga.js'
 import { aRespuesta } from './respuestas.js'
 import { LIMITES_REPARACION, repararResumenes, resumenValido } from './resumen-publico.js'
+import { fijarRamas, huellaDeRamas } from './ramas-equipos.js'
+import { huellaDeRenombre, renombrarLiga } from './renombre-liga.js'
+import { huellaDeRetiro, restaurarPartidos, retirarPartidos } from './retiro-partidos.js'
 import { sembrarLiga } from './semilla.js'
 
 // ---------------------------------------------------------------------------
@@ -96,7 +99,7 @@ export class LigaDO extends DurableObject {
     const sql = this.almacen.sql
     const fila = (q, ...a) => sql.exec(q, ...a).toArray()[0] ?? null
     const p = fila(
-      'SELECT id, liga_id, local_id, visita_id, estado_json, rev, programado_para, sede FROM partidos WHERE id = ?', gameId,
+      'SELECT id, liga_id, local_id, visita_id, estado_json, rev, programado_para, sede FROM partidos WHERE id = ? AND retirado_en IS NULL', gameId,
     )
     if (!p) return { status: 404, cuerpo: { error: 'no-encontrado' } }
     const liga = fila('SELECT id, nombre, deporte, categoria, subcategoria_json FROM ligas WHERE id = ?', p.liga_id)
@@ -151,13 +154,14 @@ export class LigaDO extends DurableObject {
     const liga = sql.exec('SELECT id, nombre, deporte, categoria, subcategoria_json FROM ligas').toArray()[0] ?? null
     if (!liga) return { status: 404, cuerpo: { error: 'no-encontrado' } }
     const demasiado = () => ({ status: 507, cuerpo: { error: 'liga-demasiado-grande' } })
-    const equipos = sql.exec('SELECT id, nombre FROM equipos ORDER BY id LIMIT ?', limites.equipos + 1).toArray()
+    const equipos = sql.exec('SELECT id, nombre, rama FROM equipos ORDER BY id LIMIT ?', limites.equipos + 1).toArray()
     if (equipos.length > limites.equipos) return demasiado()
     const filas = sql.exec(
       `SELECT p.id, p.local_id, p.visita_id, p.estado_json, p.rev, p.programado_para, p.sede,
               r.partido_id AS r_partido_id, r.local_id AS r_local_id, r.visita_id AS r_visita_id, r.local_puntos, r.visita_puntos,
               r.local_faltas, r.visita_faltas, r.periodo, r.rev_fuente, r.version_proyeccion
          FROM partidos p LEFT JOIN resumen_partido r ON r.partido_id = p.id
+       WHERE p.retirado_en IS NULL
         ORDER BY p.programado_para IS NULL, p.programado_para, p.id LIMIT ?`,
       limites.partidos + 1,
     ).toArray()
@@ -212,6 +216,30 @@ export class LigaDO extends DurableObject {
   async cargarPartidosOperador({ ligaId, normalizado }) {
     const huella = await huellaDeCarga('partidos', ligaId, normalizado)
     return cargarPartidos(this.almacen, { ligaId, normalizado, huella, ahora: this.ahora() })
+  }
+
+  // --- Retiro y restauración de partidos (operador; ver retiro-partidos.js). La huella se calcula ANTES de la transacción ---------
+
+  async retirarPartidosOperador({ ligaId, normalizado }) {
+    const huella = await huellaDeRetiro('retiro', ligaId, normalizado)
+    return retirarPartidos(this.almacen, { ligaId, normalizado, huella, ahora: this.ahora() })
+  }
+
+  async restaurarPartidosOperador({ ligaId, normalizado }) {
+    const huella = await huellaDeRetiro('restauracion', ligaId, normalizado)
+    return restaurarPartidos(this.almacen, { ligaId, normalizado, huella, ahora: this.ahora() })
+  }
+
+  /** Fija la rama de equipos YA existentes (operador; ver ramas-equipos.js): solo NULL → valor, en UNA transacción. La huella se calcula ANTES. */
+  async fijarRamasOperador({ ligaId, normalizado }) {
+    const huella = await huellaDeRamas(ligaId, normalizado)
+    return fijarRamas(this.almacen, { ligaId, normalizado, huella, ahora: this.ahora() })
+  }
+
+  /** Renombra la liga (operador; ver renombre-liga.js): SOLO `ligas.nombre`, en UNA transacción. La huella se calcula ANTES. */
+  async renombrarLigaOperador({ ligaId, normalizado }) {
+    const huella = await huellaDeRenombre(ligaId, normalizado)
+    return renombrarLiga(this.almacen, { ligaId, normalizado, huella, ahora: this.ahora() })
   }
 
   // --- Acceso por códigos -------------------------------------------------------------------------------------------

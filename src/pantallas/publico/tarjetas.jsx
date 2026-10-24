@@ -1,3 +1,4 @@
+import { useId, useState } from 'react'
 import { claveDiaPanama, diaRelativoPanama, fechaCortaPanama, horaPanama, textoSede } from '../../lib/publico/formato.js'
 import { pendienteDeComenzar, textoPeriodo, urlPartidoPublico } from '../../lib/publico/agrupar.js'
 import { vistaReloj } from '../../lib/publico/vista-reloj.js'
@@ -82,6 +83,33 @@ export function FilaFinal({ partido: p }) {
         {p.ligaNombre && <span className="fila-liga-partido">{p.ligaNombre}</span>}
       </div>
     </EnlaceConOrigen>
+  )
+}
+
+/** Cuántos «Próximos partidos» se ven al inicio (REPORT_213). Limita lo que se PINTA; la lectura de las ligas no cambia (ver README/informe). */
+export const PROXIMOS_INICIALES = 3
+
+/**
+ * «Próximos partidos» con a lo sumo PROXIMOS_INICIALES a la vista y una acción EXPLÍCITA para ver el resto (sin carga automática al desplazarse). Los datos ya están
+ * en la página: abrir o cerrar no pide nada al servidor. `partidos` ya viene en orden cronológico.
+ */
+export function ProximosPartidos({ partidos, mono, iniciales = PROXIMOS_INICIALES }) {
+  const [abierta, setAbierta] = useState(false)
+  const id = useId()
+  const hay = partidos.length > iniciales
+  const visibles = hay && !abierta ? partidos.slice(0, iniciales) : partidos
+  return (
+    <>
+      <div id={id}><ListaProgramados partidos={visibles} mono={mono} /></div>
+      {hay && (
+        <div className="proximos-mas">
+          <p className="sub" role="status">{abierta ? `Mostrando los ${partidos.length} partidos` : `Mostrando ${iniciales} de ${partidos.length} partidos`}</p>
+          <button type="button" className="btn fantasma" aria-expanded={abierta} aria-controls={id} onClick={() => setAbierta((a) => !a)}>
+            {abierta ? 'Ver menos partidos' : 'Ver más partidos'}
+          </button>
+        </div>
+      )}
+    </>
   )
 }
 

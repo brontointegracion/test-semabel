@@ -292,9 +292,13 @@ y se declaran en el entorno; `migrations` (v1, v2) se heredan del nivel superior
 **Compilación de la interfaz (desde la RAÍZ del repositorio; sale en `dist/`, que Wrangler lee como `../dist`):**
 
     rm -rf dist
-    VITE_MODO_COMPARTIDO=1 VITE_LIGAS_PUBLICAS=PLATINIUM-U10,PLATINIUM-U12,SIMULACRO-PILOTO VITE_PAIS_PILOTO=PA npm run build
+    VITE_MODO_COMPARTIDO=1 VITE_LIGAS_PUBLICAS=PLATINIUM-U10,PLATINIUM-U12 VITE_PAIS_PILOTO=PA VITE_TV_SECUENCIA="$(tr -d '\n' < <ARCHIVO-CON-LA-SECUENCIA-DE-DIEZ-PARTIDOS>)" npm run build
 
-(`VITE_LIGAS_PUBLICAS` debe coincidir con `LIGAS_ADMITIDAS`; sin `SIMULACRO-PILOTO` en la compilación, `/tv` responde «no disponible».) El `dist/` que haya en el árbol puede ser antiguo: compilar siempre antes de desplegar.
+**Alcance del EVENTO REAL (REPORT_221): la lista del front end es un SUBCONJUNTO de la del servidor.** `VITE_LIGAS_PUBLICAS` solo debe contener ligas que el servidor admita (`LIGAS_ADMITIDAS`), pero puede ser MÁS CORTA: el front end solo lee las ligas de su lista y
+nunca pide las demás. Aquí `LIGAS_ADMITIDAS` conserva `SIMULACRO-PILOTO` y `VITE_LIGAS_PUBLICAS` no la lleva. Efectos exactos: la portada, «Ligas cerca de ti», la búsqueda, «Figuras del barrio», las páginas de liga/equipo/partido de la interfaz y la entrada `/tv` dejan de incluirla.
+Esto **solo oculta el descubrimiento y las pantallas de la interfaz; NO desactiva la API pública**: `GET /v1/ligas/SIMULACRO-PILOTO/…` sigue respondiendo (la liga sigue admitida), y siguen disponibles el acceso de organizador, las rutas de control del teléfono y las cargas del operador. Para cerrar también la API habría que quitarla de
+`LIGAS_ADMITIDAS` y desplegar (los datos guardados no se borran). Direcciones públicas antiguas de la interfaz (`/liga/simulacro-piloto…`, su equipo o su partido): responden «No encontramos esta liga / este equipo / este partido» con salida a la portada, sin ninguna petición a la API. `/tv` responde «no disponible»; `/tv/cancha` sale con «‹ Inicio» (no a `/tv`).
+(Ensayo con la liga ficticia, SUPERADO para producción: `VITE_LIGAS_PUBLICAS=PLATINIUM-U10,PLATINIUM-U12,SIMULACRO-PILOTO` — con él `/tv` lista los partidos de la liga ficticia.) El `dist/` que haya en el árbol puede ser antiguo: compilar siempre antes de desplegar.
 
 **Comprobación local sin red ni cuenta** (desde `backend/`): `node_modules/.bin/wrangler deploy --dry-run --env production --outdir RUTA-FUERA-DEL-REPO`
 debe listar los dos objetos y las cinco variables anteriores. Despliegue (manual, por el usuario): siempre con `--env production`; sin
@@ -325,6 +329,7 @@ its next game. Nothing reloads automatically and the service-worker behavior is 
   correct totals, and the current code then rebuilds them at version 2 with correct per-period counts.
 - That is storage compatibility, not semantic compatibility. The previous code does not know the rules: a game started by it is
   NOT pinned (it stays legacy after a roll-forward), and it neither shows nor enforces per-period or hidden team fouls.
+- Schema 8 (REPORT_208) adds game retirement: a build older than that ignores it (see «Compatibility restriction» in the retirement section).
 - Not tested: any production data, Cloudflare Durable Object behavior, a database restored from backup, or a previous-code run on
   a deployed Worker. No production backup is assumed to exist; rolling code back never replaces one.
 
@@ -466,7 +471,7 @@ roster package, explicit identity mapping, two separate games payloads, schedule
 
 **Admission.** `env.production.vars.LIGAS_ADMITIDAS` is now `PLATINIUM-U10,PLATINIUM-U12,SIMULACRO-PILOTO` (exact-equality list; anything else is still the same 404).
 Operator gate stays `ACCESO_ADMIN_HABILITADO=0`, `PERMITIR_SEMILLA=0`; staging, migrations and the Worker name are unchanged.
-Frontend build variables for all three (the build list must equal the Worker list):
+Frontend build variables for all three (REHEARSAL example, **superseded for the real event by REPORT_221**: the real-event build lists only `PLATINIUM-U10,PLATINIUM-U12`; the front-end list may be a SUBSET of the Worker list but must never contain a league the Worker does not admit — see «Compilación de la interfaz» above):
 
     VITE_MODO_COMPARTIDO=1 VITE_LIGAS_PUBLICAS=PLATINIUM-U10,PLATINIUM-U12,SIMULACRO-PILOTO VITE_PAIS_PILOTO=PA npm run build
 
@@ -489,7 +494,7 @@ native focus/Enter (first game is focused on load); no `noindex` header for `/tv
 **`/tv/cancha` (stable TV URL for ONE court, REPORT_199).** One short URL follows an **explicit, ordered** list of `LIGA/PARTIDO` pairs set at build time:
 `VITE_TV_SECUENCIA="SIMULACRO-PILOTO/<gameId1>,SIMULACRO-PILOTO/<gameId2>"` (full game ids as shown by the public league read; every league must also be in
 `VITE_LIGAS_PUBLICAS`; absent/empty = «Transmisión no configurada»; any malformed, duplicate or unlisted pair discards the whole value = «Configuración no válida»;
-max 8 pairs). A shared court is never inferred from venue text or time. The repository ships NO sequence. Code: `src/lib/publico/tv-secuencia.js` (pure selection +
+max **10** pairs since REPORT_209 (the leagues of the pairs must be in `VITE_LIGAS_PUBLICAS`); the limit is one constant). A shared court is never inferred from venue text or time. The repository ships NO sequence. Code: `src/lib/publico/tv-secuencia.js` (pure selection +
 parsing), `src/pantallas/publico/TvCancha.jsx` (one subscription per scoped game and per league; the shown game gets its data by props), shared views in
 `PantallaMarcador.jsx` (`MarcoPantalla` stays mounted across games so fullscreen survives). Selection (server-confirmed state only): exactly one `vivo` → that game;
 several `vivo` → explicit conflict screen with links, nothing chosen; none `vivo` → the first game not yet `final` is *pending*: first game pending → its scheduled view;
@@ -547,6 +552,88 @@ event (never the internal event id or the command id). Annulled events (undo/ann
 assigned player, or whose player has no public name, are not published. `nombre` is the public team-page name (given name + surnames, never the shirt
 name, personaId or any event body). A scheduled or final game returns `[]`. No storage change; one bounded read by the existing `(partido, seq)` index
 plus at most six player-by-key reads. Used by the big scoreboard for its subtle scoring notice (see `docs/display/medios-piloto.md`).
+
+### Retiring and restoring scheduled games (REPORT_208; implemented and tested ONLY with synthetic data, NOT deployed)
+
+**What it is.** A game can be *retired*: hidden and made unusable, with its record, id and history kept. "Retired" is **not** a game state (`programado | vivo | final`
+is unchanged); it is a separate nullable mark, `partidos.retirado_en` (schema **8**, additive `ALTER TABLE … ADD COLUMN`, guarded so repeating it is harmless; every existing
+game stays active by default). Nothing is deleted or reset, and a retired id can never be loaded again for another matchup (`partido-existente`).
+
+**Operator only** (same gate and Bearer as the loaders; a cookie session is refused; non-admitted league = 404):
+
+    POST /v1/admin/ligas/{liga}/partidos/retirar     { "cargaId": "<16–64 chars>", "partidos": ["id", …] }   1–50 ids, exact body
+    POST /v1/admin/ligas/{liga}/partidos/restaurar   same shape; a SEPARATE operation (never a toggle) with its own `cargaId`
+
+**Idempotency (the loaders' convention).** The receipt lives in `cargas` (type `retiro` / `restauracion`). Same `cargaId` + same content → 200 `reproducido: true` with the
+original result and no writes; same `cargaId` with other content or another type → 409 `carga-conflicto`. A game that is already retired (or already active, when restoring) is
+reported as `yaRetirados` / `yaActivos` and changes nothing, so repeating with a new `cargaId` is safe. A refusal (409/422) stores no receipt: the same `cargaId` can be retried.
+A lost response is answered by the Worker as 503 `resultado-desconocido` / `reintento: misma-carga`: repeat the SAME command.
+
+**Guards (all inside ONE `transactionSync` of the league object; the whole batch is refused, nothing changes).** Retiring needs, per game: engine state `programado`;
+`rev = 0` and `ultimo_client_seq = 0`; no rows in `eventos`, `recibos`, `auditoria_reloj`, `bandeja`, `cuarentena`; no non-revoked phone credential (the organizer's existing
+"withdraw phone access" must come first); no stored lock. → 409 `retiro-no-seguro` with `{ partidos: [{ id, motivos }] }` (`no-programado`, `con-actividad`, `con-historial`,
+`credencial-activa`, `con-bloqueo`). Unknown ids → 422 `partidos-desconocidos`. Unused or revoked access **codes** do not block (they stay stored and are unusable while retired; a code that has not
+expired works again after restoring; none is revoked or issued here). Restoring re-checks the same safety except for credentials and locks; an unsafe game → 409 `restauracion-no-segura`.
+
+**Boundary.** Games, events, receipts, phone credentials and access codes all live in the league Durable Object (`LigaDO`). `AccesoDO` holds only organizer sessions and league
+ownership, so it is not involved and **no cross-object atomicity is claimed**. Retire/restore also bump `version_autorizacion`, the value an order compares at confirmation, so
+an order read before the change cannot confirm after it; if the order confirms first, the retirement sees its receipt/events and is refused.
+
+**What a retired game does.** Public league list, team results, player rankings: excluded. Direct game read: 404 (same body as an unknown id). Organizer code issuance,
+control status and "withdraw access": 404. Phone activation (even recovery with a used code): the generic 401. Orders: the generic 401, nothing written; the preparation and state reads: 401.
+The summary repair at start-up does not republish it. Public responses carry no hint of retirement.
+
+**Operator commands (dry-run by default, nothing sent):**
+
+    node scripts/operador-carga.mjs retirar   --retiros LIGA_ID=retiro.json [--retiros …]                 # offline plan
+    node scripts/operador-carga.mjs retirar   --retiros LIGA_ID=retiro.json --aplicar --remoto --origen https://semabel.com --token-archivo T --diario D/NEW.json
+    node scripts/operador-carga.mjs verificar-retiro --retiros LIGA_ID=retiro.json --leer --remoto --origen https://semabel.com   # public GETs only
+    node scripts/operador-carga.mjs restaurar --retiros LIGA_ID=restaura.json --aplicar …                 # explicit reversal, its own cargaId and journal
+    node scripts/operador-carga.mjs verificar-restauracion --retiros LIGA_ID=restaura.json --leer …
+
+Journals and uncertain-run recovery are exactly those of the loaders (new private journal per run; an "incierta" run is repeated with the SAME command; never change a file after an
+attempt; use a new `cargaId` for a new intent; a rejection stops). **Compatibility restriction (REPORT_209 correction).** The column is additive, so an OLDER backend (a build from before
+REPORT_208) still opens a v8 database, but it **does not know retirement and ignores the mark**: a retired game would be published again as an ordinary
+`programado` game and could accept codes, activation and orders. Therefore: do NOT roll the Worker back to a pre-REPORT_208 build while any game is retired; roll back
+only to a build that includes the retirement check (REPORT_208 or later), or fix forward. Do **not** restore obsolete fixtures merely to make a code rollback "safe": that
+would publish the obsolete schedule again. Restoring is only for a retirement that was a mistake. Front-end assets can be rolled back independently of the backend.
+
+Tests: `test/retiro-partidos.check.js` (workerd) and `node --test test/cli-carga.node-test.mjs`.
+
+### Renaming a league (REPORT_218; implemented and tested ONLY with synthetic data, NOT deployed)
+
+Changes ONLY the displayed league name (`ligas.nombre`). **Operator only** (same gate, Bearer and league admission as the loaders; a cookie session is refused):
+
+    POST /v1/admin/ligas/{liga}/nombre     { "cargaId": "<16–64 chars>", "nombre": "<text>" }     exact body, no other field
+
+`nombre`: the same rule as the structure's league name (no leading/trailing spaces, 1–80 characters, no control characters). One `transactionSync` in the league object: the league must exist
+(else 409 `liga-sin-estructura`); if the name differs it updates `ligas.nombre` and adds an `auditoria_acceso` row (`liga-renombrada`, `carga:<id>`); a receipt is stored in `cargas` (type `renombre`).
+Nothing else changes: no league/team/game IDs, ownership, credentials, codes, rosters, events, receipts, clock, summaries or statistics (every read selects `ligas.nombre` live, so there are no stored copies), no migration (schema stays 8),
+no front-end substitution. Friendly URLs derive from IDs, so no link changes.
+
+**Idempotency (the loaders' convention).** Same `cargaId` + same content → 200 `reproducido: true` with the ORIGINAL result (even if the name has changed since); same `cargaId` with other content or another type → 409 `carga-conflicto`;
+a refusal (409/422) stores no receipt. A name already equal to the current one is a success without a write (`cambiado: false`) with its own receipt and an identical replay. A lost response is answered by the Worker as 503
+`resultado-desconocido` / `reintento: misma-carga`: repeat the SAME command. **Reversal** is an explicit NEW operation (another `cargaId` with the previous name); never a toggle.
+
+    node scripts/operador-carga.mjs renombrar --nombres LIGA_ID=nombre.json [--nombres …]                    # offline dry-run (one rename per league per run)
+    node scripts/operador-carga.mjs renombrar --nombres LIGA_ID=nombre.json --aplicar --remoto --origen https://semabel.com --token-archivo T --diario D/NEW.json
+    node scripts/operador-carga.mjs verificar-nombre --nombres LIGA_ID=nombre.json --leer --remoto --origen https://semabel.com    # public GETs only: name, same id, teams and games present
+
+Journals, timeouts, destination rules and uncertain-run recovery are exactly those of the loaders (an "incierta" run is repeated with the same command; never edit a file after an attempt; a rejection stops).
+Tests: `test/renombre-liga.check.js` (workerd) and `node --test test/cli-carga.node-test.mjs`.
+
+### Team rama (REPORT_220; implemented and tested ONLY with synthetic data, NOT deployed)
+
+`equipos.rama` (schema **9**, additive and repeat-safe `ALTER TABLE … ADD COLUMN`; every existing team stays `NULL`): team metadata, one of `masculino | femenino | mixta` (shown «Masculino / Femenino / Mixta»).
+It is never inferred (not from names, ages, jersey numbers or the league category) and has no default: `NULL` shows nothing. It is separate from the league's competition classification (`categoria`/`subcategoria`) and
+feeds no scoring, eligibility, statistics, filter or league-wide label.
+* **At creation:** optional `rama` per team in the `estructura` and `equipos` loads. A team without `rama` normalises exactly as before (same hash: old payloads and their replays are unchanged); `null` or any other value is a 422.
+* **Existing teams:** operator-only `POST /v1/admin/ligas/{liga}/equipos/ramas` `{ cargaId, ramas: [{ equipoId, rama }] }` (1–100). One transaction per league, all or nothing: unknown team → 422 `equipos-desconocidos`;
+  a different non-empty value → 409 `rama-en-conflicto`; `NULL` → set (audit `equipo-rama-asignada`); equal → accepted unchanged. **Correcting a non-empty value is outside this operation.** Idempotency, replay, conflict and
+  uncertain-response rules are the loaders' (`cargas` type `ramas`; lost response → 503, repeat the same command).
+* **Reads:** nullable `rama` in the public league read (`equipos[]`), the public team read (`equipo`) and the organizer team read; the public team page and the organizer team screen show a small «Rama: Mixta/Masculino/Femenino» line only when it has a value.
+* **CLI** (dry-run by default; journals/recovery as the loaders'): `node scripts/operador-carga.mjs ramas --ramas LIGA=file.json [--aplicar --remoto --origen … --token-archivo … --diario …]` and `verificar-ramas --ramas LIGA=file.json --leer --origen …` (public GETs only).
+* Compatibility: an older backend ignores the column; an older front end ignores the extra field. Tests: `test/ramas-equipos.check.js`, `node --test test/cli-carga.node-test.mjs`.
 
 ## Pruebas locales (runtime de Workers, datos sintéticos)
 

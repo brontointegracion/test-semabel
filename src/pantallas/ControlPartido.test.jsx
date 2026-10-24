@@ -598,3 +598,106 @@ describe('disposición de la consola original sobre el controlador del servidor 
     expect(ctl.registrar.mock.calls[2][0].tipo).toMatch(/deshacer/)
   })
 })
+
+// REPORT_210 — «Corregir reloj»: «845» / «0845» → «08:45» al SALIR del campo o al enviar; mm:ss sigue valiendo; nada se reformatea al teclear;
+// un valor no válido se rechaza con su motivo (nunca se acomoda); dar formato NO envía ningún comando.
+describe('Corregir reloj: formato al salir del campo (REPORT_210)', () => {
+  const campo = () => screen.getByLabelText('Corregir reloj (mm:ss)')
+  const detenido = () => estadoBase() // reloj detenido, 10:00 de periodo
+  const enviadas = () => ctl.registrar.mock.calls.filter(([o]) => o.tipo === 'corregir-reloj')
+
+  it('teclado numérico y ayuda visible; 845 y 0845 quedan «08:45» al salir del campo SIN enviar nada; «Corregir» envía 525000 ms', async () => {
+    const u = userEvent.setup()
+    await montar(detenido())
+    expect(campo().getAttribute('inputmode')).toBe('numeric')
+    expect(campo().getAttribute('enterkeyhint')).toBe('done')
+    expect(screen.getByText('Por ejemplo 845 o 08:45.')).toBeTruthy()
+    for (const escrito of ['845', '0845']) {
+      await u.clear(campo()); await u.type(campo(), escrito)
+      expect(campo().value).toBe(escrito) // mientras se teclea no se toca
+      await u.tab() // salir del campo
+      expect(campo().value).toBe('08:45')
+      expect(ctl.registrar).not.toHaveBeenCalled() // dar formato no es un comando
+      expect(ctl.iniciarPartido).not.toHaveBeenCalled()
+    }
+    await u.click(boton('Corregir'))
+    expect(enviadas()).toHaveLength(1)
+    expect(enviadas()[0][0]).toMatchObject({ tipo: 'corregir-reloj', datos: { restanteMs: 525000 } })
+  })
+
+  it('al ENVIAR directamente (sin salir antes del campo) también se normaliza: 845 + «Corregir» envía 08:45; mm:ss sigue valiendo', async () => {
+    const u = userEvent.setup()
+    await montar(detenido())
+    campo().focus(); await u.keyboard('845{Enter}') // Enter envía el formulario sin blur previo
+    expect(enviadas()).toHaveLength(1)
+    expect(enviadas()[0][0].datos.restanteMs).toBe(525000)
+    await u.type(campo(), '08:30'); await u.tab()
+    expect(campo().value).toBe('08:30')
+    await u.click(boton('Corregir'))
+    expect(enviadas()[1][0].datos.restanteMs).toBe(510000)
+    await u.type(campo(), '8:05'); await u.tab()
+    expect(campo().value).toBe('08:05')
+  })
+
+  it('edición parcial: cada tecla deja el texto tal cual (sin dos puntos automáticos) y el cursor donde estaba; insertar en medio no lo mueve', async () => {
+    const u = userEvent.setup()
+    await montar(detenido())
+    await u.click(campo())
+    for (const [tecla, esperado] of [['8', '8'], ['4', '84'], ['5', '845']]) { await u.keyboard(tecla); expect(campo().value).toBe(esperado) }
+    campo().setSelectionRange(1, 1) // cursor entre el 8 y el 4
+    await u.keyboard('0')
+    expect(campo().value).toBe('8045')
+    expect(campo().selectionStart).toBe(2) // el cursor sigue justo tras lo escrito
+    await u.keyboard('{Backspace}')
+    expect(campo().value).toBe('845')
+    expect(screen.queryByRole('alert')).toBeNull() // nada se valida ni se avisa a medio escribir
+    expect(ctl.registrar).not.toHaveBeenCalled()
+  })
+
+  it('no válido: formato, segundos y fuera de rango se rechazan al salir y al enviar, con su aviso, SIN cambiar lo escrito ni enviar nada', async () => {
+    const u = userEvent.setup()
+    await montar(detenido())
+    const casos = [['abc', /Escribe el tiempo como mm:ss/], ['8', /Escribe el tiempo como mm:ss/], ['84', /Escribe el tiempo como mm:ss/], ['08450', /Escribe el tiempo como mm:ss/],
+      ['860', /segundos deben estar entre 00 y 59/], ['08:60', /segundos deben estar entre 00 y 59/], ['1100', /no cabe en el periodo/], ['11:00', /no cabe en el periodo/]]
+    for (const [escrito, texto] of casos) {
+      await u.clear(campo()); await u.type(campo(), escrito); await u.tab()
+      expect((await screen.findByRole('alert')).textContent, escrito).toMatch(texto)
+      expect(campo().value).toBe(escrito === '1100' ? '11:00' : escrito === '11:00' ? '11:00' : escrito) // 1100 es válido como forma → se muestra «11:00» y se rechaza por rango; lo demás queda como se escribió
+      expect(campo().getAttribute('aria-invalid')).toBe('true')
+      await u.click(boton('Corregir'))
+      expect(screen.getByRole('alert').textContent, escrito).toMatch(texto)
+      await u.type(campo(), '0') // seguir escribiendo borra el aviso
+      expect(screen.queryByRole('alert')).toBeNull()
+    }
+    expect(ctl.registrar).not.toHaveBeenCalled()
+  })
+
+  it('mismos límites: 10:00 (la duración exacta) vale; 1001 no; un campo vacío no envía', async () => {
+    const u = userEvent.setup()
+    await montar(detenido())
+    expect(boton('Corregir').disabled).toBe(true)
+    await u.type(campo(), '1001'); await u.tab()
+    expect(screen.getByRole('alert').textContent).toMatch(/no cabe en el periodo/)
+    await u.clear(campo()); await u.type(campo(), '1000'); await u.tab()
+    expect(campo().value).toBe('10:00')
+    await u.click(boton('Corregir'))
+    expect(enviadas()[0][0].datos.restanteMs).toBe(600000)
+  })
+
+  it('guardas: con el reloj corriendo no hay campo (ni se envía lo escrito si el reloj arranca); sin permiso de puntuar el campo y «Corregir» están desactivados', async () => {
+    const u = userEvent.setup()
+    await montar(detenido())
+    await u.type(campo(), '845')
+    const corriendo = sesionBase({ provisional: { ...sesionBase().provisional, partido: { ...sesionBase().provisional.partido, relojEstado: 'corriendo', relojRestante: 600000, relojDesde: Date.now() } } })
+    act(() => ctl.poner(estadoBase({ sesion: corriendo })))
+    expect(screen.queryByLabelText('Corregir reloj (mm:ss)')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Corregir' })).toBeNull()
+    expect(ctl.registrar).not.toHaveBeenCalled()
+    // sin permiso de puntuar (puntuación deshabilitada) el campo y «Corregir» existen pero están DESACTIVADOS: nada se escribe ni se envía
+    act(() => ctl.poner(estadoBase({ sesion: sesionBase({ puntuacion: { habilitada: false, motivo: 'inicio-sin-confirmar' } }) })))
+    const bloqueado = screen.queryByLabelText('Corregir reloj (mm:ss)')
+    if (bloqueado) { expect(bloqueado.disabled).toBe(true); expect(boton('Corregir').disabled).toBe(true) }
+    await u.click(screen.queryByRole('button', { name: 'Corregir' }) ?? document.body)
+    expect(ctl.registrar).not.toHaveBeenCalled()
+  })
+})

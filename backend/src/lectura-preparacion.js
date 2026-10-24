@@ -31,8 +31,8 @@ export async function leerPreparacionTelefono({ storage, adaptador, credencial, 
     ).toArray()[0]
     if (!c || c.revocada === 1 || c.partido_id !== gameId) return { tipo: 'no-autorizado' }
     if (estadoDeCredencial(c, ahoraFn()) !== 'activa') return { tipo: 'no-autorizado' }
-    const p = sql.exec('SELECT rev, ultimo_client_seq FROM partidos WHERE id = ?', gameId).toArray()[0]
-    if (!p) return { tipo: 'no-autorizado' }
+    const p = sql.exec('SELECT rev, ultimo_client_seq FROM partidos WHERE id = ? AND retirado_en IS NULL', gameId).toArray()[0]
+    if (!p) return { tipo: 'no-autorizado' } // desconocido o retirado
     const preparacion = adaptador.preparacionVigente(gameId)
     if (!preparacion) return { tipo: 'no-disponible' }
     const etiquetas = preparacion.jugadores

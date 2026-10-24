@@ -46,7 +46,7 @@ export const SQL_ESTADISTICAS_DE_LA_LIGA = `
          SUM(CASE WHEN json_extract(e.json, '$.tipo') = 'punto'
                    AND (typeof(json_extract(e.json, '$.puntos')) != 'integer' OR json_extract(e.json, '$.puntos') < 0) THEN 1 ELSE 0 END) AS invalidos
     FROM partidos p JOIN eventos e ON e.partido_id = p.id
-   WHERE json_extract(p.estado_json, '$.partido.estado') = 'final'
+   WHERE p.retirado_en IS NULL AND json_extract(p.estado_json, '$.partido.estado') = 'final'
      AND json_extract(e.json, '$.equipoId') IN (p.local_id, p.visita_id)
      AND json_extract(e.json, '$.tipo') IN ('punto', 'falta')
      AND COALESCE(json_extract(e.json, '$.anulado'), 0) = 0
@@ -94,7 +94,7 @@ export function leerJugadoresPublico(sql, limites, servidorAhoraMs) {
   if (equipos.length > limites.equipos) return demasiado()
   const nombres = new Map(equipos.map((e) => [e.id, e.nombre]))
 
-  const partidos = sql.exec('SELECT estado_json FROM partidos LIMIT ?', limites.partidos + 1).toArray()
+  const partidos = sql.exec('SELECT estado_json FROM partidos WHERE retirado_en IS NULL LIMIT ?', limites.partidos + 1).toArray()
   if (partidos.length > limites.partidos) return demasiado()
   const partidosFinales = partidos.filter((p) => estadoDe(p.estado_json) === 'final').length
 

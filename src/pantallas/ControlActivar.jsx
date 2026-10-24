@@ -4,6 +4,7 @@ import { leerPartidoPublico } from '../lib/control/activacion-api'
 import { idValido, leerRegistro } from '../lib/control/activacion-almacen'
 import { MENSAJES, activarTelefono, comprobarActivacion, intentoEnVuelo, suscribir } from '../lib/control/activacion'
 import { horaLocal } from '../lib/publico/formato.js'
+import { GuiaEnLinea } from './GuiaArbitro'
 import './ControlActivar.css'
 
 // Activación del teléfono de control (/control/:ligaId/:partidoId). La dirección lleva SOLO identificadores públicos: el
@@ -147,6 +148,8 @@ export default function ControlActivar() {
     <main className="control-act">
       <h1>Control del partido</h1>
       <p className="sub">Activa este teléfono con el código que te dio el organizador.</p>
+
+      <GuiaEnLinea />
 
       <section className="partido-vista" aria-label="Partido">
         {vista.clase === 'cargando' && <p className="sub" role="status">Buscando el partido…</p>}

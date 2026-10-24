@@ -145,3 +145,27 @@
 .publico .jugador-fila .nombre { white-space: normal; overflow-wrap: anywhere; }
 .publico .jugador-fila .nota-ficha { font-size: 0.68rem; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--surface-2); color: var(--ink-soft); white-space: nowrap; }
 .publico .jugador-fila .falta-dato { color: var(--ink-mute); font-style: italic; }
+
+/* «Ver más partidos» (REPORT_213): acción explícita bajo la lista de próximos partidos. */
+.publico .proximos-mas { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 4px 0 8px; }
+.publico .proximos-mas .sub { margin: 0; }
+.publico .proximos-mas .btn { min-height: 44px; }
+
+/* Contacto (REPORT_214) y su enlace discreto en el pie de la portada. Mismos tipos de letra y colores de la portada. */
+.publico .hm-pie-enlaces { margin: 28px 0 8px; padding-top: 14px; border-top: 1px solid var(--line-soft); font-size: 0.85rem; text-align: center; }
+.publico .hm-pie-enlaces a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; color: var(--ink-soft); text-decoration: underline; text-underline-offset: 3px; }
+.publico .hm-pie-enlaces a:hover { color: var(--ink); }
+.publico.contacto .contacto-cuerpo { max-width: 560px; margin: 0 auto; padding: 12px 0 24px; }
+.publico.contacto .contacto-volver { margin: 0 0 14px; }
+.publico.contacto .contacto-volver .btn { min-height: 44px; }
+.publico.contacto .contacto-texto { margin: 12px 0 0; font-size: 1rem; line-height: 1.5; }
+.publico.contacto .contacto-accion { margin: 22px 0 8px; }
+.publico.contacto .contacto-accion .btn { min-height: 48px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; text-align: center; }
+.publico.contacto .contacto-direccion { margin: 6px 0 0; overflow-wrap: anywhere; }
+.publico.contacto .contacto-correo { user-select: text; -webkit-user-select: text; font-weight: 600; color: var(--ink); }
+
+/* «Figuras del barrio» por liga (REPORT_215): mismas filas del podio; un bloque por liga. */
+.publico .figuras-liga { margin: 0 0 14px; }
+.publico .figuras-liga-nombre { margin: 0 0 6px; font-size: 0.92rem; font-weight: 800; color: var(--ink); }
+.publico .figuras-liga .escalon.p1 { }
+.publico .figuras-liga .escalon .equipo-nombre { overflow: hidden; text-overflow: ellipsis; }

@@ -30,3 +30,5 @@
 .cp-resumen-equipo h3 { margin: 4px 0; font-size: 1rem; }
 .cp-resumen-equipo ul { margin: 0; padding-left: 18px; font-size: 0.9rem; }
 .control-partido .consola > .btn { min-height: 48px; }
+.cp-corregir small { grid-column: 1 / -1; font-size: 0.8rem; color: var(--ink-mute, #555); }
+.cp-corregir small.cp-reloj-error { color: var(--acento-ink, #b00020); font-weight: 600; }

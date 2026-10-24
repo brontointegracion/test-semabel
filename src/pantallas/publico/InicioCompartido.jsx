@@ -1,15 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { frescura, useMono, useRecursos } from '../../lib/publico/hooks.js'
 import { ligasConfiguradas, paisPiloto } from '../../lib/publico/config.js'
-import { clasificar } from '../../lib/publico/agrupar.js'
+import { clasificar, separarPorVenir } from '../../lib/publico/agrupar.js'
 import { construirDescubrir } from '../../lib/publico/descubrir.js'
 import { urlEquipoPublico } from '../../lib/publico/equipo.js'
-import { PERIODO_CATALOGO_MS, recursoLiga } from '../../lib/publico/recursos.js'
+import { figurasDeLiga } from '../../lib/publico/figuras.js'
+import { PERIODO_CATALOGO_MS, recursoJugadores, recursoLiga } from '../../lib/publico/recursos.js'
 import { urlLigaPublica } from '../../lib/publico/agrupar.js'
 import { Cargando, EscudoTexto, PieFrescura, textoDeError } from './componentes.jsx'
+import { RUTA_CONTACTO } from './Contacto.jsx'
 import { MarcaNav } from './Navegacion.jsx'
-import PortadaInicio, { Buscador, LigasCercaDeTi, Podio } from './PortadaInicio.jsx'
-import { ListaProgramados, TarjetaVivo } from './tarjetas.jsx'
+import PortadaInicio, { Buscador, LigasCercaDeTi, PodioPorLiga } from './PortadaInicio.jsx'
+import { ProximosPartidos, TarjetaVivo } from './tarjetas.jsx'
+import { Link } from 'react-router-dom'
 import EnPreparacionPublica from './EnPreparacionPublica.jsx'
 
 // ---------------------------------------------------------------------------
@@ -38,6 +41,9 @@ function Portada({ ids, tabs }) {
   const clave = ids.join(',')
   const defs = useMemo(() => ids.map(recursoLiga), [clave]) // eslint-disable-line react-hooks/exhaustive-deps
   const estados = useRecursos(defs)
+  // Rankings públicos de cada liga para «Figuras del barrio» (REPORT_215). Mismo recurso y misma cadencia que la pestaña «Jugadores» (cada 5 min, solo con la página visible).
+  const defsJugadores = useMemo(() => ids.map(recursoJugadores), [clave]) // eslint-disable-line react-hooks/exhaustive-deps
+  const estadosJugadores = useRecursos(defsJugadores)
   const { mono, saltoMono } = useMono()
   const pais = useMemo(() => paisPiloto(), [])
   const [filtro, setFiltro] = useState({ provincia: 'todas', deporte: 'todos', categoria: 'todas' })
@@ -62,7 +68,17 @@ function Portada({ ids, tabs }) {
     && (filtro.categoria === 'todas' || l.categoria === filtro.categoria)
   const ligasF = d.ligas.filter(pasaLiga)
   const { vivos, proximos } = clasificar(d.partidos.filter((p) => pasaLiga(d.ligasPorId[p.ligaId])))
-  const proximosF = proximos.slice(0, 20)
+  // «Próximos partidos»: sin los programados cuya hora ya pasó (REPORT_213); los partidos EN VIVO siguen en «Ahora mismo» aunque su hora haya pasado. Tope de 20 como antes.
+  const { porVenir, pasados } = separarPorVenir(proximos, mono)
+  const proximosF = porVenir.slice(0, 20)
+
+  // «Figuras del barrio»: un grupo por liga (las estadísticas de ligas distintas no son comparables), en el orden de la portada y respetando los filtros.
+  const gruposFiguras = ligasF.map((l) => {
+    const e = estadosJugadores[ids.indexOf(l.id)]
+    const liga = { id: l.id, nombre: l.nombre }
+    if (e?.datos) return { liga, ...figurasDeLiga(e.datos), enlaceLiga: `${urlLigaPublica(l.id)}?pestana=jugadores` }
+    return { liga, estado: e?.fase === 'cargando' ? 'cargando' : 'error', entradas: [], masEmpatados: 0 }
+  })
 
   const enlaces = {
     liga: (l) => urlLigaPublica(l.id),
@@ -96,10 +112,12 @@ function Portada({ ids, tabs }) {
       ? <div className="vacio">Faltan ligas por cargar: todavía no sabemos si hay partidos jugándose.</div>
       : <div className="vacio">No hay partidos jugándose en este momento. Prueba «Próximos partidos».</div>)
   const nodoViene = proximosF.length > 0
-    ? <ListaProgramados partidos={proximosF} mono={mono} />
+    ? <ProximosPartidos partidos={proximosF} mono={mono} />
     : (sinVerificar
       ? <div className="vacio">Faltan ligas por cargar: todavía no sabemos qué partidos vienen.</div>
-      : <div className="vacio">No hay partidos programados con ese filtro.</div>)
+      : <div className="vacio">{pasados.length === 0
+        ? 'No hay partidos programados con ese filtro.'
+        : `No hay partidos por venir con ese filtro. ${pasados.length === 1 ? 'Hay 1 partido programado cuya hora ya pasó y todavía no comienza.' : `Hay ${pasados.length} partidos programados cuya hora ya pasó y todavía no comienzan.`}`}</div>)
 
   const vacioLigas = cargando
     ? <Cargando />
@@ -130,7 +148,7 @@ function Portada({ ids, tabs }) {
       viene={{ dominante: vivos.length === 0, nodo: cargando ? <Cargando /> : nodoViene }}
       categoriaLink={filtro.categoria !== 'todas' && filtro.deporte !== 'todos' ? { deporte: filtro.deporte, categoria: filtro.categoria } : null}
       ligas={<LigasCercaDeTi ligas={ligasF} verTodas={verTodas} alternarTodas={() => setVerTodas((v) => !v)} enlaces={enlaces} nota="Las ligas del piloto en Panamá. Todavía no se filtran por zona." />}
-      figuras={<Podio pendiente="Todavía no disponible: las figuras se calcularán con las estadísticas de los partidos finales." enlaces={enlaces} ui={UI} />}
+      figuras={gruposFiguras.length > 0 ? <PodioPorLiga grupos={gruposFiguras} enlaces={enlaces} ui={UI} /> : null}
       buscador={(
         <Buscador
           texto={busca}
@@ -146,6 +164,7 @@ function Portada({ ids, tabs }) {
           aria="Buscar liga o equipo"
         />
       )}
+      pieEnlaces={<footer className="hm-pie-enlaces"><nav aria-label="Más información"><Link to={RUTA_CONTACTO}>Contacto</Link></nav></footer>}
       pie={masAntiguo ? <PieFrescura estado={masAntiguo} mono={mono} periodoMs={PERIODO_CATALOGO_MS} saltoMono={saltoMono} /> : null}
     />
   )

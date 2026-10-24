@@ -11,6 +11,7 @@ import { RUTA_PANEL, rutaActivacion, rutaLiga } from '../lib/rutas-organizador'
 import { EnlaceVolver, Protegida } from './ComunOrganizador'
 import CompartirPartido from './publico/CompartirPartido'
 import InvitacionActivacion from './InvitacionActivacion'
+import { GuiaEnLinea } from './GuiaArbitro'
 import { copiarTexto } from '../lib/publico/compartir.js'
 
 // Acceso de puntuación de UN partido, para el organizador (modo compartido): /organizador/ligas/:ligaId/partidos/:gameId.
@@ -185,6 +186,7 @@ function Contenido({ ligaId, gameId }) {
       <div className="acciones-fila">
         <Link className="btn fantasma" to={urlActivacion}>Abrir pantalla de activación</Link>
       </div>
+      <GuiaEnLinea />
       {partido?.estado === 'programado' && (
         <InvitacionActivacion ligaId={ligaId} gameId={gameId} partido={{ local: nombre(partido.local.id), visita: nombre(partido.visita.id) }} />
       )}

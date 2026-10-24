@@ -5,7 +5,8 @@ import { fechaLargaPanama, horaPanama } from '../../lib/publico/formato.js'
 import { recursoJuegoTv, recursoLiga } from '../../lib/publico/recursos.js'
 import { espiar, reprogramarRecurso } from '../../lib/publico/recurso.js'
 import { elegirVistaTv, indiceVigilado, secuenciaTv } from '../../lib/publico/tv-secuencia.js'
-import { RUTA_TV } from '../../lib/publico/tv-piloto.js'
+import { ligasConfiguradas } from '../../lib/publico/config.js'
+import { salidaDeTvCancha } from '../../lib/publico/tv-piloto.js'
 import { vistaDelMarcador } from '../../lib/publico/vista-marcador.js'
 import { EnlaceConOrigen, textoDeError } from './componentes.jsx'
 import { ContenidoPartido, MarcoPantalla } from './PantallaMarcador.jsx'
@@ -61,7 +62,9 @@ export default function TvCancha() {
     return () => { document.title = anterior }
   }, [partido === null]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const botonSalir = <button className="cerrar" onClick={() => nav(RUTA_TV)}>‹ Partidos en TV</button>
+  // REPORT_221: «Partidos en TV» solo si /tv existe en esta compilación; con el alcance del evento real (sin la liga ficticia) la salida es la portada, nunca una página «no disponible».
+  const salida = useMemo(() => salidaDeTvCancha(ligasConfiguradas().ids), [])
+  const botonSalir = <button className="cerrar" onClick={() => nav(salida.to)}>{salida.etiqueta}</button>
   let contenido
   let vista = 'mensaje'
   let enVivo = false

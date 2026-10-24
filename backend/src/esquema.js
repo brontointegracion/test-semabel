@@ -26,7 +26,12 @@ import { TABLAS_LIMITES } from './acceso/limites.js'
 // distinto con el mismo identificador sea un conflicto. La migración SOLO crea la tabla (aditiva): ninguna fila existente cambia.
 // Versión 7 (REPORT_175): `resumen_partido` recibe las faltas del periodo visible por lado (columnas aditivas con 0 por omisión; los
 // resúmenes existentes dejan de servirse por su versión de proyección y la reparación los reconstruye). Nada se borra.
-export const VERSION_ESQUEMA = 7
+// Versión 8 (REPORT_208): `partidos.retirado_en` (instante UTC en ms, NULL = activo). Un partido RETIRADO sigue guardado con todo su
+// historial y su identificador, pero no se publica ni acepta códigos, activaciones ni órdenes (ver retiro-partidos.js). La migración SOLO
+// añade una columna nula: todos los partidos existentes quedan activos. No es un estado del partido (programado | vivo | final no cambia).
+// Versión 9 (REPORT_220): `equipos.rama` (NULL = no fijada; 'masculino' | 'femenino' | 'mixta'). Metadato del EQUIPO, nunca inferido ni con valor por omisión (ver ramas-equipos.js).
+// La migración SOLO añade una columna nula (guardada para que repetirla no falle): todo equipo existente queda en NULL.
+export const VERSION_ESQUEMA = 9
 
 const DDL = [
   `CREATE TABLE IF NOT EXISTS meta (
@@ -281,6 +286,23 @@ const MIGRACIONES = [
       for (const c of ['local_faltas_periodo', 'visita_faltas_periodo']) {
         if (!columnas.has(c)) sql.exec(`ALTER TABLE resumen_partido ADD COLUMN ${c} INTEGER NOT NULL DEFAULT 0`)
       }
+    },
+  },
+  {
+    hasta: 8,
+    sentencias: [],
+    // Misma técnica: solo se añade la columna si falta (repetir la migración no falla). Ninguna fila existente cambia: queda NULL (activo).
+    datos: (sql) => {
+      const columnas = new Set(sql.exec("SELECT name FROM pragma_table_info('partidos')").toArray().map((c) => c.name))
+      if (!columnas.has('retirado_en')) sql.exec('ALTER TABLE partidos ADD COLUMN retirado_en INTEGER')
+    },
+  },
+  {
+    hasta: 9,
+    sentencias: [],
+    datos: (sql) => {
+      const columnas = new Set(sql.exec("SELECT name FROM pragma_table_info('equipos')").toArray().map((c) => c.name))
+      if (!columnas.has('rama')) sql.exec('ALTER TABLE equipos ADD COLUMN rama TEXT')
     },
   },
 ]

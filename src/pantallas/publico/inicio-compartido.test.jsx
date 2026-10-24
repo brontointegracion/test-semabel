@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import AppCompartida from '../../AppCompartida'
 import { paisPiloto } from '../../lib/publico/config.js'
@@ -86,7 +86,8 @@ describe('portada original: secciones, orden y redacción', () => {
     servidor({ [L1]: ligaConPartidos() })
     montar()
     await screen.findByText('Figuras del barrio')
-    expect(screen.getByText(/Todavía no disponible: las figuras se calcularán/)).toBeTruthy()
+    // REPORT_215: ya no es un texto fijo. Con el ranking de la liga sin cargar (aquí el servidor falso responde 404) se dice que NO se pudo cargar, no «no hay figuras».
+    await waitFor(() => expect(screen.getByText(/No se pudieron cargar las figuras de/)).toBeTruthy())
     expect(document.querySelector('.podio')).toBeNull()
     expect(document.body.textContent).not.toMatch(/por juego/)
   })
@@ -158,8 +159,8 @@ describe('configuración', () => {
     servidor({ [L1]: ligaConPartidos() })
     montar()
     await screen.findByText('Ahora mismo')
-    expect(llamadas.map((l) => l.ruta)).toEqual([L1])
-    expect(llamadas[0].init).toMatchObject({ method: 'GET', credentials: 'omit' })
+    await waitFor(() => expect(llamadas.map((l) => l.ruta).sort()).toEqual([L1, '/v1/ligas/LIGAPUB1/jugadores/publico'].sort())) // + el ranking público de la liga (REPORT_215)
+    for (const l of llamadas) expect(l.init).toMatchObject({ method: 'GET', credentials: 'omit' })
     expect(escribe).not.toHaveBeenCalled()
   })
 })

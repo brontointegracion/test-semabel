@@ -4,7 +4,7 @@ import { idValido, leerRegistro } from '../lib/control/activacion-almacen'
 import { abrirAlmacen } from '../lib/control/sesion-almacen'
 import { crearControlador } from '../lib/control/sesion-controlador'
 import {
-  INTENCIONES, crearRegistroDeIntenciones, estadoDeEvento, mensajeDeResultado, restanteDeTexto, situacionDeControl,
+  INTENCIONES, MENSAJES_TIEMPO_RELOJ, crearRegistroDeIntenciones, estadoDeEvento, mensajeDeResultado, normalizarTiempoReloj, restanteDeTexto, situacionDeControl,
 } from '../lib/control/sesion-intencion'
 import { compararPorDorsal } from '../lib/dorsal'
 import {
@@ -16,6 +16,7 @@ import {
   BarraDeshacer, BotonesPuntos, CabeceraConsola, FilaJugadorConsola, PANELES, PanelReloj, PanelesBarra, RegistroConsola, SelectorLados,
 } from './publico/ConsolaPiezas.jsx'
 import { iniciales } from '../lib/publico/vista-reloj.js'
+import { GuiaEnLinea } from './GuiaArbitro'
 import './ControlPartido.css'
 
 // ---------------------------------------------------------------------------
@@ -112,6 +113,7 @@ export default function ControlPartido({ fabrica = controladorDelNavegador }) {
   const [aviso, setAviso] = useState(null)
   const [confirmando, setConfirmando] = useState(null)
   const [textoReloj, setTextoReloj] = useState('')
+  const [errorReloj, setErrorReloj] = useState(null) // motivo del último rechazo de lo escrito en «Corregir reloj» (solo texto; no es un comando)
   const [, setTic] = useState(0)
   const ctlRef = useRef(null)
   const intenciones = useRef(crearRegistroDeIntenciones())
@@ -272,10 +274,20 @@ export default function ControlPartido({ fabrica = controladorDelNavegador }) {
   }
   const corregir = async (e) => {
     e.preventDefault()
+    // Antes de enviar se normaliza («845» → «08:45») y se muestra lo que se va a enviar; un valor no válido NO se corrige ni se recorta: se rechaza.
+    const n = normalizarTiempoReloj(textoReloj)
+    if (n.ok) setTextoReloj(n.texto)
     const v = restanteDeTexto(textoReloj, duracionMs(liga))
-    if (!v.ok) { setAviso({ tipo: 'error', texto: v.motivo === 'formato' ? 'Escribe el tiempo como mm:ss, por ejemplo 08:30.' : 'Ese tiempo no cabe en el periodo.' }); return }
+    if (!v.ok) { setErrorReloj(v.motivo); return } // el motivo se muestra bajo el campo (role=alert)
+    setErrorReloj(null)
     const r = await registrar(INTENCIONES.corregir(v.restanteMs), { acepta: 'Corrección guardada en este teléfono. Pendiente de enviar.' })
     if (r?.resultado?.ok) setTextoReloj('')
+  }
+  // Al SALIR del campo (blur): lo válido se muestra como mm:ss; lo no válido se deja tal cual con su aviso. Nunca envía nada.
+  const alSalirDelCampoReloj = () => {
+    if (textoReloj.trim() === '') { setErrorReloj(null); return }
+    const n = normalizarTiempoReloj(textoReloj)
+    if (n.ok) { setTextoReloj(n.texto); setErrorReloj(restanteDeTexto(n.texto, duracionMs(liga)).ok ? null : 'fuera-de-rango') } else setErrorReloj(n.motivo)
   }
 
   const recientes = eventos.filter((e) => e.tipo === 'punto' || e.tipo === 'falta').slice().sort((a, b) => b.seq - a.seq).slice(0, 10)
@@ -285,6 +297,8 @@ export default function ControlPartido({ fabrica = controladorDelNavegador }) {
   return (
     <div className="control-partido">
       <div className="topbar">{volver}<h1>{TITULO}</h1></div>
+      {/* La guía se abre EN LA MISMA PÁGINA: navegar a otra ruta desmontaría esta pantalla y cerraría su controlador. */}
+      <div style={{ marginTop: 14 }}><GuiaEnLinea /></div>
       <div className="consola" style={{ marginTop: 14 }} aria-busy={bloqueoUI}>
         <div className="cp-avisos" aria-live="polite">
           {sit.avisos.map((a) => (
@@ -361,8 +375,16 @@ export default function ControlPartido({ fabrica = controladorDelNavegador }) {
             extras={!anda && (
               <form className="cp-corregir" onSubmit={corregir}>
                 <label htmlFor="cp-reloj">Corregir reloj (mm:ss)</label>
-                <input id="cp-reloj" inputMode="numeric" autoComplete="off" placeholder="08:30" value={textoReloj} onChange={(e) => setTextoReloj(e.target.value)} disabled={!sit.puedeReloj} />
+                {/* Teclado numérico: se escribe «845» o «0845» y al salir del campo queda «08:45». Mientras se teclea NO se reformatea (el cursor no se mueve). */}
+                <input
+                  id="cp-reloj" inputMode="numeric" enterKeyHint="done" autoComplete="off" autoCorrect="off" spellCheck={false} placeholder="08:30" value={textoReloj}
+                  onChange={(e) => { setTextoReloj(e.target.value); setErrorReloj(null) }} onBlur={alSalirDelCampoReloj} disabled={!sit.puedeReloj}
+                  aria-invalid={errorReloj !== null} aria-describedby="cp-reloj-ayuda"
+                />
                 <button type="submit" className="btn fantasma" disabled={!sit.puedeReloj || textoReloj.trim() === ''}>Corregir</button>
+                <small id="cp-reloj-ayuda" className={errorReloj ? 'cp-reloj-error' : undefined} role={errorReloj ? 'alert' : undefined}>
+                  {errorReloj ? MENSAJES_TIEMPO_RELOJ[errorReloj] : 'Por ejemplo 845 o 08:45.'}
+                </small>
               </form>
             )}
             siguiente={!ultimoPeriodo ? {

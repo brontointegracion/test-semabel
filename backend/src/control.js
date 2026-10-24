@@ -6,8 +6,8 @@
 export function otorgarCredencial(storage, { tokenHash, partidoId, deviceId, actorId = null }) {
   return storage.transactionSync(() => {
     const sql = storage.sql
-    const partido = sql.exec('SELECT estado_json FROM partidos WHERE id = ?', partidoId).toArray()[0]
-    if (!partido) throw new Error('partido-desconocido')
+    const partido = sql.exec('SELECT estado_json FROM partidos WHERE id = ? AND retirado_en IS NULL', partidoId).toArray()[0]
+    if (!partido) throw new Error('partido-desconocido') // también un partido retirado
     if (sql.exec('SELECT 1 AS x FROM credenciales WHERE partido_id = ? AND revocada = 0', partidoId).toArray().length) {
       throw new Error('credencial-activa-existente')
     }

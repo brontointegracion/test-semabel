@@ -88,7 +88,7 @@ describe('2. contrato exacto y exclusión de lo sensible', () => {
     const { ligaId } = await sembrada(payloadConAgenda(nuevaLiga()))
     const c = await json(await leerLiga(ligaId))
     expect(c.liga).toEqual({ id: ligaId, nombre: `Liga sintética ${ligaId}`, deporte: 'baloncesto', categoria: 'mini-basketball', subcategoria: { clave: 'u10' } })
-    expect(c.equipos).toEqual([{ id: 'E1', nombre: 'Alfa' }, { id: 'E2', nombre: 'Beta' }, { id: 'E3', nombre: 'Gama' }, { id: 'E4', nombre: 'Delta' }])
+    expect(c.equipos).toEqual([{ id: 'E1', nombre: 'Alfa', rama: null }, { id: 'E2', nombre: 'Beta', rama: null }, { id: 'E3', nombre: 'Gama', rama: null }, { id: 'E4', nombre: 'Delta', rama: null }]) // rama: nullable, sin fijar → null (REPORT_220)
     // Q está programado antes que P: el orden es por hora programada.
     expect(c.partidos.map((p) => p.gameId)).toEqual(['Q', 'P'])
     expect(c.partidos[1]).toEqual({

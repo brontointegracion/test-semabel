@@ -1,3 +1,4 @@
+import { etiquetaRama } from '../lib/publico/ramas.js'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { MENSAJES_BLOQUEO, enviarNueva } from '../lib/operacion-pendiente'
@@ -182,6 +183,7 @@ function ContenidoPlantilla({ ligaId, equipoId, organizadorId, ligas }) {
     <main className="panel">
       <p className="nav-panel"><EnlaceVolver to={rutaLiga(ligaId)}>{nombreLiga}</EnlaceVolver></p>
       <h1>{datos?.equipo?.nombre ?? 'Plantilla'}</h1>
+      {etiquetaRama(datos?.equipo?.rama) && <p className="sub" data-rama={datos.equipo.rama}>Rama: {etiquetaRama(datos.equipo.rama)}</p>}
       <PendienteSinConfirmar organizadorId={organizadorId} ligaId={ligaId} nombresLigas={nombres} onCambio={refrescarTodo} />
       {aviso && <p className="aviso-panel" role="status">{aviso}</p>}
       {plantilla.res && plantilla.res.tipo !== 'ok' && <ErrorDeLectura res={plantilla.res} onReintentar={recargar} />}

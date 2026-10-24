@@ -38,6 +38,8 @@
     //  - Antes de desplegar hay que compilar `../dist` con las variables públicas (ver README: «Producción»).
     //  - SIMULACRO-PILOTO (REPORT_186) es una liga FICTICIA de pruebas de punta a punta: solo se admite para enrutar hacia su objeto; no concede
     //    permisos (la propiedad por organizador sigue siendo la de siempre; ver README, «Simulacro»). Retirarla de esta lista la cierra de nuevo.
+    //    REPORT_221: el alcance PÚBLICO del evento real se fija en la compilación (`VITE_LIGAS_PUBLICAS=PLATINIUM-U10,PLATINIUM-U12`, un SUBCONJUNTO de esta lista): la interfaz deja de descubrirla,
+    //    pero admitirla aquí sigue permitiendo su API, el acceso de organizador y las rutas de control (soporte). Para cerrar también la API habría que quitarla de esta lista.
     "production": {
       "name": "semabel-production",
       "workers_dev": false,

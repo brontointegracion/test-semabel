@@ -185,6 +185,7 @@ export function crearAdaptadorLiga({ storage, pausaTrasLeer = null, pausaTrasAut
 
   /** ¿Sigue igual todo lo que se leyó? Cuerpo sincrónico: se llama solo dentro de transactionSync. */
   function coincideConLoVigente(p, esperado) {
+    if ((p.retirado_en ?? null) !== null) return false // retirado: nada se confirma (la relectura de leerVista responde 401)
     if (esperado.rev !== p.rev) return false
     if (esperado.ultimoClientSeq !== p.ultimo_client_seq) return false
     if (esperado.versionBloqueo !== p.version_bloqueo) return false
@@ -383,6 +384,7 @@ export function crearAdaptadorLiga({ storage, pausaTrasLeer = null, pausaTrasAut
       reconfirmarAutorizacion(sobre.gameId)
       const p = partidoDe(sobre.gameId)
       if (!p) throw new Error('partido-desconocido')
+      if ((p.retirado_en ?? null) !== null) throw new AutorizacionPerdida() // partido RETIRADO: el mismo 401 genérico, sin leer nada más
       // Credencial en recuperación: solo se contesta un reintento EXACTO de un comando con recibo guardado.
       // Un sobre desconocido o distinto es el mismo 401 genérico: no se revela ningún recibo ni conflicto.
       if (aprobada.modo === 'recuperacion') {

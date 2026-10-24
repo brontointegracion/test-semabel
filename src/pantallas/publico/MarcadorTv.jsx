@@ -168,12 +168,14 @@ function TarjetaLogo({ p, size }) {
   if (falla) return <TarjetaPatrocinio p={{ ...p, disposicion: null }} size={size} />
   return (
     <div
-      className={`sb-sponsor sb-sponsor--${size} sb-sponsor--card sb-sponsor--logo${p.borde ? ' sb-sponsor--bordered' : ''}`}
+      className={`sb-sponsor sb-sponsor--${size} sb-sponsor--card sb-sponsor--logo${p.borde ? ' sb-sponsor--bordered' : ''}${p.nombreEnBanda && size === 'band' ? ' sb-sponsor--nombre-en-banda' : ''}`}
       style={{ backgroundColor: t.fondo, color: t.texto }} role="group" aria-label={p.nombre}
       data-formato="tarjeta" data-disposicion="logo" data-patrocinador={p.id}
     >
       <img className="sb-sponsor__logo-grande" src={p.logo} alt={p.nombre} draggable="false" onError={() => setFalla(true)} />
       {p.descriptor && <span className="sb-sponsor__descriptor" style={{ color: t.acento }}>{p.descriptor}</span>}
+      {/* `nombreEnBanda` (REPORT_211): solo en la banda en vivo; el grupo ya tiene su nombre accesible (aria-label), por eso el texto pintado se oculta a los lectores. */}
+      {p.nombreEnBanda && size === 'band' && <span className="sb-sponsor__nombre-en-banda" aria-hidden="true" style={{ color: t.texto }}>{p.nombre}</span>}
     </div>
   )
 }

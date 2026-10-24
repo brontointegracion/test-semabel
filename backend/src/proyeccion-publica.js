@@ -11,6 +11,8 @@ import { estadoDeReglas, reglasEfectivas } from '../../src/lib/reglas-categoria.
 //                     un partido 'programado' cuya hora ya pasó sigue siendo 'programado'. 'vivo' incluye reloj en
 //                     pausa, descanso entre periodos y 00:00. Solo 'final' significa terminado. No existen
 //                     'cancelado' ni 'aplazado'.
+//                     Un partido RETIRADO por el operador (partidos.retirado_en, ver retiro-partidos.js) NO es un estado: no se publica en
+//                     ninguna lectura y su lectura directa es el 404 de un partido desconocido.
 //   programadoPara    Instante programado (ISO UTC) o null si no se conoce. Es independiente del inicio real: iniciar
 //                     el partido no lo cambia. Nunca se fabrica.
 //   inicioReal        Instante (ISO UTC) en que se inició el partido, SOLO si ya no está 'programado'; si no, null.
@@ -59,7 +61,7 @@ export const CAMPOS_PUBLICOS = Object.freeze({
 export const CAMPOS_PUBLICOS_LIGA = Object.freeze({
   raiz: ['liga', 'equipos', 'partidos', 'servidorAhoraMs', 'faltasAlcance'],
   liga: ['id', 'nombre', 'deporte', 'categoria', 'subcategoria'],
-  equipo: ['id', 'nombre'],
+  equipo: ['id', 'nombre', 'rama'], // `rama`: 'masculino' | 'femenino' | 'mixta' | null (REPORT_220; nunca inferida)
   partido: ['gameId', 'rev', 'estado', 'programadoPara', 'inicioReal', 'sede', 'periodo', 'reloj', 'local', 'visita'],
   reloj: ['estado', 'restanteMs', 'desdeMs'],
   lado: ['id', 'puntos', 'faltas'],
@@ -116,7 +118,7 @@ export function proyectarPartidoPublico({ fila, resumen, liga, local, visita, se
 export function proyectarLigaPublica({ liga, equipos, partidos, servidorAhoraMs }) {
   return {
     liga: { id: liga.id, nombre: liga.nombre, deporte: liga.deporte, ...clasificacionPublica(liga) },
-    equipos: equipos.map((e) => ({ id: e.id, nombre: e.nombre })),
+    equipos: equipos.map((e) => ({ id: e.id, nombre: e.nombre, rama: e.rama ?? null })),
     partidos: partidos.map(({ fila: f, resumen: r }) => {
       const p = JSON.parse(f.estado_json).partido ?? {}
       return {

@@ -36,7 +36,7 @@ export const LIMITES_EQUIPO_PUBLICO = Object.freeze({ partidos: 100, jugadores: 
 export const CAMPOS_PUBLICOS_EQUIPO = Object.freeze({
   raiz: ['liga', 'equipo', 'plantilla', 'historicos', 'resultados', 'estadisticas', 'servidorAhoraMs'],
   liga: ['id', 'nombre'],
-  equipo: ['id', 'nombre'],
+  equipo: ['id', 'nombre', 'rama'],
   jugador: ['id', 'nombre', 'dorsalActual'],
   historico: ['id', 'nombre', 'dorsalActual', 'motivo'],
   resultado: ['gameId', 'programadoPara', 'inicioReal', 'sede', 'local', 'visita'],
@@ -51,13 +51,13 @@ export const SQL_PARTIDOS_DEL_EQUIPO = `
          r.partido_id AS r_partido_id, r.local_id AS r_local_id, r.visita_id AS r_visita_id, r.local_puntos, r.visita_puntos,
          r.local_faltas, r.visita_faltas, r.periodo, r.rev_fuente, r.version_proyeccion
     FROM partidos p LEFT JOIN resumen_partido r ON r.partido_id = p.id
-   WHERE p.local_id = ? OR p.visita_id = ?
+   WHERE (p.local_id = ? OR p.visita_id = ?) AND p.retirado_en IS NULL
    ORDER BY p.programado_para IS NULL, p.programado_para, p.id LIMIT ?`
 
 export const SQL_EVENTOS_DEL_EQUIPO = `
   SELECT json_extract(e.json, '$.jugadorId') AS jugador_id, json_extract(e.json, '$.tipo') AS tipo, json_extract(e.json, '$.puntos') AS puntos
     FROM partidos p JOIN eventos e ON e.partido_id = p.id
-   WHERE (p.local_id = ? OR p.visita_id = ?)
+   WHERE (p.local_id = ? OR p.visita_id = ?) AND p.retirado_en IS NULL
      AND json_extract(p.estado_json, '$.partido.estado') = 'final'
      AND json_extract(e.json, '$.equipoId') = ?
      AND json_extract(e.json, '$.tipo') IN ('punto', 'falta')
@@ -94,7 +94,7 @@ export function leerEquipoPublico(sql, equipoId, limites, servidorAhoraMs) {
   const una = (q, ...a) => sql.exec(q, ...a).toArray()[0] ?? null
   const liga = una('SELECT id, nombre FROM ligas')
   if (!liga) return NO_ENCONTRADO
-  const equipo = una('SELECT id, nombre, liga_id FROM equipos WHERE id = ?', equipoId)
+  const equipo = una('SELECT id, nombre, rama, liga_id FROM equipos WHERE id = ?', equipoId)
   if (!equipo || equipo.liga_id !== liga.id) return NO_ENCONTRADO
 
   const equipos = sql.exec('SELECT id, nombre FROM equipos ORDER BY id LIMIT ?', limites.equipos + 1).toArray()
@@ -160,7 +160,7 @@ export function leerEquipoPublico(sql, equipoId, limites, servidorAhoraMs) {
     status: 200,
     cuerpo: {
       liga: { id: liga.id, nombre: liga.nombre },
-      equipo: { id: equipo.id, nombre: equipo.nombre },
+      equipo: { id: equipo.id, nombre: equipo.nombre, rama: equipo.rama ?? null },
       plantilla,
       historicos,
       resultados,

@@ -1,4 +1,5 @@
 import { ID_PUBLICO } from './config.js'
+import { ramaPublica } from './ramas.js'
 
 // ---------------------------------------------------------------------------
 // Validación ESTRICTA de lo que responde el servidor. Cada función devuelve una COPIA armada campo por campo (nada que el
@@ -81,7 +82,7 @@ export function validarLiga(x, ligaId) {
   for (const e of x.equipos) {
     if (!objeto(e) || !idDeEntidad(e.id) || !texto(e.nombre, 200) || idsEquipo.has(e.id)) return null
     idsEquipo.add(e.id)
-    equipos.push({ id: e.id, nombre: e.nombre })
+    equipos.push({ id: e.id, nombre: e.nombre, rama: ramaPublica(e.rama) }) // rama nullable (REPORT_220); un servidor anterior no la envía → null
   }
   const partidos = []
   const idsPartido = new Set()
@@ -185,7 +186,7 @@ export function validarEquipo(x, ligaId, equipoId) {
   // Toda ficha con estadísticas está en la plantilla o en los históricos: nada queda sin nombre ni lugar.
   for (const id of idsEst) if (!vistos.has(id)) return null
   return {
-    liga: { id: x.liga.id, nombre: x.liga.nombre }, equipo: { id: x.equipo.id, nombre: x.equipo.nombre }, plantilla, historicos, resultados,
+    liga: { id: x.liga.id, nombre: x.liga.nombre }, equipo: { id: x.equipo.id, nombre: x.equipo.nombre, rama: ramaPublica(x.equipo.rama) }, plantilla, historicos, resultados,
     estadisticas: { alcance: e.alcance, partidosFinales: e.partidosFinales, jugadores, sinJugador: { puntos: e.sinJugador.puntos, faltas: e.sinJugador.faltas } },
     servidorAhoraMs: x.servidorAhoraMs,
   }

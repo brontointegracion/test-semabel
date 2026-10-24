@@ -56,6 +56,15 @@ slots and phones = logo on top, descriptor centred below. The name is *not* draw
 expanded tile 825×527 → logo 639×410, descriptor 43.6 px; at 390 px: live 165×88 → logo 76×49, descriptor 10 px; expanded 338×164 → logo 188×120, descriptor 14 px. Set `fondo` to the logo's own background
 colour so the logo's edges disappear. Use a high-resolution file (≥ 1200 px wide recommended); the logo is shown whole, never cropped or stretched.
 
+### Name beside the logo in the live band (`"nombreEnBanda": true`, REPORT_211)
+An explicit, validated option for a `disposicion: "logo"` card whose logo does **not** read well at band size (e.g. a round badge with curved lettering). Only `true` is accepted, only with
+`disposicion: "logo"`, a valid local `logo` and a `nombre`; anything else is dropped and the card is exactly the usual one. It is not tied to any sponsor id.
+* **Live band (desktop/TV):** the logo is enlarged to about 93 % of the tile height (proportions kept) and `nombre` is drawn as large text beside it, the pair centred in the tile.
+  Same tile size as every other sponsor. The text is hidden from screen readers (the card already has `aria-label = nombre`).
+* **Between periods and final:** the complete logo, large and centred, with **no** duplicate name text (the logo is not reduced to make room for it).
+* **Phone (≤ 640 px):** the band tile is only 165 × 88 px, so it shows the complete logo and no text; the expanded cards show the large logo.
+* A margin-trimmed square derivative of a badge is fine (keep the original); never crop into the artwork.
+
 ## 3. Finished artwork: how it fits each slot
 
 The image is drawn with `object-fit: contain` inside the tile, centred, on the `fondo` colour (white if omitted), inside the rounded corners.

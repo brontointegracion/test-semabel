@@ -7,7 +7,8 @@ import { ligaSembrada, conteos } from './ayuda.js'
 
 // Devuelve la base de la versión 5 a la forma de la versión 4 (sin la tabla del resumen público).
 const aVersionCuatro = (sql) => {
-  for (const s of ['DROP TABLE resumen_partido', "UPDATE meta SET valor = '4' WHERE clave = 'esquema'"]) sql.exec(s).toArray()
+  // (la columna `retirado_en` de la versión 8 tampoco existe en una base de la versión 4 o anterior)
+  for (const s of ['DROP TABLE resumen_partido', 'ALTER TABLE partidos DROP COLUMN retirado_en', 'ALTER TABLE equipos DROP COLUMN rama', "UPDATE meta SET valor = '4' WHERE clave = 'esquema'"]) sql.exec(s).toArray()
 }
 
 // Devuelve la base de la versión 4 a la forma de la versión 3 (sin las columnas de categoría, hora programada y sede).
@@ -110,7 +111,7 @@ describe('actualización aditiva del esquema de una liga', () => {
     const { ligaId } = await ligaSembrada(nuevaLiga())
     const v = await enLiga(ligaId, (inst) => inst.almacen.sql.exec("SELECT valor FROM meta WHERE clave = 'esquema'").one().valor)
     expect(v).toBe(String(VERSION_ESQUEMA))
-    expect(VERSION_ESQUEMA).toBe(7)
+    expect(VERSION_ESQUEMA).toBe(9)
   })
 })
 

@@ -51,7 +51,7 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 describe('Inicio público', () => {
-  it('Ahora mismo (vivo) y Próximos partidos (programado, también el atrasado); nunca «Soy organizador»; solo las lecturas públicas, sin credenciales', async () => {
+  it('Ahora mismo (vivo) y Próximos partidos (programados por venir; el atrasado ya no, REPORT_213); nunca «Soy organizador»; solo las lecturas públicas, sin credenciales', async () => {
     servidor({ '/v1/ligas/LIGAPUB1/publico': ligaUno() })
     montar('/')
     expect(await screen.findByText('Ahora mismo')).toBeTruthy()
@@ -63,19 +63,17 @@ describe('Inicio público', () => {
     expect(within(vivo).getByText('2º cuarto')).toBeTruthy()
     expect(within(vivo).getByText('07:00')).toBeTruthy()
     expect(within(vivo).getByText('Cancha A · Reloj detenido')).toBeTruthy()
-    // el atrasado sigue entre los próximos, rotulado; el futuro no lo está
-    const atrasado = screen.getByText('Pendiente de comenzar').closest('a')
-    expect(within(atrasado).getByText('Gama Este')).toBeTruthy()
-    expect(within(atrasado).getByText('Cancha B')).toBeTruthy()
-    expect(within(atrasado).getByText('3:00 p. m.')).toBeTruthy() // 20:00Z = 15:00 en Panamá
-    expect(screen.getAllByText('Pendiente de comenzar').length).toBe(1)
+    // REPORT_213: el programado cuya hora ya pasó (Gama Este, 20:00Z) ya NO se lista como próximo, y no hay rótulo «Pendiente de comenzar» en la portada
+    expect(screen.queryByText('Pendiente de comenzar')).toBeNull()
+    expect(document.querySelectorAll('.hm-seccion-viene .partido')).toHaveLength(1) // solo el FUTURO
+    expect(document.querySelector('.hm-seccion-viene').textContent).not.toContain('Cancha B')
     // el final no sale en Inicio
     expect(document.body.textContent).not.toContain('41')
     expect(screen.queryByText('Soy organizador')).toBeNull()
     expect(screen.queryByText(/provincia/i)).toBeNull()
     expect(screen.queryByText('Última jugada')).toBeNull()
     // peticiones: una lectura pública de la liga, GET, sin credenciales ni rutas protegidas
-    expect(llamadas.map((l) => l.ruta)).toEqual(['/v1/ligas/LIGAPUB1/publico'])
+    expect(llamadas.map((l) => l.ruta).filter((r) => !r.endsWith('/jugadores/publico'))).toEqual(['/v1/ligas/LIGAPUB1/publico']) // (la portada también lee el ranking público: REPORT_215)
     for (const l of llamadas) {
       expect(l.init).toMatchObject({ method: 'GET', credentials: 'omit' })
       expect(l.ruta).not.toMatch(/estado|preparacion|comandos|_semilla|organizador|anthony|admin/)
@@ -391,7 +389,7 @@ describe('Marcador público', () => {
     montar('/liga/LIGAPUB1/partido/NOEXISTE')
     expect(await screen.findByText('No encontramos este partido')).toBeTruthy()
     // solo se lee la liga (para resolver la dirección): un partido que no existe en ella no genera ninguna lectura de partido
-    expect(llamadas.map((l) => l.ruta)).toEqual(['/v1/ligas/LIGAPUB1/publico'])
+    expect(llamadas.map((l) => l.ruta).filter((r) => !r.endsWith('/jugadores/publico'))).toEqual(['/v1/ligas/LIGAPUB1/publico']) // (la portada también lee el ranking público: REPORT_215)
   })
 
   it('pantalla completa: el botón la pide sobre el tablero y la deja', async () => {
@@ -532,13 +530,14 @@ describe('reloj alineado con el servidor, frescura y ciclo de vida (tiempo simul
     const f = servidor({ '/v1/ligas/LIGAPUB1/publico': () => ({ ...ligaUno(), servidorAhoraMs: SERVIDOR_MS + Math.round(performance.now()) }) })
     montar('/')
     await avanzar(10)
-    expect(f).toHaveBeenCalledTimes(1)
+    const catalogo = () => f.mock.calls.filter(([u]) => u === '/v1/ligas/LIGAPUB1/publico').length // el ranking de «Figuras» (REPORT_215) se cuenta aparte
+    expect(catalogo()).toBe(1)
     await avanzar(59_000)
-    expect(f).toHaveBeenCalledTimes(1)
+    expect(catalogo()).toBe(1)
     await avanzar(1_100)
-    expect(f).toHaveBeenCalledTimes(2)
+    expect(catalogo()).toBe(2)
     await avanzar(180_000)
-    expect(f.mock.calls.length).toBeLessThanOrEqual(5)
+    expect(catalogo()).toBeLessThanOrEqual(5)
   })
 
   it('al cambiar de partido por la ruta nunca se ve el anterior, aunque su respuesta llegue tarde', async () => {

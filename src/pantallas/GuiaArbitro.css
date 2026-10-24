@@ -1,0 +1,14 @@
+/* «Guía de puntuación»: una columna legible a 360 px, objetivos táctiles de 44 px, sin desbordes. */
+.guia-pagina { max-width: 560px; margin: 0 auto; padding: 24px 0; }
+.guia-pagina h1 { font-size: 1.35rem; margin: 0 0 6px; }
+.guia-volver { margin: 0 0 12px; }
+.guia-volver .volver { display: inline-flex; align-items: center; min-height: 44px; color: var(--acento-ink, inherit); font-weight: 600; }
+.guia-secciones { display: grid; gap: 12px; margin-top: 14px; }
+.guia-seccion { padding: 10px 14px; border: 1px solid var(--line-soft); border-radius: var(--r-md); background: var(--surface); overflow-wrap: anywhere; }
+.guia-seccion h2, .guia-seccion summary { font-size: 1.05rem; font-weight: 700; margin: 0 0 6px; }
+.guia-seccion summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; margin: 0; }
+.guia-seccion ul { margin: 6px 0 4px; padding-left: 20px; display: grid; gap: 8px; font-size: 0.95rem; line-height: 1.45; }
+.guia-en-linea { margin: 0 0 14px; }
+.guia-boton { min-height: 44px; }
+.guia-panel { margin-top: 10px; padding: 12px; border: 1px solid var(--line-soft); border-radius: var(--r-md); background: var(--surface); overflow-wrap: anywhere; }
+.guia-panel > .btn { min-height: 44px; margin-top: 12px; }

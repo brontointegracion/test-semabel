@@ -1,3 +1,4 @@
+import { etiquetaRama } from '../../lib/publico/ramas.js'
 import { useEffect, useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useMono, useRecurso, useRefrescar } from '../../lib/publico/hooks.js'
@@ -98,6 +99,7 @@ export default function EquipoPublico() {
       <div className="card" style={{ marginTop: 14 }}>
         <div className="eyebrow">Equipo</div>
         <div className="sub" style={{ marginTop: 6 }}>{d.equipo.nombre}</div>
+        {etiquetaRama(d.equipo.rama) && <div className="sub" data-rama={d.equipo.rama} style={{ marginTop: 2 }}>Rama: {etiquetaRama(d.equipo.rama)}</div>}
         <div className="eyebrow" style={{ marginTop: 12 }}>Liga</div>
         <div className="sub" style={{ marginTop: 6 }}>
           <Link to={urlLigaPublica(ligaId)}>{d.liga.nombre}</Link>

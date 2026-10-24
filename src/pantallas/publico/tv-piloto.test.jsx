@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import 'fake-indexeddb/auto'
-import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, useLocation } from 'react-router-dom'
@@ -224,10 +224,12 @@ describe('Simulacro frente a las ligas reales en las vistas existentes', () => {
     servidor({ [RUTA_LIGA]: liga(), '/v1/ligas/PLATINIUM-U10/publico': real, '/v1/ligas/PLATINIUM-U12/publico': respuestaLiga({ id: 'PLATINIUM-U12', nombre: 'Platinium U12 2026', partidos: [] }) })
     montar('/')
     await screen.findByText('Próximos partidos')
-    await waitFor(() => expect(document.querySelectorAll('.partido .fila-liga-partido').length).toBe(5))
+    await waitFor(() => expect(document.querySelectorAll('.partido .fila-liga-partido').length).toBe(3)) // REPORT_213: solo tres a la vista…
+    fireEvent.click(screen.getByRole('button', { name: 'Ver más partidos' })) // …y el resto con la acción explícita
+    await waitFor(() => expect(document.querySelectorAll('.partido .fila-liga-partido').length).toBe(4)) // (un programado con hora ya pasada ya no se lista)
     const porLiga = [...document.querySelectorAll('.partido')].map((f) => f.querySelector('.fila-liga-partido').textContent)
     expect(porLiga.filter((n) => n === NOMBRE)).toHaveLength(4) // los cuatro partidos del Simulacro
-    expect(porLiga.filter((n) => n === 'Platinium U10 2026')).toHaveLength(1)
+    expect(porLiga.filter((n) => n === 'Platinium U10 2026')).toHaveLength(0) // el programado real (19 oct) ya pasó de hora: no se lista como próximo (REPORT_213)
     expect(porLiga.every((n) => n === NOMBRE || n === 'Platinium U10 2026')).toBe(true)
   })
 })

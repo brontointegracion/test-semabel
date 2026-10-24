@@ -9,6 +9,13 @@
 //     node scripts/operador-carga.mjs asignar     --organizador org-… --ligas LIGA_A[,LIGA_B]   (AÑADE ligas a un organizador existente; solo añade)
 //     node scripts/operador-carga.mjs verificar   --estructura U10.json [--equipos LIGA_ID=anexo.json] --partidos LIGA_ID=lote.json
 //
+//     node scripts/operador-carga.mjs retirar     --retiros LIGA_ID=retiro.json [--retiros …]   (RETIRA partidos programados sin actividad; cuerpo { cargaId, partidos: [id,…] })
+//     node scripts/operador-carga.mjs restaurar   --retiros LIGA_ID=retiro.json [--retiros …]   (RESTAURA partidos retirados; operación APARTE, cargaId distinto)
+//     node scripts/operador-carga.mjs verificar-retiro | verificar-restauracion --retiros LIGA_ID=retiro.json --leer --origen ORIGEN [--remoto]   (solo GET públicos)
+//     node scripts/operador-carga.mjs renombrar   --nombres LIGA_ID=nombre.json [--nombres …]   (cambia SOLO el nombre que se muestra; cuerpo { cargaId, nombre }; revertir = OTRO archivo con otro cargaId)
+//     node scripts/operador-carga.mjs verificar-nombre --nombres LIGA_ID=nombre.json --leer --origen ORIGEN [--remoto]   (solo GET públicos)
+//     node scripts/operador-carga.mjs ramas       --ramas LIGA_ID=ramas.json [--ramas …]   (FIJA la rama de equipos YA existentes; cuerpo { cargaId, ramas: [{ equipoId, rama }] }; solo NULL → valor)
+//     node scripts/operador-carga.mjs verificar-ramas --ramas LIGA_ID=ramas.json --leer --origen ORIGEN [--remoto]   (solo GET públicos)
 //   Aplicar (explícito): añadir --aplicar --origen ORIGEN --diario RUTA-PRIVADA/diario.json
 //     · local por omisión (127.0.0.1 / ::1 / localhost); producción: --remoto --origen https://semabel.com (origen exacto aprobado)
 //     · token del operador: variable SEBEL_OPERADOR_TOKEN o --token-archivo RUTA (permisos 0600). NUNCA por argumentos.
@@ -19,13 +26,14 @@
 //   Opcional: --tiempo-ms N (1000–60000) tiempo máximo por petición. Sin redirecciones. Con --remoto no se ejecuta con la verificación
 //   TLS desactivada (NODE_TLS_REJECT_UNAUTHORIZED=0) ni con NODE_EXTRA_CA_CERTS.
 import { existsSync, readFileSync, statSync } from 'node:fs'
-import { aplicarCarga, construirPlanAsignacion, construirPlanCarga, construirPlanOrganizador, resumenDelPlanCarga, verificarCarga } from './lib/operador.js'
+import { aplicarCarga, construirPlanAsignacion, construirPlanCarga, construirPlanOrganizador, construirPlanNombre, construirPlanRamas, construirPlanRetiro, resumenDelPlanCarga, verificarCarga, verificarNombre, verificarRamas, verificarRetiro } from './lib/operador.js'
 import { almacenDeDiario, leerSecretoDeArchivo, salidaDeCodigoPrivada } from './lib/archivos-privados.mjs'
 import { bloqueoDeEntorno, tiempoValido, validarDestino } from './lib/transporte.js'
 
-const COMANDOS = ['estructura', 'partidos', 'equipos', 'provisionar', 'recuperar', 'asignar', 'verificar']
+const COMANDOS = ['estructura', 'partidos', 'equipos', 'provisionar', 'recuperar', 'asignar', 'verificar', 'retirar', 'restaurar', 'verificar-retiro', 'verificar-restauracion', 'renombrar', 'verificar-nombre', 'ramas', 'verificar-ramas']
+const VERIFICACIONES = ['verificar', 'verificar-retiro', 'verificar-restauracion', 'verificar-nombre', 'verificar-ramas']
 const BANDERAS = ['--aplicar', '--leer', '--remoto', '--confirmo-rotacion', '--confirmo-rotacion-repetida']
-const REPETIBLES = ['estructura', 'partidos', 'equipos']
+const REPETIBLES = ['estructura', 'partidos', 'equipos', 'retiros', 'nombres', 'ramas']
 const MAX_ARCHIVO = 256 * 1024
 const FORMA_SECRETO = /^[A-Za-z0-9_-]{32,}$/ // ningún valor con forma de token/credencial en la línea de comandos
 
@@ -53,7 +61,7 @@ for (let i = 0; i < argv.length; i += 1) {
     i += 1
   } else fallar('argumento-desconocido')
 }
-const PERMITIDAS = ['estructura', 'partidos', 'equipos', 'nombre', 'ligas', 'organizador', 'origen', 'diario', 'token-archivo', 'codigo-salida', 'tiempo-ms']
+const PERMITIDAS = ['estructura', 'partidos', 'equipos', 'retiros', 'nombres', 'ramas', 'nombre', 'ligas', 'organizador', 'origen', 'diario', 'token-archivo', 'codigo-salida', 'tiempo-ms']
 for (const k of Object.keys(valores)) if (!PERMITIDAS.includes(k)) fallar('opcion-desconocida', { opcion: k })
 
 function leerArchivo(ruta) {
@@ -68,12 +76,23 @@ const conLiga = (lista, opcion) => (lista ?? []).map((v) => {
 })
 const partidos = conLiga(valores.partidos, 'partidos')
 const anexos = conLiga(valores.equipos, 'equipos')
+const retiros = conLiga(valores.retiros, 'retiros')
+const nombres = conLiga(valores.nombres, 'nombres')
+const ramasEquipos = conLiga(valores.ramas, 'ramas')
+const esRamas = comando === 'ramas' || comando === 'verificar-ramas'
+const esNombre = comando === 'renombrar' || comando === 'verificar-nombre'
+const tipoDeRetiro = comando === 'retirar' || comando === 'verificar-retiro' ? 'retirar' : comando === 'restaurar' || comando === 'verificar-restauracion' ? 'restaurar' : null
 
 const aplicando = banderas.has('--aplicar')
 const leyendo = banderas.has('--leer')
 if (aplicando && leyendo) fallar('modo-ambiguo')
-if (aplicando && comando === 'verificar') fallar('verificar-no-aplica')
-if (leyendo && comando !== 'verificar') fallar('leer-solo-con-verificar')
+if (aplicando && VERIFICACIONES.includes(comando)) fallar('verificar-no-aplica')
+if (leyendo && !VERIFICACIONES.includes(comando)) fallar('leer-solo-con-verificar')
+if (tipoDeRetiro && (valores.partidos || valores.estructura || valores.equipos || valores.nombres || valores.ramas)) fallar('retiro-solo-con-retiros')
+if (esNombre && (valores.partidos || valores.estructura || valores.equipos || valores.retiros || valores.ramas)) fallar('nombre-solo-con-nombres')
+if (!esNombre && valores.nombres) fallar('nombres-solo-con-renombrar')
+if (esRamas && (valores.partidos || valores.estructura || valores.equipos || valores.retiros || valores.nombres)) fallar('ramas-solo-con-ramas')
+if (!esRamas && valores.ramas) fallar('ramas-solo-con-el-comando-ramas')
 const remoto = banderas.has('--remoto')
 
 // ---- Plan / simulacro (sin red) ----
@@ -81,9 +100,21 @@ const plan = comando === 'asignar'
   ? await construirPlanAsignacion({ organizadorId: valores.organizador, ligas: valores.ligas ? valores.ligas.split(',') : undefined })
   : comando === 'provisionar' || comando === 'recuperar'
   ? await construirPlanOrganizador({ tipo: comando, nombre: valores.nombre, ligas: valores.ligas ? valores.ligas.split(',') : undefined })
+  : esRamas
+  ? await construirPlanRamas({ ramas: ramasEquipos })
+  : esNombre
+  ? await construirPlanNombre({ nombres })
+  : tipoDeRetiro
+  ? await construirPlanRetiro({ tipo: tipoDeRetiro, retiros })
   : await construirPlanCarga({ tipo: comando === 'verificar' ? 'estructura' : comando, estructuras, partidos, anexos })
 
 if (!aplicando && !leyendo) {
+  if (comando === 'verificar-nombre' || comando === 'verificar-ramas') {
+    salir({ modo: 'simulacro', nota: 'sin --leer no se hace ninguna petición', archivosValidos: plan.ok, elementos: plan.usadas.map((e) => ({ ...e.resumen, problemas: e.problemas })) }, plan.ok)
+  }
+  if (comando === 'verificar-retiro' || comando === 'verificar-restauracion') {
+    salir({ modo: 'simulacro', nota: 'sin --leer no se hace ninguna petición', archivosValidos: plan.ok, elementos: plan.usadas.map((e) => ({ ...e.resumen, problemas: e.problemas })) }, plan.ok)
+  }
   if (comando === 'verificar') {
     // La verificación acepta cualquier combinación de estructura, equipos añadidos y partidos: basta con que haya archivos y todos sean válidos.
     const validos = plan.elementos.length > 0 && plan.elementos.every((e) => e.ok)
@@ -103,6 +134,18 @@ if (tiempoMs === null) fallar('tiempo-invalido')
 if (leyendo) {
   let almacen
   if (valores.diario) { try { almacen = almacenDeDiario(valores.diario) } catch (e) { fallar(`diario-${e.message}`) } }
+  if (esRamas) {
+    const rr2 = await verificarRamas({ ramas: ramasEquipos, fetch, origen: destino.origen, remoto, entorno: process.env, tiempoMs })
+    salir({ modo: 'verificar', ok: rr2.ok, comprobaciones: rr2.comprobaciones }, rr2.ok)
+  }
+  if (esNombre) {
+    const rn = await verificarNombre({ nombres, fetch, origen: destino.origen, remoto, entorno: process.env, tiempoMs })
+    salir({ modo: 'verificar', ok: rn.ok, comprobaciones: rn.comprobaciones }, rn.ok)
+  }
+  if (tipoDeRetiro) {
+    const rr = await verificarRetiro({ tipo: tipoDeRetiro, retiros, fetch, origen: destino.origen, remoto, entorno: process.env, tiempoMs })
+    salir({ modo: 'verificar', ok: rr.ok, comprobaciones: rr.comprobaciones }, rr.ok)
+  }
   const r = await verificarCarga({ estructuras, partidos, anexos, fetch, origen: destino.origen, remoto, entorno: process.env, tiempoMs, almacen })
   salir({ modo: 'verificar', ok: r.ok, comprobaciones: r.comprobaciones }, r.ok)
 }

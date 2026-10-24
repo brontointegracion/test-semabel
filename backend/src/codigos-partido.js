@@ -23,8 +23,10 @@ import { despuesDeFalloDeCodigo, fuenteBloqueada, registrarFalloFuente } from '.
 
 const FALLO = Object.freeze({ tipo: 'no-autorizado' })
 
+// Un partido RETIRADO (partidos.retirado_en, ver retiro-partidos.js) se trata como si no existiera: no se emiten códigos, no se
+// revoca ni se consulta su control y no se activa un teléfono. No es un estado del partido.
 export const estadoDePartido = (sql, partidoId) => {
-  const f = sql.exec('SELECT estado_json FROM partidos WHERE id = ?', partidoId).toArray()[0]
+  const f = sql.exec('SELECT estado_json FROM partidos WHERE id = ? AND retirado_en IS NULL', partidoId).toArray()[0]
   return f ? (JSON.parse(f.estado_json).partido?.estado ?? null) : undefined // undefined = no existe
 }
 
@@ -118,6 +120,7 @@ export function activar(storage, { partidoId, codigoId, secretoHash, tokenHash, 
     const fallo = () => { registrarFalloFuente(sql, fuente, ahora); return FALLO }
 
     if (!esHashHex(tokenHash)) return fallo()
+    if (estadoDePartido(sql, partidoId) === undefined) return fallo() // desconocido o RETIRADO: ni siquiera la recuperación de un código usado
     const c = sql.exec('SELECT * FROM codigos_partido WHERE partido_id = ? AND id = ?', partidoId, codigoId).toArray()[0]
     if (!c) return fallo()
     if (c.bloqueado_hasta !== null && ahora < c.bloqueado_hasta) return fallo()

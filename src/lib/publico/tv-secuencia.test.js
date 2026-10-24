@@ -33,6 +33,20 @@ describe('interpretarSecuencia', () => {
     const muchos = Array.from({ length: MAX_PARTIDOS_SECUENCIA + 1 }, (_, i) => `SIMULACRO-PILOTO/G${i}`).join(',')
     expect(interpretarSecuencia(muchos, LIGAS).ok).toBe(false)
   })
+  it('REPORT_209: el tope es diez; DIEZ pares se aceptan (en orden, de dos ligas, con ids largos) y ONCE se rechazan enteros', () => {
+    expect(MAX_PARTIDOS_SECUENCIA).toBe(10)
+    const largo = (l, i) => `${l}/${l}-2026102${i % 2 + 4}-${'HARDWORK-BASKETBALL-VS-CORRECAMINOS'}-${i}`.slice(0, 129)
+    const par = (i) => largo(i % 2 ? 'SIMULACRO-PILOTO' : 'OTRA-LIGA', i)
+    const diez = Array.from({ length: 10 }, (_, i) => par(i))
+    const r = interpretarSecuencia(diez.join(','), LIGAS)
+    expect(r.ok).toBe(true)
+    expect(r.pares).toHaveLength(10)
+    expect(r.pares.map((p) => `${p.ligaId}/${p.gameId}`)).toEqual(diez) // el orden dado es el orden de la secuencia
+    expect(interpretarSecuencia([...diez, par(10)].join(','), LIGAS)).toEqual({ ok: false, error: 'configuracion-invalida' })
+    // pares de la longitud máxima (64 + 1 + 64) también caben: el tope de texto es 10 × 131
+    const maximos = Array.from({ length: 10 }, (_, i) => `SIMULACRO-PILOTO/${String(i).padStart(2, 'G')}${'X'.repeat(62)}`)
+    expect(interpretarSecuencia(maximos.join(','), LIGAS).ok).toBe(true)
+  })
 })
 
 const PARES = [{ ligaId: 'L', gameId: 'A' }, { ligaId: 'L', gameId: 'B' }]

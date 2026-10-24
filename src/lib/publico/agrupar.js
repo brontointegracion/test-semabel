@@ -57,6 +57,23 @@ export function clasificar(partidos) {
   return { vivos, proximos, finales }
 }
 
+/**
+ * «Próximos partidos» de la portada (REPORT_213): de los partidos `programado` (ya en orden cronológico, sin fecha al final) separa
+ *   porVenir  los que aún no llegan a su hora, MÁS los que no tienen hora (se rotulan «Fecha por confirmar»: nunca se presentan como fechados) y los que
+ *             no se pueden comparar porque su lectura no trae hora del servidor (no se esconde lo que no se puede probar que ya pasó);
+ *   pasados   los que tenían hora y esa hora ya pasó SIN comenzar (siguen `programado` en el servidor; la portada no los lista como «próximos»).
+ * «Ahora» es la hora del SERVIDOR estimada de la lectura de cada partido (nunca el reloj del dispositivo). Un partido `vivo` nunca pasa por aquí.
+ */
+export function separarPorVenir(programados, mono) {
+  const porVenir = []
+  const pasados = []
+  for (const p of programados) {
+    const pasado = p.programadoPara !== null && p.muestra && Date.parse(p.programadoPara) < ahoraServidor(p.muestra, mono)
+    ;(pasado ? pasados : porVenir).push(p)
+  }
+  return { porVenir, pasados }
+}
+
 /** ¿Un partido programado cuya hora ya pasó (según la hora del SERVIDOR estimada)? Sigue programado: solo se rotula. */
 export function pendienteDeComenzar(partido, mono) {
   if (partido.estado !== 'programado' || partido.programadoPara === null || !partido.muestra) return false

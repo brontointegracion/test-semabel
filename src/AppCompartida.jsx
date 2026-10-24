@@ -8,6 +8,8 @@ import LigaOrganizador from './pantallas/LigaOrganizador'
 import PanelOrganizador from './pantallas/PanelOrganizador'
 import PartidoOrganizador from './pantallas/PartidoOrganizador'
 import PlantillaOrganizador from './pantallas/PlantillaOrganizador'
+import GuiaArbitro from './pantallas/GuiaArbitro'
+import Contacto, { RUTA_CONTACTO } from './pantallas/publico/Contacto'
 import EquipoPublico from './pantallas/publico/EquipoPublico'
 import InicioCompartido from './pantallas/publico/InicioCompartido'
 import LigaCompartida from './pantallas/publico/LigaCompartida'
@@ -29,6 +31,7 @@ import { useSesionServidor } from './lib/sesion-servidor'
 //   /liga/:ligaId/equipo/:equipoId     equipo; `equipoId` es la clave pública del equipo en la liga o, por compatibilidad, su id completo
 //   /organizador/acceso, /organizador, /organizador/ligas/:l[/equipos/:e | /partidos/:g]   entrada y panel del organizador (la sesión la decide
 //                                      el servidor); …/partidos/:g prepara el acceso de puntuación. /anthony/…, /ligas y el alias de piloto /deportivo-vip/ligas redirigen aquí (REPORT_179/180)
+//   /contacto                          página pública estática de contacto (REPORT_214)
 //   /tv                                entrada corta TEMPORAL del piloto: lista de partidos de una liga configurada (lib/publico/tv-piloto.js)
 //   /tv/cancha                         transmisión de UNA cancha: sigue una secuencia explícita de partidos (lib/publico/tv-secuencia.js)
 //   /control/:ligaId/:partidoId[/marcador]   activación del teléfono y pantalla de puntuación
@@ -56,6 +59,8 @@ export default function AppCompartida() {
       <div className={`contenido ${conTabs ? '' : 'sin-tab'}`}>
         <Routes>
           <Route path="/" element={<InicioCompartido tabs={tabs} />} />
+          {/* Contacto (REPORT_214): página pública estática, sin API ni almacenamiento. */}
+          <Route path={RUTA_CONTACTO} element={<Contacto tabs={tabs} marca={<div className="marca-publica">semabel<span>.</span>com</div>} />} />
           <Route path="/liga/:ligaId" element={<LigaCompartida />} />
           <Route path="/liga/:ligaId/partido/:gameId" element={<PartidoPublico />} />
           <Route path="/liga/:ligaId/equipo/:equipoId" element={<EquipoPublico />} />
@@ -63,6 +68,8 @@ export default function AppCompartida() {
           <Route path={RUTA_TV} element={<TvPiloto />} />
           {/* Transmisión continua de UNA cancha (REPORT_199): una dirección estable que sigue la secuencia explícita de lib/publico/tv-secuencia.js. */}
           <Route path={RUTA_TV_CANCHA} element={<TvCancha />} />
+          {/* Guía de puntuación (REPORT_206): contenido estático de solo lectura, sin sesión ni peticiones. */}
+          <Route path="/ayuda/arbitro" element={<GuiaArbitro />} />
           <Route path="/organizador/acceso" element={<AccesoOrganizador />} />
           <Route path="/organizador" element={<PanelOrganizador />} />
           <Route path="/organizador/ligas/:ligaId" element={<LigaOrganizador />} />

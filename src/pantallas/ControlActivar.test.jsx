@@ -66,7 +66,7 @@ async function escribirYEnviar(usuario, texto = CODIGO) {
   await usuario.click(boton('Activar este teléfono'))
 }
 const sinControlesDePuntuacion = () => {
-  const nombres = screen.queryAllByRole('button').map((b) => b.textContent)
+  const nombres = screen.queryAllByRole('button').map((b) => b.textContent).filter((n) => n !== 'Guía de puntuación') // la guía (REPORT_206) es ayuda de solo lectura, no un control
   for (const n of nombres) expect(n, `botón «${n}»`).not.toMatch(/inici|comenz|punt|anot|falta|marcador|cerrar partido|finaliz/i)
   expect(llamadas('/comandos')).toHaveLength(0)
 }

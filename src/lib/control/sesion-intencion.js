@@ -64,14 +64,44 @@ export function crearRegistroDeIntenciones({ generar = nuevoCmdId } = {}) {
   }
 }
 
-/** «mm:ss» (o «m:ss») → milisegundos restantes, dentro de 0 … máximo. Nada se redondea ni se corrige en silencio. */
+/**
+ * Forma canónica «mm:ss» del tiempo que escribe la persona (REPORT_210). SOLO normaliza; no mira la duración del periodo.
+ *   «mm:ss» / «m:ss» (1–3 dígitos de minutos, dos de segundos)   →  se conserva y se rellena el minuto a dos dígitos: «8:05» → «08:05»
+ *   solo dígitos, TRES o CUATRO («mss» / «mmss»)                  →  «845» → «08:45», «0845» → «08:45», «1000» → «10:00»
+ *   uno o dos dígitos («8», «45»), cinco o más, o cualquier otro carácter → 'formato' (no se adivina si son minutos o segundos)
+ *   segundos > 59 (con o sin los dos puntos: «08:60», «860»)       → 'segundos' (nunca se acomoda a «09:00»)
+ * Los espacios de los extremos se ignoran. Nada se redondea, ajusta ni recorta en silencio.
+ * → { ok: true, texto } | { ok: false, motivo: 'formato' | 'segundos' }
+ */
+export function normalizarTiempoReloj(texto) {
+  const t = String(texto ?? '').trim()
+  let min
+  let seg
+  const conPuntos = /^(\d{1,3}):(\d{2})$/.exec(t)
+  const soloDigitos = /^(\d{1,2})(\d{2})$/.exec(t)
+  if (conPuntos) [, min, seg] = conPuntos
+  else if (soloDigitos && /^\d+$/.test(t) && t.length >= 3 && t.length <= 4) [, min, seg] = soloDigitos
+  else return { ok: false, motivo: 'formato' }
+  if (Number(seg) > 59) return { ok: false, motivo: 'segundos' }
+  return { ok: true, texto: `${min.padStart(2, '0')}:${seg}` }
+}
+
+/** «mm:ss» (o «m:ss», o «mss»/«mmss» sin los dos puntos) → milisegundos restantes, dentro de 0 … máximo. Nada se redondea ni se corrige en silencio. */
 export function restanteDeTexto(texto, maximoMs) {
-  const m = /^\s*(\d{1,3}):([0-5]\d)\s*$/.exec(String(texto ?? ''))
-  if (!m) return { ok: false, motivo: 'formato' }
-  const ms = (Number(m[1]) * 60 + Number(m[2])) * 1000
+  const n = normalizarTiempoReloj(texto)
+  if (!n.ok) return { ok: false, motivo: n.motivo }
+  const [m, s] = n.texto.split(':').map(Number)
+  const ms = (m * 60 + s) * 1000
   if (ms > maximoMs) return { ok: false, motivo: 'fuera-de-rango' }
   return { ok: true, restanteMs: ms }
 }
+
+/** Texto en español para cada motivo de rechazo del tiempo (el mismo en el borde del campo y al enviar). */
+export const MENSAJES_TIEMPO_RELOJ = Object.freeze({
+  formato: 'Escribe el tiempo como mm:ss, por ejemplo 08:30 (o solo los números: 830).',
+  segundos: 'Los segundos deben estar entre 00 y 59.',
+  'fuera-de-rango': 'Ese tiempo no cabe en el periodo.',
+})
 
 export const MENSAJES_DE_REGISTRO = Object.freeze({
   guardada: 'Guardado en este teléfono. Pendiente de enviar al servidor.',

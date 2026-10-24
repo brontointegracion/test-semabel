@@ -1254,6 +1254,18 @@
   .sb-sponsor--logo.sb-sponsor--band .sb-sponsor__descriptor { flex: none; width: min-content; overflow-wrap: normal; }
 }
 
+/* ---- «nombreEnBanda» (REPORT_211): banda EN VIVO = logo casi a toda la altura + el nombre como texto grande a su lado, el conjunto centrado. ---------------------
+   Solo la banda lleva el texto; los descansos, el final y el teléfono muestran el logo solo (grande y centrado) sin repetir el nombre. Mismas dimensiones de banda. */
+.sb-sponsor__nombre-en-banda { display: block; font-weight: 800; line-height: 1.04; letter-spacing: -0.01em; text-wrap: balance; overflow-wrap: normal; }
+@media (min-width: 641px) {
+  .sb-sponsor--logo.sb-sponsor--band.sb-sponsor--nombre-en-banda { justify-content: center; gap: calc(var(--u) * 4); padding: calc(var(--u) * 0.7) calc(var(--u) * 3.2); }
+  .sb-sponsor--nombre-en-banda .sb-sponsor__nombre-en-banda { flex: 0 1 auto; min-width: 0; font-size: calc(var(--u) * 5.4); max-inline-size: 9.2em; text-align: center; }
+}
+/* Teléfono: la banda mide 165 × 88 px; ahí el texto no cabe junto al logo, así que se muestra el logo COMPLETO (el nombre sigue como texto accesible) y los descansos y el final lo llevan grande. */
+@media (max-width: 640px) {
+  .sb-sponsor--nombre-en-banda .sb-sponsor__nombre-en-banda { display: none; }
+}
+
 /* ---- Logo real de Semabel en las tarjetas de promoción (REPORT_196) ----------------------------------------------------------------- */
 /* El logo (652×333, 1,96:1, SMB rojo + «semabel.com» negro sobre blanco) se muestra completo: object-fit contain, sin recortar ni deformar. */
 .sb-sponsor__mark--semabel { align-self: center; }

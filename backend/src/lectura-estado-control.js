@@ -129,8 +129,8 @@ export async function leerEstadoControl({
     ).toArray()[0]
     if (!c || c.revocada === 1 || c.partido_id !== gameId) return { tipo: 'no-autorizado' }
     if (estadoDeCredencial(c, ahora) !== 'activa') return { tipo: 'no-autorizado' }
-    const p = sql.exec('SELECT id, liga_id, local_id, visita_id, rev, ultimo_client_seq FROM partidos WHERE id = ?', gameId).toArray()[0]
-    if (!p) return { tipo: 'no-autorizado' }
+    const p = sql.exec('SELECT id, liga_id, local_id, visita_id, rev, ultimo_client_seq FROM partidos WHERE id = ? AND retirado_en IS NULL', gameId).toArray()[0]
+    if (!p) return { tipo: 'no-autorizado' } // desconocido o retirado
 
     // El recuento va ANTES de armar nada: un partido enorme no se carga para luego descartarlo.
     const eventosGuardados = sql.exec('SELECT COUNT(*) AS n FROM eventos WHERE partido_id = ?', gameId).one().n

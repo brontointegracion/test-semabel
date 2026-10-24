@@ -173,3 +173,207 @@ describe('command `equipos` (append teams to an already loaded league)', () => {
     assert.match(r2.salida, /detenido-sin-resolver/); assert.equal(fin.peticiones.length, 0)
   })
 })
+
+describe('commands `retirar` / `restaurar` / `verificar-retiro` (REPORT_208)', () => {
+  const retiro = (nombre, cuerpo) => escribir(nombre, JSON.stringify(cuerpo))
+  const BUENO = { cargaId: 'retiro-cli-0001-aaaaaaaa', partidos: ['Q', 'P'] }
+
+  it('dry-run by default: no requests, no journal, ids never echoed, bad files and bad bodies fail, retirar and restaurar need --retiros only', async () => {
+    const f = retiro('retiro-bueno.json', BUENO)
+    for (const c of ['retirar', 'restaurar', 'verificar-retiro', 'verificar-restauracion']) {
+      const r = await correr(OPERADOR, [c, '--retiros', `LIGA-CLI=${f}`])
+      assert.equal(r.codigo, 0, r.salida); assert.match(r.salida, /simulacro/); assert.match(r.salida, /"partidos": 2/)
+    }
+    for (const cuerpo of [{ ...BUENO, extra: 1 }, { cargaId: 'corto', partidos: ['P'] }, { cargaId: BUENO.cargaId, partidos: [] }, { cargaId: BUENO.cargaId, partidos: ['P', 'P'] }, { cargaId: BUENO.cargaId, partidos: ['P Q'] }, { cargaId: BUENO.cargaId, partidos: Array.from({ length: 51 }, (_, i) => `G${i}`) }]) {
+      const r = await correr(OPERADOR, ['retirar', '--retiros', `LIGA-CLI=${retiro('retiro-malo.json', cuerpo)}`])
+      assert.equal(r.codigo, 1, JSON.stringify(cuerpo).slice(0, 50))
+    }
+    assert.equal((await correr(OPERADOR, ['retirar', '--retiros', `LIGA-CLI=${escribir('retiro-ilegible.json', '{nada')}`])).codigo, 1)
+    assert.match((await correr(OPERADOR, ['retirar', '--retiros', f])).salida, /retiros-requiere-LIGA=archivo/)
+    assert.equal((await correr(OPERADOR, ['retirar', '--partidos', `LIGA-CLI=${f}`])).codigo, 1) // los lotes de partidos no se mezclan con el retiro
+    assert.equal((await correr(OPERADOR, ['retirar'])).codigo, 1) // sin archivos
+    assert.equal(existsSync(join(dir, 'diario-retiro.json')), false)
+  })
+
+  it('apply sends ONE Bearer POST to /partidos/retirar with the NORMALISED body, journals it 0600; restaurar goes to /partidos/restaurar; a retry resends the identical body from the journal', async () => {
+    const s = await servidor(() => ({ status: 201, json: { ok: true, reproducido: false } })); cerrar.push(s.s)
+    const f = retiro('retiro-aplicar.json', BUENO)
+    const diario = join(dir, 'dr.json')
+    const r = await correr(OPERADOR, ['retirar', '--retiros', `LIGA-CLI=${f}`, '--aplicar', '--origen', s.origen, '--diario', diario], { SEBEL_OPERADOR_TOKEN: TOKEN })
+    assert.equal(r.codigo, 0, r.salida)
+    assert.equal(s.peticiones.length, 1); assert.equal(s.peticiones[0].url, '/v1/admin/ligas/LIGA-CLI/partidos/retirar')
+    assert.equal(s.peticiones[0].cabeceras.authorization, `Bearer ${TOKEN}`)
+    assert.deepEqual(JSON.parse(s.peticiones[0].cuerpo), { cargaId: BUENO.cargaId, partidos: ['P', 'Q'] })
+    assert.equal(statSync(diario).mode & 0o777, 0o600); assert.ok(!readFileSync(diario, 'utf8').includes(TOKEN))
+    // restaurar: operación aparte, otra ruta y otro diario
+    const g = retiro('restaura-aplicar.json', { cargaId: 'restaura-cli-0001-aaaaaaa', partidos: ['P'] })
+    const rr = await correr(OPERADOR, ['restaurar', '--retiros', `LIGA-CLI=${g}`, '--aplicar', '--origen', s.origen, '--diario', join(dir, 'dr2.json')], { SEBEL_OPERADOR_TOKEN: TOKEN })
+    assert.equal(rr.codigo, 0, rr.salida); assert.equal(s.peticiones[1].url, '/v1/admin/ligas/LIGA-CLI/partidos/restaurar')
+    // respuesta incierta (503) → «detenido-sin-resolver»; repetir reenvía LO IDÉNTICO y completa
+    let n = 0
+    const u = await servidor(() => { n += 1; return n === 1 ? { status: 503, json: { error: 'resultado-desconocido' } } : { status: 200, json: { ok: true, reproducido: true } } }); cerrar.push(u.s)
+    const d3 = join(dir, 'dr3.json')
+    const args = ['retirar', '--retiros', `LIGA-CLI=${f}`, '--aplicar', '--origen', u.origen, '--diario', d3]
+    const primera = await correr(OPERADOR, args, { SEBEL_OPERADOR_TOKEN: TOKEN })
+    assert.match(primera.salida, /detenido-sin-resolver/)
+    const segunda = await correr(OPERADOR, args, { SEBEL_OPERADOR_TOKEN: TOKEN })
+    assert.equal(segunda.codigo, 0, segunda.salida)
+    assert.equal(u.peticiones.length, 2); assert.equal(u.peticiones[0].cuerpo, u.peticiones[1].cuerpo)
+    // un archivo CAMBIADO tras el intento no se envía con el mismo diario
+    const cambiado = retiro('retiro-aplicar.json', { cargaId: BUENO.cargaId, partidos: ['P'] })
+    const tercera = await correr(OPERADOR, ['retirar', '--retiros', `LIGA-CLI=${cambiado}`, '--aplicar', '--origen', u.origen, '--diario', d3], { SEBEL_OPERADOR_TOKEN: TOKEN })
+    assert.match(tercera.salida, /diario-de-otro-plan|payload-distinto-del-diario/); assert.equal(u.peticiones.length, 2)
+  })
+
+  it('a rejection (409 retiro-no-seguro) stops and is journalled as rejected; verificar-retiro / verificar-restauracion use only public GETs and compare list and direct read', async () => {
+    const rech = await servidor(() => ({ status: 409, json: { error: 'retiro-no-seguro', partidos: [{ id: 'P', motivos: ['con-historial'] }] } })); cerrar.push(rech.s)
+    const f = retiro('retiro-rechazo.json', BUENO)
+    const r = await correr(OPERADOR, ['retirar', '--retiros', `LIGA-CLI=${f}`, '--aplicar', '--origen', rech.origen, '--diario', join(dir, 'dr4.json')], { SEBEL_OPERADOR_TOKEN: TOKEN })
+    assert.equal(r.codigo, 1); assert.match(r.salida, /detenido-por-rechazo/); assert.match(r.salida, /retiro-no-seguro/)
+    // verificación: P y Q retirados → fuera de la lista y 404 directo
+    const retirados = await servidor((req) => (req.url === '/v1/ligas/LIGA-CLI/publico' ? { status: 200, json: { partidos: [{ gameId: 'OTRO', estado: 'programado', rev: 0 }] } } : { status: 404, json: { error: 'no-encontrado' } })); cerrar.push(retirados.s)
+    const ok = await correr(OPERADOR, ['verificar-retiro', '--retiros', `LIGA-CLI=${f}`, '--leer', '--origen', retirados.origen])
+    assert.equal(ok.codigo, 0, ok.salida); assert.ok(retirados.peticiones.every((p) => p.metodo === 'GET' && !p.cabeceras.authorization))
+    // un partido que SIGUE publicado (lista o lectura directa) falla
+    const visible = await servidor((req) => (req.url === '/v1/ligas/LIGA-CLI/publico' ? { status: 200, json: { partidos: [{ gameId: 'P', estado: 'programado', rev: 0 }] } } : { status: 200, json: {} })); cerrar.push(visible.s)
+    const mal = await correr(OPERADOR, ['verificar-retiro', '--retiros', `LIGA-CLI=${f}`, '--leer', '--origen', visible.origen])
+    assert.equal(mal.codigo, 1); assert.match(mal.salida, /sigue-en-la-lista/)
+    // restauración: publicados y programados → ok; ausentes → falla
+    const activos = await servidor((req) => (req.url === '/v1/ligas/LIGA-CLI/publico' ? { status: 200, json: { partidos: [{ gameId: 'P', estado: 'programado', rev: 0 }, { gameId: 'Q', estado: 'programado', rev: 0 }] } } : { status: 200, json: {} })); cerrar.push(activos.s)
+    assert.equal((await correr(OPERADOR, ['verificar-restauracion', '--retiros', `LIGA-CLI=${f}`, '--leer', '--origen', activos.origen])).codigo, 0)
+    assert.equal((await correr(OPERADOR, ['verificar-restauracion', '--retiros', `LIGA-CLI=${f}`, '--leer', '--origen', retirados.origen])).codigo, 1)
+    // combinaciones inválidas
+    assert.equal((await correr(OPERADOR, ['retirar', '--retiros', `LIGA-CLI=${f}`, '--leer', '--origen', activos.origen])).codigo, 1)
+    assert.equal((await correr(OPERADOR, ['verificar-retiro', '--retiros', `LIGA-CLI=${f}`, '--aplicar', '--origen', activos.origen, '--diario', join(dir, 'x.json')], { SEBEL_OPERADOR_TOKEN: TOKEN })).codigo, 1)
+  })
+})
+
+describe('commands `renombrar` / `verificar-nombre` (REPORT_218)', () => {
+  const nombre = (archivo, cuerpo) => escribir(archivo, JSON.stringify(cuerpo))
+  const U10 = { cargaId: 'nombre-cli-u10-0001-aaaa', nombre: 'Platinum U10 2026' }
+
+  it('dry-run by default: no requests, no journal; names are shown only as plan data; bad files and bodies fail; only valid with --nombres', async () => {
+    const f = nombre('nombre-u10.json', U10)
+    const r = await correr(OPERADOR, ['renombrar', '--nombres', `PLATINIUM-U10=${f}`])
+    assert.equal(r.codigo, 0, r.salida); assert.match(r.salida, /simulacro/); assert.match(r.salida, /Platinum U10 2026/)
+    assert.equal((await correr(OPERADOR, ['verificar-nombre', '--nombres', `PLATINIUM-U10=${f}`])).codigo, 0)
+    for (const cuerpo of [{ ...U10, extra: 1 }, { cargaId: 'corto', nombre: 'Platinum' }, { cargaId: U10.cargaId, nombre: ' Platinum' }, { cargaId: U10.cargaId, nombre: '' }, { cargaId: U10.cargaId, nombre: 'x'.repeat(81) }, { cargaId: U10.cargaId, nombre: 'a\u0000b' }, { cargaId: U10.cargaId }]) {
+      assert.equal((await correr(OPERADOR, ['renombrar', '--nombres', `PLATINIUM-U10=${nombre('nombre-malo.json', cuerpo)}`])).codigo, 1, JSON.stringify(cuerpo).slice(0, 50))
+    }
+    assert.equal((await correr(OPERADOR, ['renombrar', '--nombres', `PLATINIUM-U10=${escribir('nombre-ilegible.json', '{nada')}`])).codigo, 1)
+    assert.match((await correr(OPERADOR, ['renombrar', '--nombres', f])).salida, /nombres-requiere-LIGA=archivo/)
+    assert.equal((await correr(OPERADOR, ['renombrar', '--partidos', `PLATINIUM-U10=${f}`])).codigo, 1)
+    assert.equal((await correr(OPERADOR, ['retirar', '--nombres', `PLATINIUM-U10=${f}`])).codigo, 1)
+    assert.equal((await correr(OPERADOR, ['renombrar'])).codigo, 1)
+    const doble = await correr(OPERADOR, ['renombrar', '--nombres', `PLATINIUM-U10=${f}`, '--nombres', `PLATINIUM-U10=${nombre('nombre-otro.json', { cargaId: 'nombre-cli-u10-0002-aaaa', nombre: 'Otro' })}`])
+    assert.equal(doble.codigo, 1) // un cambio de nombre por liga en cada ejecución
+  })
+
+  it('apply sends ONE Bearer POST per league to /nombre with the exact body, journals 0600; an uncertain response is recovered by re-running the SAME command (identical body and cargaId from the journal); a changed file is refused', async () => {
+    const s = await servidor(() => ({ status: 201, json: { ok: true, reproducido: false, cambiado: true } })); cerrar.push(s.s)
+    const f = nombre('nombre-aplicar.json', U10); const g = nombre('nombre-aplicar12.json', { cargaId: 'nombre-cli-u12-0001-aaaa', nombre: 'Platinum U12 2026' })
+    const diario = join(dir, 'dn.json')
+    const args = ['renombrar', '--nombres', `PLATINIUM-U10=${f}`, '--nombres', `PLATINIUM-U12=${g}`, '--aplicar', '--origen', s.origen, '--diario', diario]
+    const r = await correr(OPERADOR, args, { SEBEL_OPERADOR_TOKEN: TOKEN })
+    assert.equal(r.codigo, 0, r.salida)
+    assert.deepEqual(s.peticiones.map((p) => p.url), ['/v1/admin/ligas/PLATINIUM-U10/nombre', '/v1/admin/ligas/PLATINIUM-U12/nombre'])
+    assert.deepEqual(JSON.parse(s.peticiones[0].cuerpo), U10)
+    assert.equal(s.peticiones[0].cabeceras.authorization, `Bearer ${TOKEN}`)
+    assert.equal(statSync(diario).mode & 0o777, 0o600); assert.ok(!readFileSync(diario, 'utf8').includes(TOKEN))
+    // incierta → misma orden
+    let n = 0
+    const u = await servidor(() => { n += 1; return n === 1 ? { status: 503, json: { error: 'resultado-desconocido' } } : { status: 200, json: { ok: true, reproducido: true, cambiado: true } } }); cerrar.push(u.s)
+    const d2 = join(dir, 'dn2.json')
+    const a2 = ['renombrar', '--nombres', `PLATINIUM-U10=${f}`, '--aplicar', '--origen', u.origen, '--diario', d2]
+    assert.match((await correr(OPERADOR, a2, { SEBEL_OPERADOR_TOKEN: TOKEN })).salida, /detenido-sin-resolver/)
+    const seg = await correr(OPERADOR, a2, { SEBEL_OPERADOR_TOKEN: TOKEN })
+    assert.equal(seg.codigo, 0, seg.salida)
+    assert.equal(u.peticiones.length, 2); assert.equal(u.peticiones[0].cuerpo, u.peticiones[1].cuerpo)
+    // el archivo cambió después del intento: no se envía con ese diario
+    const cambiado = nombre('nombre-aplicar.json', { cargaId: U10.cargaId, nombre: 'Platinum U10 2026 (otra)' })
+    const ter = await correr(OPERADOR, ['renombrar', '--nombres', `PLATINIUM-U10=${cambiado}`, '--aplicar', '--origen', u.origen, '--diario', d2], { SEBEL_OPERADOR_TOKEN: TOKEN })
+    assert.match(ter.salida, /diario-de-otro-plan|payload-distinto-del-diario/); assert.equal(u.peticiones.length, 2)
+    // la reversión: OTRO archivo (otro cargaId) con el nombre anterior = otra operación, otro diario
+    const rev = nombre('nombre-revertir.json', { cargaId: 'nombre-cli-u10-rev-0003', nombre: 'Platinium U10 2026' })
+    const sr = await correr(OPERADOR, ['renombrar', '--nombres', `PLATINIUM-U10=${rev}`, '--aplicar', '--origen', s.origen, '--diario', join(dir, 'dn3.json')], { SEBEL_OPERADOR_TOKEN: TOKEN })
+    assert.equal(sr.codigo, 0, sr.salida); assert.equal(JSON.parse(s.peticiones.at(-1).cuerpo).nombre, 'Platinium U10 2026')
+  })
+
+  it('a rejection (409 / 422) stops and is journalled as rejected; verificar-nombre uses only public GETs: name, same id, teams and games present', async () => {
+    const rech = await servidor(() => ({ status: 409, json: { error: 'carga-conflicto' } })); cerrar.push(rech.s)
+    const f = nombre('nombre-rechazo.json', U10)
+    const r = await correr(OPERADOR, ['renombrar', '--nombres', `PLATINIUM-U10=${f}`, '--aplicar', '--origen', rech.origen, '--diario', join(dir, 'dn4.json')], { SEBEL_OPERADOR_TOKEN: TOKEN })
+    assert.equal(r.codigo, 1); assert.match(r.salida, /detenido-por-rechazo/); assert.match(r.salida, /carga-conflicto/)
+    const ok = await servidor(() => ({ status: 200, json: { liga: { id: 'PLATINIUM-U10', nombre: 'Platinum U10 2026' }, equipos: [{ id: 'E', nombre: 'E' }], partidos: [] } })); cerrar.push(ok.s)
+    const v = await correr(OPERADOR, ['verificar-nombre', '--nombres', `PLATINIUM-U10=${f}`, '--leer', '--origen', ok.origen])
+    assert.equal(v.codigo, 0, v.salida); assert.ok(ok.peticiones.every((p) => p.metodo === 'GET' && !p.cabeceras.authorization))
+    const viejo = await servidor(() => ({ status: 200, json: { liga: { id: 'PLATINIUM-U10', nombre: 'Platinium U10 2026' }, equipos: [{ id: 'E', nombre: 'E' }], partidos: [] } })); cerrar.push(viejo.s)
+    const mal = await correr(OPERADOR, ['verificar-nombre', '--nombres', `PLATINIUM-U10=${f}`, '--leer', '--origen', viejo.origen])
+    assert.equal(mal.codigo, 1); assert.match(mal.salida, /"codigo": "nombre:PLATINIUM-U10"/)
+    assert.equal((await correr(OPERADOR, ['renombrar', '--nombres', `PLATINIUM-U10=${f}`, '--leer', '--origen', ok.origen])).codigo, 1)
+    assert.equal((await correr(OPERADOR, ['verificar-nombre', '--nombres', `PLATINIUM-U10=${f}`, '--aplicar', '--origen', ok.origen, '--diario', join(dir, 'x2.json')], { SEBEL_OPERADOR_TOKEN: TOKEN })).codigo, 1)
+  })
+})
+
+describe('commands `ramas` / `verificar-ramas` and optional `rama` in loader files (REPORT_220)', () => {
+  const archivo = (nombre, cuerpo) => escribir(nombre, JSON.stringify(cuerpo))
+  const CUERPO = { cargaId: 'ramas-cli-u10-0001-aaaaaaa', ramas: [{ equipoId: 'PLATINIUM-U10-VIP', rama: 'mixta' }, { equipoId: 'PLATINIUM-U10-DEPORTIVO', rama: 'mixta' }] }
+
+  it('dry-run by default: no requests, no journal; counts by branch; bad bodies (extra keys, capital letters, null, repeated ids, empty) fail; only valid with --ramas', async () => {
+    const f = archivo('ramas-u10.json', CUERPO)
+    const r = await correr(OPERADOR, ['ramas', '--ramas', `PLATINIUM-U10=${f}`])
+    assert.equal(r.codigo, 0, r.salida); assert.match(r.salida, /simulacro/); assert.match(r.salida, /"mixta": 2/)
+    assert.equal((await correr(OPERADOR, ['verificar-ramas', '--ramas', `PLATINIUM-U10=${f}`])).codigo, 0)
+    for (const cuerpo of [{ ...CUERPO, extra: 1 }, { cargaId: 'corto', ramas: CUERPO.ramas }, { cargaId: CUERPO.cargaId, ramas: [{ equipoId: 'A', rama: 'Mixta' }] }, { cargaId: CUERPO.cargaId, ramas: [{ equipoId: 'A', rama: null }] },
+      { cargaId: CUERPO.cargaId, ramas: [{ equipoId: 'A', rama: 'mixta' }, { equipoId: 'A', rama: 'mixta' }] }, { cargaId: CUERPO.cargaId, ramas: [] }, { cargaId: CUERPO.cargaId, ramas: [{ equipoId: 'A', rama: 'mixta', x: 1 }] }, { cargaId: CUERPO.cargaId, ramas: [{ equipoId: 'A' }] }]) {
+      assert.equal((await correr(OPERADOR, ['ramas', '--ramas', `PLATINIUM-U10=${archivo('ramas-malo.json', cuerpo)}`])).codigo, 1, JSON.stringify(cuerpo).slice(0, 60))
+    }
+    assert.match((await correr(OPERADOR, ['ramas', '--ramas', f])).salida, /ramas-requiere-LIGA=archivo/)
+    assert.equal((await correr(OPERADOR, ['ramas', '--partidos', `PLATINIUM-U10=${f}`])).codigo, 1)
+    assert.equal((await correr(OPERADOR, ['renombrar', '--ramas', `PLATINIUM-U10=${f}`])).codigo, 1)
+    assert.equal((await correr(OPERADOR, ['ramas'])).codigo, 1)
+  })
+
+  it('apply sends ONE Bearer POST per league to /equipos/ramas with the NORMALISED body (teams sorted), journals 0600; an uncertain response is recovered by the SAME command; a 409 conflict stops and is journalled as rejected', async () => {
+    const s = await servidor(() => ({ status: 201, json: { ok: true, reproducido: false } })); cerrar.push(s.s)
+    const f = archivo('ramas-aplicar.json', CUERPO)
+    const diario = join(dir, 'dr-ramas.json')
+    const r = await correr(OPERADOR, ['ramas', '--ramas', `PLATINIUM-U10=${f}`, '--aplicar', '--origen', s.origen, '--diario', diario], { SEBEL_OPERADOR_TOKEN: TOKEN })
+    assert.equal(r.codigo, 0, r.salida)
+    assert.equal(s.peticiones.length, 1); assert.equal(s.peticiones[0].url, '/v1/admin/ligas/PLATINIUM-U10/equipos/ramas')
+    assert.equal(s.peticiones[0].cabeceras.authorization, `Bearer ${TOKEN}`)
+    assert.deepEqual(JSON.parse(s.peticiones[0].cuerpo), { cargaId: CUERPO.cargaId, ramas: [{ equipoId: 'PLATINIUM-U10-DEPORTIVO', rama: 'mixta' }, { equipoId: 'PLATINIUM-U10-VIP', rama: 'mixta' }] })
+    assert.equal(statSync(diario).mode & 0o777, 0o600); assert.ok(!readFileSync(diario, 'utf8').includes(TOKEN))
+    let n = 0
+    const u = await servidor(() => { n += 1; return n === 1 ? { status: 503, json: { error: 'resultado-desconocido' } } : { status: 200, json: { ok: true, reproducido: true } } }); cerrar.push(u.s)
+    const a2 = ['ramas', '--ramas', `PLATINIUM-U10=${f}`, '--aplicar', '--origen', u.origen, '--diario', join(dir, 'dr-ramas2.json')]
+    assert.match((await correr(OPERADOR, a2, { SEBEL_OPERADOR_TOKEN: TOKEN })).salida, /detenido-sin-resolver/)
+    assert.equal((await correr(OPERADOR, a2, { SEBEL_OPERADOR_TOKEN: TOKEN })).codigo, 0)
+    assert.equal(u.peticiones.length, 2); assert.equal(u.peticiones[0].cuerpo, u.peticiones[1].cuerpo)
+    const rech = await servidor(() => ({ status: 409, json: { error: 'rama-en-conflicto', equipos: [{ equipoId: 'X', actual: 'mixta' }] } })); cerrar.push(rech.s)
+    const rr = await correr(OPERADOR, ['ramas', '--ramas', `PLATINIUM-U10=${f}`, '--aplicar', '--origen', rech.origen, '--diario', join(dir, 'dr-ramas3.json')], { SEBEL_OPERADOR_TOKEN: TOKEN })
+    assert.equal(rr.codigo, 1); assert.match(rr.salida, /detenido-por-rechazo/); assert.match(rr.salida, /rama-en-conflicto/)
+  })
+
+  it('verificar-ramas uses only public GETs: every listed team publishes exactly the branch; a missing or different branch fails; an unlisted team is not asserted', async () => {
+    const f = archivo('ramas-verificar.json', CUERPO)
+    const ok = await servidor(() => ({ status: 200, json: { equipos: [{ id: 'PLATINIUM-U10-VIP', nombre: 'VIP', rama: 'mixta' }, { id: 'PLATINIUM-U10-DEPORTIVO', nombre: 'D', rama: 'mixta' }, { id: 'OTRO', nombre: 'Otro', rama: null }] } })); cerrar.push(ok.s)
+    const v = await correr(OPERADOR, ['verificar-ramas', '--ramas', `PLATINIUM-U10=${f}`, '--leer', '--origen', ok.origen])
+    assert.equal(v.codigo, 0, v.salida); assert.ok(ok.peticiones.every((p) => p.metodo === 'GET' && !p.cabeceras.authorization))
+    const mal = await servidor(() => ({ status: 200, json: { equipos: [{ id: 'PLATINIUM-U10-VIP', nombre: 'VIP', rama: null }, { id: 'PLATINIUM-U10-DEPORTIVO', nombre: 'D', rama: 'masculino' }] } })); cerrar.push(mal.s)
+    const m = await correr(OPERADOR, ['verificar-ramas', '--ramas', `PLATINIUM-U10=${f}`, '--leer', '--origen', mal.origen])
+    assert.equal(m.codigo, 1); assert.match(m.salida, /PLATINIUM-U10-VIP:null≠mixta/)
+    assert.equal((await correr(OPERADOR, ['ramas', '--ramas', `PLATINIUM-U10=${f}`, '--leer', '--origen', ok.origen])).codigo, 1)
+  })
+
+  it('structure and team-append files may carry an optional per-team rama in the offline plan; a bad value fails the dry-run', async () => {
+    const est = (rama) => escribir('estructura-rama.json', JSON.stringify({ cargaId: 'estructura-cli-rama-0001', liga: { id: 'LIGA-CLI', nombre: 'Liga CLI', deporte: 'baloncesto' }, equipos: [{ id: 'LIGA-CLI-A', nombre: 'Uno', ...(rama === undefined ? {} : { rama }) }, { id: 'LIGA-CLI-B', nombre: 'Dos' }] }))
+    assert.equal((await correr(OPERADOR, ['estructura', '--estructura', est('mixta')])).codigo, 0)
+    assert.equal((await correr(OPERADOR, ['estructura', '--estructura', est(undefined)])).codigo, 0) // sin rama: como siempre
+    assert.equal((await correr(OPERADOR, ['estructura', '--estructura', est('Mixta')])).codigo, 1)
+    assert.equal((await correr(OPERADOR, ['estructura', '--estructura', est(null)])).codigo, 1)
+    const an = (rama) => escribir('anexo-rama.json', JSON.stringify({ cargaId: 'anexo-cli-rama-00000001', equipos: [{ id: 'LIGA-CLI-C', nombre: 'Tres', rama }] }))
+    assert.equal((await correr(OPERADOR, ['equipos', '--equipos', `LIGA-CLI=${an('femenino')}`])).codigo, 0)
+    assert.equal((await correr(OPERADOR, ['equipos', '--equipos', `LIGA-CLI=${an('otra')}`])).codigo, 1)
+  })
+})
