@@ -417,6 +417,7 @@ function VistaEntrePartidosInterna({ cab, d, ctx, categoria, proximo, sinProximo
                 <div className="sb-next__when">
                   {proximo.fecha && <p className="sb-next__date">{proximo.fecha}</p>}
                   <p className="sb-next__time">{proximo.hora}</p>
+                  {proximo.aprox && <p className="sb-next__aprox">aprox.</p>}
                 </div>
               </div>
               {proximo.categoria && <p className="sb-card__meta">{proximo.categoria}</p>}

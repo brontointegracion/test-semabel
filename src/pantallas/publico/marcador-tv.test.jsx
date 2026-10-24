@@ -334,6 +334,9 @@ describe('VistaEntrePartidos con próximo partido determinado', () => {
     const { rerender } = render(<VistaEntrePartidos cab={cab} d={d} ctx={ctx} categoria="Categoría Adulto" proximo={{ local: 'Gama', visita: 'Delta', hora: '7:30 p. m.', categoria: 'Categoría Adulto' }} />)
     expect(screen.getByText('Próximo partido')).toBeTruthy()
     expect(screen.getByText('7:30 p. m.')).toBeTruthy()
+    expect(document.querySelector('.sb-next__aprox')).toBeNull() // sin la marca del que lo resuelve, nada se añade
+    rerender(<VistaEntrePartidos cab={cab} d={d} ctx={ctx} categoria="Categoría Adulto" proximo={{ local: 'Gama', visita: 'Delta', hora: '7:30 p. m.', aprox: true, categoria: 'Categoría Adulto' }} />)
+    expect(document.querySelector('.sb-next__time + .sb-next__aprox').textContent).toBe('aprox.') // REPORT_228: también en la página pública del partido
     rerender(<VistaEntrePartidos cab={cab} d={d} ctx={ctx} categoria="Categoría Adulto" proximo={null} />)
     expect(screen.queryByText('Próximo partido')).toBeNull()
     expect(document.querySelector('[data-sin-proximo="true"]')).not.toBeNull()
