@@ -38,10 +38,11 @@ describe('provisión del operador: cerrada por defecto', () => {
     expect((await admin('/v1/admin/organizador', { nombre: 'x', ligas: ligas() })).status).toBe(201)
     expect((await admin('/v1/admin/organizador', { nombre: 'y', ligas: ligas() })).status).toBe(409)
   })
-  it('devuelve el código una sola vez, con su caducidad de 7 días, y guarda solo hashes', async () => {
+  it('devuelve el código una sola vez, con su caducidad de 15 días, y guarda solo hashes', async () => {
     const r = await admin('/v1/admin/organizador', { nombre: 'Org', ligas: ligas() })
     expect(r.cuerpo.codigo).toMatch(/^[0-9A-HJKMNP-TV-Z]{5}(-[0-9A-HJKMNP-TV-Z]{5}){3}$/)
     expect(r.cuerpo.expiraEn - T0).toBe(DURACIONES.codigoOrganizador)
+    expect(r.cuerpo.expiraEn - T0).toBe(15 * 24 * H)
     expect(r.respuesta.headers.get('cache-control')).toBe('no-store')
     const plano = r.cuerpo.codigo.replaceAll('-', '')
     const volcado = await volcarObjeto(accesoStub())
@@ -193,14 +194,39 @@ describe('sesión: caducidad, cierre, máximo de dos y rotación', () => {
     expect(vivas).toBe(2)
   })
 
-  it('el código caduca a los 7 días desde su emisión (no antes) y es reutilizable mientras tanto', async () => {
+  it('el código caduca a los 15 días desde su emisión (no antes) y es reutilizable mientras tanto', async () => {
     const { codigo } = await provisionar(ligasPropias())
     expect((await iniciarSesion(codigo)).status).toBe(200)
     expect((await iniciarSesion(codigo)).status).toBe(200)
+    control.ahoraMs = T0 + 7 * 24 * H // el plazo anterior de 7 días ya no caduca el código
+    expect((await iniciarSesion(codigo)).status).toBe(200)
+    control.ahoraMs = T0 + 15 * 24 * H - 1
+    expect((await iniciarSesion(codigo)).status).toBe(200)
+    control.ahoraMs = T0 + 15 * 24 * H
+    expect((await iniciarSesion(codigo)).status).toBe(401)
+  })
+
+  it('un código de reemplazo (rotación) caduca exactamente 15 días después de su emisión', async () => {
+    await provisionar(ligasPropias())
+    control.ahoraMs = T0 + 3 * 24 * H
+    const r = await admin('/v1/admin/organizador/codigo/rotar', {})
+    expect(r.status).toBe(200)
+    expect(r.cuerpo.expiraEn - (T0 + 3 * 24 * H)).toBe(15 * 24 * H)
+    control.ahoraMs = T0 + 3 * 24 * H + 15 * 24 * H - 1
+    expect((await iniciarSesion(r.cuerpo.codigo)).status).toBe(200)
+    control.ahoraMs = T0 + 3 * 24 * H + 15 * 24 * H
+    expect((await iniciarSesion(r.cuerpo.codigo)).status).toBe(401)
+  })
+
+  it('un código ya guardado con una caducidad anterior (7 días) NO se alarga por cambiar la constante', async () => {
+    const { codigo } = await provisionar(ligasPropias())
+    await enAcceso((inst) => inst.almacen.sql.exec('UPDATE codigos_organizador SET expira_en = ?', T0 + 7 * 24 * H))
     control.ahoraMs = T0 + 7 * 24 * H - 1
     expect((await iniciarSesion(codigo)).status).toBe(200)
     control.ahoraMs = T0 + 7 * 24 * H
     expect((await iniciarSesion(codigo)).status).toBe(401)
+    const fila = await enAcceso((inst) => inst.almacen.sql.exec('SELECT MIN(expira_en) AS a, MAX(expira_en) AS b FROM codigos_organizador').one())
+    expect([fila.a, fila.b]).toEqual([T0 + 7 * 24 * H, T0 + 7 * 24 * H]) // ninguna caducidad guardada cambió
   })
 
   it('rotar el código: el viejo deja de servir, el nuevo sirve, y por defecto se cierran las sesiones (opcionalmente no)', async () => {

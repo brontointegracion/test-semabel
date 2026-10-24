@@ -57,7 +57,7 @@ Las direcciones (`/organizador`, `/control/…`) son solo navegación: ninguna l
 | Qué | Cómo |
 |---|---|
 | Código | 20 caracteres de un alfabeto de 32 sin letras ambiguas, en 4 grupos de 5 (100 bits; 5 de id público + 75 de secreto). Aleatoriedad criptográfica; se guarda solo el hash SHA-256 (por tipo de uso); comparación en tiempo constante. Se muestra una vez. |
-| Código del organizador | Válido **7 días** desde su emisión, reutilizable, rotable y revocable por el operador. |
+| Código del organizador | Válido **15 días** desde su emisión, reutilizable, rotable y revocable por el operador. El plazo rige para códigos NUEVOS y de reemplazo (provisión, rotación); las caducidades ya guardadas no se modifican (un código emitido con 7 días sigue caducando a los 7). |
 | Sesión del organizador | Cookie `__Host-sesion` (`Secure; HttpOnly; SameSite=Strict`). **12 h** sin uso y **24 h** absolutas. Máximo **2** a la vez (una tercera cierra la menos reciente). |
 | Código de partido | Se emite desde la sesión del organizador; **48 h** desde su emisión si no se usa. Uno nuevo revoca el que seguía sin usar. |
 | Activación | El teléfono genera su token, lo guarda y manda **solo su hash**. Sirve **solo con el partido `programado`** y sin otro controlador activo. |

@@ -8,7 +8,7 @@ const HORA = 60 * 60 * 1000
 const DIA = 24 * HORA
 
 export const DURACIONES = Object.freeze({
-  codigoOrganizador: 7 * DIA, // código del organizador: 7 días desde su emisión
+  codigoOrganizador: 15 * DIA, // código del organizador: 15 días desde su emisión (solo códigos nuevos o de reemplazo; las caducidades ya guardadas no cambian)
   sesionIdle: 12 * HORA, // sesión: 12 h sin uso
   sesionAbsoluta: 24 * HORA, // sesión: 24 h desde el inicio
   codigoPartidoSinUsar: 48 * HORA, // código de partido que no se ha usado: 48 h desde su emisión
