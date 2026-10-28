@@ -5,6 +5,7 @@ import { AccesoDO } from './acceso/acceso-do.js'
 import { esRutaDeAcceso, manejarAcceso } from './acceso/rutas.js'
 import { LigaDO } from './liga-do.js'
 import { esRutaDeCarga, manejarCarga } from './rutas-carga.js'
+import { esRutaDeRespaldo, manejarRespaldo } from './respaldo-rutas.js'
 
 export { AccesoDO, LigaDO }
 
@@ -171,6 +172,7 @@ export default {
     // admisión de liga y sus propias puertas antes de tocar ningún objeto; ver acceso/rutas.js.
     // Carga del operador: aplica su propia puerta, la admisión de la liga y su Bearer antes de tocar ningún objeto.
     if (esRutaDeCarga(pathname)) return manejarCarga(request, env, pathname)
+    if (esRutaDeRespaldo(pathname)) return manejarRespaldo(request, env, pathname) // respaldo SOLO LECTURA del operador (REPORT_246)
     if (esRutaDeAcceso(pathname)) return manejarAcceso(request, env, pathname)
     // ADMISIÓN: antes de cualquier handler, de cualquier otra comprobación y de cualquier acceso al binding de
     // Durable Objects. Una liga no admitida recibe el mismo 404 que cualquier ruta desconocida, sea cual sea el método,

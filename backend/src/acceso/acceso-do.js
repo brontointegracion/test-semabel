@@ -6,6 +6,7 @@ import { canonico } from '../../../src/lib/motor/sobre.js'
 import { sha256Hex } from '../credenciales.js'
 import { aleatorioHex, generarCodigo, hashSecreto, hashesIguales, partirCodigo } from './codigos.js'
 import { crearEsquemaAcceso } from './esquema-acceso.js'
+import { RespaldoNoSoportado, exportarObjeto, marcadorDeRecuperacion } from '../respaldo.js'
 import { despuesDeFalloDeCodigo, fuenteBloqueada, registrarFalloFuente } from './limites.js'
 
 // ---------------------------------------------------------------------------
@@ -32,6 +33,23 @@ export class AccesoDO extends DurableObject {
 
   /** Hora del servidor. Las pruebas la sustituyen; en producción es el reloj real. */
   ahora() { return Date.now() }
+
+  /** Respaldo SOLO LECTURA del objeto de acceso (operador; ver ../respaldo.js). Contiene hashes de secretos: es material privado. */
+  async exportarRespaldoOperador() {
+    try {
+      const r = await exportarObjeto(this.almacen, { clase: 'AccesoDO', objeto: 'acceso', ahora: this.ahora(), ...this.opcionesRespaldo() })
+      return { estado: 'ok', texto: JSON.stringify(r) }
+    } catch (e) {
+      if (e instanceof RespaldoNoSoportado) return { estado: 'no-soportado', motivo: e.codigo }
+      throw e
+    }
+  }
+
+  /** Marcador de recuperación (PITR) si la plataforma lo ofrece; evidencia APARTE de la exportación. */
+  async marcadorRecuperacionOperador() { return marcadorDeRecuperacion(this.almacen, { ahora: this.ahora() }) }
+
+  /** Topes del respaldo. Las pruebas los sustituyen. */
+  opcionesRespaldo() { return {} }
 
   #auditar(tipo, { organizadorId = null, sesionId = null, detalle = null } = {}, ahora = this.ahora()) {
     this.almacen.sql.exec(

@@ -21,6 +21,7 @@ import { fijarRamas, huellaDeRamas } from './ramas-equipos.js'
 import { huellaDeRenombre, renombrarLiga } from './renombre-liga.js'
 import { huellaDeRetiro, restaurarPartidos, retirarPartidos } from './retiro-partidos.js'
 import { sembrarLiga } from './semilla.js'
+import { RespaldoNoSoportado, exportarObjeto, marcadorDeRecuperacion } from './respaldo.js'
 
 // ---------------------------------------------------------------------------
 // Un Durable Object por liga: la frontera de consistencia. Aquí viven la plantilla,
@@ -241,6 +242,23 @@ export class LigaDO extends DurableObject {
     const huella = await huellaDeRenombre(ligaId, normalizado)
     return renombrarLiga(this.almacen, { ligaId, normalizado, huella, ahora: this.ahora() })
   }
+
+  /** Respaldo SOLO LECTURA del objeto (operador; ver respaldo.js): una pasada sincrónica; un estado no soportado se informa, nunca se omite. → { estado: 'ok', texto } | { estado: 'no-soportado', motivo } */
+  async exportarRespaldoOperador({ ligaId }) {
+    try {
+      const r = await exportarObjeto(this.almacen, { clase: 'LigaDO', objeto: ligaId, ahora: this.ahora(), ...this.opcionesRespaldo() })
+      return { estado: 'ok', texto: JSON.stringify(r) }
+    } catch (e) {
+      if (e instanceof RespaldoNoSoportado) return { estado: 'no-soportado', motivo: e.codigo }
+      throw e
+    }
+  }
+
+  /** Marcador de recuperación (PITR) si la plataforma lo ofrece; evidencia APARTE de la exportación. */
+  async marcadorRecuperacionOperador() { return marcadorDeRecuperacion(this.almacen, { ahora: this.ahora() }) }
+
+  /** Topes del respaldo. Las pruebas los sustituyen; en producción son los de respaldo.js. */
+  opcionesRespaldo() { return {} }
 
   // --- Acceso por códigos -------------------------------------------------------------------------------------------
   // Las operaciones del organizador reciben la AFIRMACIÓN que el Worker obtuvo del objeto de acceso. Cada una

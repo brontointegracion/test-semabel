@@ -18,6 +18,7 @@ export class LigaDO extends LigaDOReal {
   limitesJugadoresPublico() { return control.limitesJugadores ?? super.limitesJugadoresPublico() }
   limitesLecturaPublica() { return control.limitesPublicos ?? super.limitesLecturaPublica() }
   async pausaTrasResumirEstado() { if (control.pausaEstado) await control.pausaEstado() }
+  opcionesRespaldo() { return control.opcionesRespaldo ?? {} } // REPORT_246: topes del respaldo sustituibles en pruebas
 }
 
 // El objeto de acceso comparte el reloj de prueba con el de liga, para ordenar sus eventos de forma determinista.
@@ -25,6 +26,7 @@ export class LigaDO extends LigaDOReal {
 // para simular el desfase entre los relojes de dos objetos.
 export class AccesoDO extends AccesoDOReal {
   // `fallaAsignacion`: lanza dentro de la transacción de asignarLigas, tras escribir la propiedad y antes del recibo (prueba de reversión).
+  opcionesRespaldo() { return control.opcionesRespaldo ?? {} }
   puntoDeFallaAsignacion() { if (control.fallaAsignacion) throw new Error('falla inyectada (prueba)') }
   ahora() {
     const desfase = control.desfasesAcceso?.length ? control.desfasesAcceso.shift() : 0

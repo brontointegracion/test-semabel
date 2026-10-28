@@ -1,0 +1,14 @@
+{
+  // ENSAYO LOCAL de respaldo y restauración (REPORT_246). Nombre propio, SIN rutas, SIN dominios, SIN account_id, SIN enlaces remotos: solo sirve con `wrangler dev --local`.
+  // Secretos sintéticos. La importación solo existe en este punto de entrada.
+  "name": "sebel-respaldo-ensayo",
+  "main": "ensayo/worker-ensayo.js",
+  "compatibility_date": "2026-10-01",
+  "vars": {
+    "ENTORNO": "ensayo-respaldo", "PERMITIR_SEMILLA": "1", "SEMILLA_TOKEN": "semilla-sintetica-ensayo-respaldo-0001",
+    "LIGAS_ADMITIDAS": "LIGA-ENSAYO,LIGA-OTRA", "ACCESO_ORIGEN": "https://localhost:8812",
+    "ACCESO_ADMIN_HABILITADO": "1", "ACCESO_ADMIN_TOKEN": "operador-sintetico-ensayo-respaldo-00000001"
+  },
+  "durable_objects": { "bindings": [{ "name": "LIGA", "class_name": "LigaDO" }, { "name": "ACCESO", "class_name": "AccesoDO" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["LigaDO"] }, { "tag": "v2", "new_sqlite_classes": ["AccesoDO"] }]
+}
