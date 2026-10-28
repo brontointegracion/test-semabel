@@ -635,6 +635,30 @@ feeds no scoring, eligibility, statistics, filter or league-wide label.
 * **CLI** (dry-run by default; journals/recovery as the loaders'): `node scripts/operador-carga.mjs ramas --ramas LIGA=file.json [--aplicar --remoto --origen … --token-archivo … --diario …]` and `verificar-ramas --ramas LIGA=file.json --leer --origen …` (public GETs only).
 * Compatibility: an older backend ignores the column; an older front end ignores the extra field. Tests: `test/ramas-equipos.check.js`, `node --test test/cli-carga.node-test.mjs`.
 
+### Venue spelling correction (implemented and tested ONLY with synthetic data, NOT deployed)
+
+A spelling-only correction of the venue text (`partidos.sede`) of scheduled AND finished games, e.g. `Centro Educativo Bilingue Ricardo Miro` → `Centro Educativo Bilingüe Ricardo Miró`. It does not replace words (`Centro Educativo` → `Escuela` is a different venue and is refused). This release has no other venue operation (no `partidos/sede`), no finished-game corrections and no schema change (schema version stays 9).
+
+    POST /v1/admin/ligas/{liga}/partidos/sede-ortografia     { "cargaId": "<16–64 chars>", "sedeAnterior": "<text>", "sede": "<text>", "partidos": ["<id>", …] }     exact body, 1–50 unique ids, 8 KiB
+
+1. Same gate as every operator load: operator gate (`ACCESO_ADMIN_HABILITADO=1` + `ACCESO_ADMIN_TOKEN`), admitted league (before any object is touched), method, Bearer, bounded body, full validation.
+2. Both texts are NFC and pass the normal venue validation (1–80 chars, no leading/trailing space, no control characters); they must differ and may differ ONLY in diacritics, letter case and whitespace. A genuinely different venue → 422 `payload-invalido` with `sede-no-es-ortografia`.
+3. Guards for the WHOLE league batch, including games that already show the new text: unknown id → 422 `partidos-desconocidos`; retired, live or any state other than `programado`/`final` → 409 `sede-no-segura`; stored venue that is neither `sedeAnterior` nor `sede` → 409 `sede-en-conflicto`. A game that already has `sede` is reported in `yaCorregidos` (no write, no audit row).
+4. One transaction per league (no atomicity across leagues): conditional `UPDATE partidos SET sede` → one audit row per changed game (`partido-sede-ortografia-corregida`, detail `carga:<id>`) → one receipt (`cargas`, type `sede-ortografia`). A rejection stores no receipt. Exact repeat → 200 with the original result (`reproducido: true`); same `cargaId` with other content or type → 409 `carga-conflicto`. A lost response (503 `resultado-desconocido`) is retried with the SAME operation. Reverting = a NEW operation (new `cargaId`) with the texts swapped.
+
+CLI (dry-run by default; private 0600 journals, immutable retry payloads, bounded requests, destination protections as the other operations):
+
+    node scripts/operador-carga.mjs corregir-ortografia-sede --ortografias LIGA_ID=ortografia.json                       # dry run: shows the exact characters that change
+    node scripts/operador-carga.mjs capturar-base-ortografia --ortografias LIGA_ID=ortografia.json --base-salida LIGA_ID=NEW-base.json --leer --origen ORIGEN [--remoto]    # GET only, BEFORE applying
+    node scripts/operador-carga.mjs corregir-ortografia-sede --ortografias LIGA_ID=ortografia.json --aplicar --remoto --origen https://semabel.com --token-archivo T --diario D/NEW.json
+    node scripts/operador-carga.mjs verificar-ortografia-sede --ortografias LIGA_ID=ortografia.json --base LIGA_ID=base.json --leer --origen ORIGEN [--remoto]             # GET only
+
+The baseline (written to a NEW 0600 file, never overwritten) holds the whole public league read plus the direct read of every named game. Capture accepts old OR already-corrected text and refuses live/unknown games and any other venue text. The verification compares ALL public data against it (state, rev, scores, fouls, annotations, times, clock, teams, the venue of every game that is not named); the only field ignored is `servidorAhoraMs`. LIMITATION: if any game of the league changes between the capture and the verification (for example, it is played), the comparison fails.
+
+If verification against the ORIGINAL pre-operation baseline fails: keep that baseline, the sent payload and the journal; investigate and explain every difference (the report names the fields and games); do NOT recapture a baseline and present a later pass as proof that the original operation changed only the venue. A new baseline may support a separately documented later check, but it cannot replace the original evidence.
+
+Tests: `test/sede-ortografia.check.js` (workerd, including the real CLI library against the real Worker) and `node --test test/cli-ortografia.node-test.mjs`.
+
 ## Pruebas locales (runtime de Workers, datos sintéticos)
 
 Desde `backend/`: `node_modules/.bin/vitest run --config vitest.config.mjs`

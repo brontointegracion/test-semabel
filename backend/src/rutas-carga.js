@@ -3,6 +3,7 @@ import { textosIguales, tokenDeEncabezado } from './credenciales.js'
 import { LIMITES_CARGA, validarEquiposAnexos, validarEstructura, validarPartidos } from './carga.js'
 import { LIMITE_BYTES_RAMAS, validarRamas } from './ramas-equipos.js'
 import { LIMITE_BYTES_RENOMBRE, validarRenombre } from './renombre-liga.js'
+import { LIMITE_BYTES_ORTOGRAFIA, validarOrtografia } from './sede-ortografia.js'
 import { LIMITE_BYTES_RETIRO, validarRetiro } from './retiro-partidos.js'
 import { administracionHabilitada } from './acceso/config.js'
 import { leerJsonAcotado, metodoNoPermitido, noAutorizado, noEncontrado, responder } from './acceso/http.js'
@@ -18,6 +19,7 @@ import { leerJsonAcotado, metodoNoPermitido, noAutorizado, noEncontrado, respond
 //   POST /v1/admin/ligas/{liga}/partidos/retirar     RETIRA partidos programados sin actividad (reversible; ver retiro-partidos.js)
 //   POST /v1/admin/ligas/{liga}/equipos/ramas        FIJA la rama de equipos existentes (solo NULL → valor; ver ramas-equipos.js)
 //   POST /v1/admin/ligas/{liga}/nombre               RENOMBRA la liga (SOLO el nombre que se muestra; ver renombre-liga.js)
+//   POST /v1/admin/ligas/{liga}/partidos/sede-ortografia  CORRIGE la ORTOGRAFÍA de la sede de partidos programados o finales (solo `partidos.sede`; ver sede-ortografia.js)
 //   POST /v1/admin/ligas/{liga}/partidos/restaurar   RESTAURA partidos retirados (operación aparte, nunca un interruptor)
 //
 // Orden: puerta del operador → liga ADMITIDA (antes de cualquier objeto) → método → Bearer → cuerpo acotado → validación
@@ -25,7 +27,7 @@ import { leerJsonAcotado, metodoNoPermitido, noAutorizado, noEncontrado, respond
 // ---------------------------------------------------------------------------
 
 const ID = '[A-Za-z0-9_-]{1,64}'
-const RE_CARGA = new RegExp(`^/v1/admin/ligas/(${ID})/(estructura|partidos|equipos|partidos/retirar|partidos/restaurar|nombre|equipos/ramas)$`)
+const RE_CARGA = new RegExp(`^/v1/admin/ligas/(${ID})/(estructura|partidos|equipos|partidos/retirar|partidos/restaurar|partidos/sede-ortografia|nombre|equipos/ramas)$`)
 
 export const esRutaDeCarga = (pathname) => RE_CARGA.test(pathname)
 
@@ -40,7 +42,8 @@ export async function manejarCarga(request, env, pathname) {
   const esRetiro = tipo === 'partidos/retirar' || tipo === 'partidos/restaurar'
   const esNombre = tipo === 'nombre'
   const esRamas = tipo === 'equipos/ramas'
-  const { valor, error } = await leerJsonAcotado(request, esRamas ? LIMITE_BYTES_RAMAS : esNombre ? LIMITE_BYTES_RENOMBRE : esRetiro ? LIMITE_BYTES_RETIRO : tipo === 'partidos' ? LIMITES_CARGA.bytesPartidos : LIMITES_CARGA.bytesEstructura)
+  const esOrtografia = tipo === 'partidos/sede-ortografia'
+  const { valor, error } = await leerJsonAcotado(request, esRamas ? LIMITE_BYTES_RAMAS : esOrtografia ? LIMITE_BYTES_ORTOGRAFIA : esNombre ? LIMITE_BYTES_RENOMBRE : esRetiro ? LIMITE_BYTES_RETIRO : tipo === 'partidos' ? LIMITES_CARGA.bytesPartidos : LIMITES_CARGA.bytesEstructura)
   if (error) return error
   if (esRamas) {
     const r = validarRamas(valor)
@@ -50,6 +53,16 @@ export async function manejarCarga(request, env, pathname) {
       return responder(res.status, res.cuerpo)
     } catch {
       return responder(503, { error: 'resultado-desconocido', reintento: 'misma-carga' })
+    }
+  }
+  if (esOrtografia) {
+    const r = validarOrtografia(valor)
+    if (!r.ok) return responder(422, { error: 'payload-invalido', errores: r.errores })
+    try {
+      const res = await env.LIGA.get(env.LIGA.idFromName(ligaId)).corregirOrtografiaSedeOperador({ ligaId, normalizado: r.normalizado })
+      return responder(res.status, res.cuerpo)
+    } catch {
+      return responder(503, { error: 'resultado-desconocido', reintento: 'misma-carga' }) // repetir la MISMA operación (mismo cargaId y contenido) es seguro
     }
   }
   if (esNombre) {

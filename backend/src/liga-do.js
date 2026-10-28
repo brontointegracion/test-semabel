@@ -19,6 +19,7 @@ import { aRespuesta } from './respuestas.js'
 import { LIMITES_REPARACION, repararResumenes, resumenValido } from './resumen-publico.js'
 import { fijarRamas, huellaDeRamas } from './ramas-equipos.js'
 import { huellaDeRenombre, renombrarLiga } from './renombre-liga.js'
+import { corregirOrtografiaSede, huellaDeOrtografia } from './sede-ortografia.js'
 import { huellaDeRetiro, restaurarPartidos, retirarPartidos } from './retiro-partidos.js'
 import { sembrarLiga } from './semilla.js'
 
@@ -240,6 +241,12 @@ export class LigaDO extends DurableObject {
   async renombrarLigaOperador({ ligaId, normalizado }) {
     const huella = await huellaDeRenombre(ligaId, normalizado)
     return renombrarLiga(this.almacen, { ligaId, normalizado, huella, ahora: this.ahora() })
+  }
+
+  /** Corrige la ORTOGRAFÍA de la sede de partidos programados o finales (operador; ver sede-ortografia.js): SOLO `partidos.sede`, en UNA transacción. La huella se calcula ANTES. */
+  async corregirOrtografiaSedeOperador({ ligaId, normalizado }) {
+    const huella = await huellaDeOrtografia(ligaId, normalizado)
+    return corregirOrtografiaSede(this.almacen, { ligaId, normalizado, huella, ahora: this.ahora() })
   }
 
   // --- Acceso por códigos -------------------------------------------------------------------------------------------

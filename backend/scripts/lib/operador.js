@@ -37,7 +37,7 @@ const ID = /^[A-Za-z0-9_-]{1,64}$/
 const ID_CARGA = /^[A-Za-z0-9_-]{16,64}$/
 const RE_ISO_CON_ZONA = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/
 const RAMAS = ['masculino', 'femenino', 'mixta'] // REPORT_220; las mismas del servidor (ramas-equipos.js)
-const LIMITES = { equipos: 100, partidosPorLote: 100, bytesEstructura: 32 * 1024, bytesPartidos: 48 * 1024, partidosRetiro: 50, bytesRetiro: 8 * 1024, bytesNombre: 2 * 1024, equiposRamas: 100, bytesRamas: 16 * 1024 }
+const LIMITES = { equipos: 100, partidosPorLote: 100, bytesEstructura: 32 * 1024, bytesPartidos: 48 * 1024, partidosRetiro: 50, bytesRetiro: 8 * 1024, bytesNombre: 2 * 1024, equiposRamas: 100, bytesRamas: 16 * 1024, partidosOrtografia: 50, bytesOrtografia: 8 * 1024 }
 
 const esObjeto = (v) => v !== null && typeof v === 'object' && !Array.isArray(v)
 const aHex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')
@@ -248,6 +248,65 @@ export async function construirPlanNombre({ nombres = [] }) {
   return { tipo: 'renombrar', ok: problemas.length === 0, huella, usadas, problemas }
 }
 
+// ---- Corregir la ORTOGRAFÍA de la sede de partidos programados o finales (OFFLINE) -------------------------------------------------
+const SEDE_VALIDA = (v) => typeof v === 'string' && v.trim() === v && v.length >= 1 && v.length <= 80 && !/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u.test(v) && v === v.normalize('NFC')
+
+// Cuerpo { cargaId, sedeAnterior, sede, partidos: [id,…] }. Misma regla que el servidor (sede-ortografia.js): los dos
+// textos solo pueden diferir en tildes/diéresis, mayúsculas y espacios.
+
+/** Forma comparable de una sede: sin diacríticos, sin mayúsculas ni espacios (la misma clave que el servidor). */
+export const claveOrtografica = (s) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/gu, '')
+
+/** Plan de ORTOGRAFÍA: `ortografias` = [{ ligaId, texto }] con el cuerpo EXACTO { cargaId, sedeAnterior, sede, partidos: [id,…] }. El cuerpo enviado es el normalizado (ids ordenados); un reintento reenvía lo IDÉNTICO. */
+export async function construirPlanOrtografia({ ortografias = [] }) {
+  const usadas = []
+  for (const { ligaId, texto } of ortografias) {
+    let p
+    try { p = JSON.parse(texto) } catch { usadas.push({ id: `corregir-ortografia-sede:${ligaId}:ilegible`, tipo: 'corregir-ortografia-sede', ligaId, ok: false, problemas: ['json-ilegible'], resumen: { tipo: 'corregir-ortografia-sede', ligaId } }); continue }
+    const problemas = []
+    if (!ID.test(ligaId ?? '')) problemas.push('liga-invalida')
+    if (!esObjeto(p)) problemas.push('ortografia-no-es-objeto')
+    else {
+      if (Object.keys(p).some((k) => !['cargaId', 'sedeAnterior', 'sede', 'partidos'].includes(k))) problemas.push('campos-no-permitidos')
+      if (!ID_CARGA.test(p.cargaId ?? '')) problemas.push('cargaId')
+      if (!SEDE_VALIDA(p.sedeAnterior)) problemas.push('sedeAnterior')
+      if (!SEDE_VALIDA(p.sede)) problemas.push('sede')
+      if (SEDE_VALIDA(p.sedeAnterior) && SEDE_VALIDA(p.sede)) {
+        if (p.sede === p.sedeAnterior) problemas.push('sede-igual')
+        else if (claveOrtografica(p.sede) !== claveOrtografica(p.sedeAnterior)) problemas.push('sede-no-es-ortografia')
+      }
+      if (!Array.isArray(p.partidos) || p.partidos.length < 1 || p.partidos.length > LIMITES.partidosOrtografia) problemas.push('partidos')
+      else if (!p.partidos.every((id) => typeof id === 'string' && ID.test(id))) problemas.push('partidos.id')
+      else if (new Set(p.partidos).size !== p.partidos.length) problemas.push('partidos.id-repetido')
+    }
+    const normal = problemas.length === 0 ? { cargaId: p.cargaId, sedeAnterior: p.sedeAnterior, sede: p.sede, partidos: [...p.partidos].sort() } : null
+    const cuerpo = normal ? JSON.stringify(normal) : ''
+    if (cuerpo && bytes(cuerpo) > LIMITES.bytesOrtografia) problemas.push('demasiado-grande')
+    const huella = await sha256Hex(`corregir-ortografia-sede:${ligaId}:${cuerpo}`)
+    usadas.push({
+      id: `corregir-ortografia-sede:${ligaId}:${p?.cargaId}`, tipo: 'corregir-ortografia-sede', ligaId, ruta: `/v1/admin/ligas/${ligaId}/partidos/sede-ortografia`, cuerpo, huella, normal,
+      ok: problemas.length === 0, problemas,
+      resumen: { tipo: 'corregir-ortografia-sede', ligaId: ligaId ?? null, cargaId: p?.cargaId ?? null, partidos: normal ? normal.partidos.length : 0, sedeAnterior: normal?.sedeAnterior ?? null, sede: normal?.sede ?? null, cambio: normal ? cambioDeTexto(normal.sedeAnterior, normal.sede) : null, huella: huella.slice(0, 12) },
+    })
+  }
+  const problemas = []
+  if (usadas.length === 0) problemas.push('sin-archivos')
+  const ids = usadas.map((e) => e.id)
+  if (new Set(ids).size !== ids.length) problemas.push('carga-repetida')
+  if (new Set(usadas.map((e) => e.ligaId)).size !== usadas.length) problemas.push('liga-repetida') // una corrección por liga en cada ejecución
+  for (const e of usadas) if (!e.ok) problemas.push(`${e.id}:${e.problemas.join('+')}`)
+  const huella = await sha256Hex(JSON.stringify(['corregir-ortografia-sede', usadas.map((e) => [e.id, e.huella])]))
+  return { tipo: 'corregir-ortografia-sede', ok: problemas.length === 0, huella, usadas, problemas }
+}
+
+/** Qué caracteres cambian entre dos textos (para que quien revisa el simulacro vea que solo cambian los acentos): ['u→ü@17', 'o→ó@38'] */
+function cambioDeTexto(a, b) {
+  const x = [...a]
+  const y = [...b]
+  if (x.length !== y.length) return [`longitud ${x.length}→${y.length}`]
+  return x.flatMap((c, i) => (c === y[i] ? [] : [`${c}→${y[i]}@${i} (U+${c.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}→U+${y[i].codePointAt(0).toString(16).toUpperCase().padStart(4, '0')})`]))
+}
+
 // ---- Ramas de equipos ya existentes (OFFLINE) -------------------------------------------------------------------------------
 
 /** Plan de RAMAS: `ramas` = [{ ligaId, texto }] con el cuerpo EXACTO { cargaId, ramas: [{ equipoId, rama }] }. El cuerpo enviado es el contenido NORMALIZADO (equipos ordenados). */
@@ -423,7 +482,7 @@ export async function aplicarCarga({ plan, almacen, fetch: fCrudo, origen: orige
         // Conflicto de propiedad / de operación / organizador no activo / ligas no admitidas: el servidor NO escribió nada. No se reintenta solo.
         op.estado = 'rechazada'; op.resultado = { status: r.status, error: String(j?.error ?? 'desconocido').slice(0, 40), ...(Array.isArray(j?.ligas) ? { ligas: j.ligas.filter((x) => typeof x === 'string').slice(0, 10) } : {}) }
       } else { op.estado = 'incierta'; op.resultado = { status: r.status } }
-    } else if (op.tipo === 'estructura' || op.tipo === 'partidos' || op.tipo === 'equipos' || op.tipo === 'retirar' || op.tipo === 'restaurar' || op.tipo === 'renombrar' || op.tipo === 'ramas') {
+    } else if (op.tipo === 'estructura' || op.tipo === 'partidos' || op.tipo === 'equipos' || op.tipo === 'retirar' || op.tipo === 'restaurar' || op.tipo === 'renombrar' || op.tipo === 'ramas' || op.tipo === 'corregir-ortografia-sede') {
       if ((r.status === 200 || r.status === 201) && esObjeto(j) && typeof j.reproducido === 'boolean') {
         op.estado = 'aplicada'; op.resultado = { status: r.status, reproducido: j.reproducido }
         if (j.reproducido) cuenta.reproducidas += 1; else cuenta.aplicadas += 1
@@ -629,4 +688,136 @@ export async function verificarRamas({ ramas = [], fetch: fCrudo, origen: origen
     prueba(`ramas:${e.ligaId}`, defectos.length === 0, defectos)
   }
   return { ok: c.every((x) => x.ok), comprobaciones: c }
+}
+
+// ---- Capturar la BASE y verificar la ORTOGRAFÍA de la sede (solo GET públicos) ---------------------------------------------------------------
+// Los partidos corregidos pueden estar terminados: no se presume `programado`, `rev 0` ni 0-0. ANTES de aplicar, `capturarBaseOrtografia` guarda la lectura pública de la liga entera
+// (la lista completa) y la lectura directa de cada partido nombrado; DESPUÉS, `verificarOrtografia` exige que lo ÚNICO que cambió sea `sede` en los partidos nombrados.
+// Se compara TODO el contenido público (estado, rev, marcador, faltas, anotaciones, horarios, periodo, reloj, equipos, liga…); el único campo que se ignora es `servidorAhoraMs`
+// (la hora del servidor que cada respuesta lleva). LÍMITE: si un partido de la liga cambia entre la captura y la verificación (p. ej. se juega), la comparación falla.
+// SI LA VERIFICACIÓN CONTRA LA BASE ORIGINAL (anterior a la operación) FALLA: se CONSERVAN esa base, el cuerpo enviado y el diario; se INVESTIGA y se EXPLICA cada diferencia
+// (el informe nombra los campos y partidos); NO se recaptura una base para presentar un «pasa» posterior como prueba de que la operación original cambió solo la sede. Una base
+// nueva puede respaldar una comprobación POSTERIOR documentada aparte, pero no sustituye la evidencia original.
+export const CAMPOS_VOLATILES_BASE = Object.freeze(['servidorAhoraMs'])
+const MAX_BASE_BYTES = 240 * 1024 // cabe en el tope de lectura de archivos del CLI (256 KiB)
+const sinVolatiles = (v) => (Array.isArray(v) ? v.map(sinVolatiles) : esObjeto(v) ? Object.fromEntries(Object.entries(v).filter(([k]) => !CAMPOS_VOLATILES_BASE.includes(k)).map(([k, x]) => [k, sinVolatiles(x)])) : v)
+// Comparación independiente del orden de las claves.
+const canon = (v) => (Array.isArray(v) ? v.map(canon) : esObjeto(v) ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canon(v[k])])) : v)
+const iguales = (a, b) => JSON.stringify(canon(a)) === JSON.stringify(canon(b))
+// Las claves de nivel superior (o de un partido) que difieren, para que el informe diga QUÉ cambió sin volcar contenido.
+const clavesDistintas = (a, b) => [...new Set([...Object.keys(a ?? {}), ...Object.keys(b ?? {})])].filter((k) => !iguales(a?.[k], b?.[k])).sort()
+const conSede = (partido, sede) => ({ ...partido, sede })
+
+async function leerJsonPublico(f, url) {
+  try { const r = await f(url); return { status: r.status, json: await r.json().catch(() => null) } } catch { return { status: 0, json: null } }
+}
+
+function destinoYTransporte({ fetch: fCrudo, origen, remoto, entorno, tiempoMs }) {
+  const destino = validarDestino(origen, { remoto: remoto === true })
+  if (destino.error) return { error: destino.error }
+  const bloqueo = bloqueoDeEntorno(entorno, destino)
+  if (bloqueo) return { error: bloqueo }
+  const t = tiempoValido(tiempoMs)
+  if (t === null) return { error: 'tiempo-invalido' }
+  return { destino, f: crearTransporte({ fetch: fCrudo, destino, tiempoMs: t }) }
+}
+
+/**
+ * Captura la BASE de cada liga del plan: la lista pública completa y la lectura directa de los partidos nombrados. Solo GET, sin credenciales.
+ * Acepta la sede anterior O la nueva (una corrección ya aplicada a medias o repetida); rechaza un partido en juego o con otra sede.
+ * → { ok, comprobaciones, bases: { [ligaId]: { version: 1, ligaId, lista, directos: { [id]: {...} } } } }. Solo contenido que ya es público.
+ */
+export async function capturarBaseOrtografia({ ortografias = [], fetch: fCrudo, origen, remoto = false, entorno = {}, tiempoMs }) {
+  const t = destinoYTransporte({ fetch: fCrudo, origen, remoto, entorno, tiempoMs })
+  if (t.error) return { ok: false, comprobaciones: [{ codigo: t.error, ok: false }], bases: {} }
+  const plan = await construirPlanOrtografia({ ortografias })
+  if (!plan.ok) return { ok: false, comprobaciones: [{ codigo: 'archivos-invalidos', ok: false, detalle: plan.problemas }], bases: {} }
+  const c = []
+  const bases = {}
+  for (const e of plan.usadas) {
+    const r = await leerJsonPublico(t.f, `${t.destino.origen}/v1/ligas/${e.ligaId}/publico`)
+    const partidos = Array.isArray(r.json?.partidos) ? r.json.partidos : null
+    c.push({ codigo: `lectura-publica:${e.ligaId}`, ok: r.status === 200 && partidos !== null, detalle: r.status })
+    if (r.status !== 200 || partidos === null) continue
+    const porId = new Map(partidos.map((p) => [p.gameId, p]))
+    const directos = {}
+    const defectos = []
+    for (const id of e.normal.partidos) {
+      if (!porId.has(id)) { defectos.push(`${id}:ausente-de-la-lista`); continue }
+      const d = await leerJsonPublico(t.f, `${t.destino.origen}/v1/ligas/${e.ligaId}/partidos/${id}`)
+      if (d.status !== 200 || !esObjeto(d.json)) { defectos.push(`${id}:lectura-directa`); continue }
+      directos[id] = sinVolatiles(d.json)
+      const estado = porId.get(id).estado
+      if (estado !== 'programado' && estado !== 'final') defectos.push(`${id}:estado-${estado}`) // un partido en juego (u otro) no se corrige
+      if (![e.normal.sedeAnterior, e.normal.sede].includes(porId.get(id).sede)) defectos.push(`${id}:sede-no-es-la-anterior-ni-la-nueva`)
+      if (![e.normal.sedeAnterior, e.normal.sede].includes(d.json.sede)) defectos.push(`${id}:lectura-directa-con-otra-sede`)
+    }
+    c.push({ codigo: `partidos-corregibles:${e.ligaId}`, ok: defectos.length === 0, detalle: defectos })
+    c.push({ codigo: `sin-campos-privados:${e.ligaId}`, ok: hallar(r.json).length === 0 && Object.values(directos).every((d) => hallar(d).length === 0) })
+    const base = { version: 1, ligaId: e.ligaId, lista: sinVolatiles(r.json), directos }
+    const cabe = bytes(JSON.stringify(base, null, 2)) <= MAX_BASE_BYTES
+    c.push({ codigo: `base-cabe-en-un-archivo:${e.ligaId}`, ok: cabe })
+    if (cabe) bases[e.ligaId] = base
+  }
+  const ok = c.length > 0 && c.every((x) => x.ok)
+  return { ok, comprobaciones: c, bases: ok ? bases : {} }
+}
+
+/**
+ * Verifica la ORTOGRAFÍA aplicada contra la BASE capturada antes: los partidos nombrados muestran exactamente la sede nueva en la lista Y en su lectura directa; todo lo demás
+ * (cada otro dato público de la liga y de esos partidos, incluida la sede de los NO nombrados) es idéntico a la base. `servidorAhoraMs` es lo único que no se compara.
+ * `bases`: [{ ligaId, texto }] (el archivo de la base de cada liga). → { ok, comprobaciones }
+ */
+export async function verificarOrtografia({ ortografias = [], bases = [], fetch: fCrudo, origen, remoto = false, entorno = {}, tiempoMs }) {
+  const t = destinoYTransporte({ fetch: fCrudo, origen, remoto, entorno, tiempoMs })
+  if (t.error) return { ok: false, comprobaciones: [{ codigo: t.error, ok: false }] }
+  const plan = await construirPlanOrtografia({ ortografias })
+  if (!plan.ok) return { ok: false, comprobaciones: [{ codigo: 'archivos-invalidos', ok: false, detalle: plan.problemas }] }
+  const c = []
+  const prueba = (codigo, ok, detalle) => c.push(detalle === undefined ? { codigo, ok } : { codigo, ok, detalle })
+  for (const e of plan.usadas) {
+    const archivo = bases.find((b) => b.ligaId === e.ligaId)
+    let base = null
+    try { base = archivo ? JSON.parse(archivo.texto) : null } catch { base = null }
+    const baseValida = esObjeto(base) && base.version === 1 && base.ligaId === e.ligaId && esObjeto(base.lista) && Array.isArray(base.lista.partidos) && esObjeto(base.directos)
+    prueba(`base-valida:${e.ligaId}`, baseValida)
+    if (!baseValida) continue
+    const r = await leerJsonPublico(t.f, `${t.destino.origen}/v1/ligas/${e.ligaId}/publico`)
+    prueba(`lectura-publica:${e.ligaId}`, r.status === 200 && Array.isArray(r.json?.partidos), r.status)
+    if (r.status !== 200 || !Array.isArray(r.json?.partidos)) continue
+    const nombrados = new Set(e.normal.partidos)
+    const ahora = sinVolatiles(r.json)
+    const defectos = []
+    const idsBase = new Set(base.lista.partidos.map((p) => p.gameId))
+    for (const id of nombrados) if (!idsBase.has(id)) defectos.push(`${id}:no-estaba-en-la-base`)
+    for (const p of base.lista.partidos) if (nombrados.has(p.gameId) && ![e.normal.sedeAnterior, e.normal.sede].includes(p.sede)) defectos.push(`${p.gameId}:base-con-otra-sede`)
+    const esperada = { ...base.lista, partidos: base.lista.partidos.map((p) => (nombrados.has(p.gameId) ? conSede(p, e.normal.sede) : p)) }
+    if (!iguales(ahora, esperada)) {
+      defectos.push(`liga:${clavesDistintas(ahora, esperada).join('+') || 'distinta'}`)
+      if (Array.isArray(ahora.partidos)) {
+        const antes = new Map(esperada.partidos.map((p) => [p.gameId, p]))
+        if (ahora.partidos.length !== esperada.partidos.length) defectos.push(`cantidad:${esperada.partidos.length}→${ahora.partidos.length}`)
+        for (const p of ahora.partidos) {
+          const q = antes.get(p.gameId)
+          if (!q) defectos.push(`${p.gameId}:no-estaba-en-la-base`)
+          else if (!iguales(p, q)) defectos.push(`${p.gameId}:${clavesDistintas(p, q).join('+')}`)
+        }
+        for (const id of antes.keys()) if (!ahora.partidos.some((p) => p.gameId === id)) defectos.push(`${id}:ausente`)
+      }
+    }
+    prueba(`lista-contra-base:${e.ligaId}`, defectos.length === 0, defectos)
+    const directos = []
+    for (const id of e.normal.partidos) {
+      if (!esObjeto(base.directos[id])) { directos.push(`${id}:sin-base-directa`); continue }
+      const d = await leerJsonPublico(t.f, `${t.destino.origen}/v1/ligas/${e.ligaId}/partidos/${id}`)
+      if (d.status !== 200 || !esObjeto(d.json)) { directos.push(`${id}:lectura-directa`); continue }
+      const dahora = sinVolatiles(d.json)
+      const desperado = conSede(base.directos[id], e.normal.sede)
+      if (!iguales(dahora, desperado)) directos.push(`${id}:${clavesDistintas(dahora, desperado).join('+') || 'distinto'}`)
+      if (hallar(d.json).length) directos.push(`${id}:campos-privados`)
+    }
+    prueba(`lectura-directa-contra-base:${e.ligaId}`, directos.length === 0, directos)
+    prueba(`sin-campos-privados:${e.ligaId}`, hallar(r.json).length === 0)
+  }
+  return { ok: c.length > 0 && c.every((x) => x.ok), comprobaciones: c }
 }
