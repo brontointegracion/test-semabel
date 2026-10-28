@@ -79,6 +79,11 @@ export default function PaginaLiga({ topbar, cabecera, retos = null, pestana, al
   )
 }
 
+/** Diferencia con signo: +4, 0, -6 (el cero sin signo). */
+function diferenciaTexto(n) {
+  return n > 0 ? `+${n}` : String(n)
+}
+
 /**
  * Pestaña Posiciones. `filas`: salida de tablaDeResultados/tablaPosiciones; `jugados`: partidos finales; `enlaceEquipo(equipo)` → ruta;
  * `nota`: la explicación de dónde sale la tabla (depende del origen de los datos).
@@ -86,20 +91,34 @@ export default function PaginaLiga({ topbar, cabecera, retos = null, pestana, al
 export function TablaPosiciones({ filas, jugados, deporte, ui, enlaceEquipo, nota, vacioTexto = 'Todavía no se ha jugado ningún partido.', despuesDelVacio = null }) {
   const { Escudo, Vacio, Enlace } = ui
   if (!jugados) return <><Vacio>{vacioTexto}</Vacio>{despuesDelVacio}</>
+  // Baloncesto: Equipo | JJ | G | P | PF | PC | DIF | PTS (las faltas no se muestran aquí; siguen en los datos y en las estadísticas de jugadores).
+  // Otros deportes: la tabla de siempre (GF y Fal).
+  const baloncesto = deporte === 'baloncesto'
 
   return (
     <>
-      <div className="tabla-wrap" style={{ marginTop: 14 }}>
+      <div className="tabla-wrap tabla-posiciones" style={{ marginTop: 14 }}>
         <table>
           <thead>
             <tr>
-              <th>Equipo</th>
-              <th>JJ</th>
-              <th>G</th>
-              <th>P</th>
-              <th>{deporte === 'baloncesto' ? 'PF' : 'GF'}</th>
-              <th>Fal</th>
-              <th>Pts</th>
+              <th scope="col">Equipo</th>
+              <th scope="col" title="Juegos jugados" aria-label="Juegos jugados">JJ</th>
+              <th scope="col" title="Ganados" aria-label="Ganados">G</th>
+              <th scope="col" title="Perdidos" aria-label="Perdidos">P</th>
+              {baloncesto ? (
+                <>
+                  <th scope="col" title="Puntos a favor" aria-label="Puntos a favor">PF</th>
+                  <th scope="col" title="Puntos en contra" aria-label="Puntos en contra">PC</th>
+                  <th scope="col" title="Diferencia de puntos (PF menos PC)" aria-label="Diferencia de puntos, PF menos PC">DIF</th>
+                  <th scope="col" title="Puntos de clasificación" aria-label="Puntos de clasificación">PTS</th>
+                </>
+              ) : (
+                <>
+                  <th>GF</th>
+                  <th>Fal</th>
+                  <th>Pts</th>
+                </>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -116,8 +135,18 @@ export function TablaPosiciones({ filas, jugados, deporte, ui, enlaceEquipo, not
                 <td>{f.jg}</td>
                 <td>{f.jp}</td>
                 <td>{f.pf}</td>
-                <td>{f.faltas}</td>
-                <td className="pts">{f.pts}</td>
+                {baloncesto ? (
+                  <>
+                    <td>{f.pc}</td>
+                    <td>{diferenciaTexto(f.pf - f.pc)}</td>
+                    <td className="pts">{f.pts}</td>
+                  </>
+                ) : (
+                  <>
+                    <td>{f.faltas}</td>
+                    <td className="pts">{f.pts}</td>
+                  </>
+                )}
               </tr>
             ))}
           </tbody>

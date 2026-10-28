@@ -169,3 +169,15 @@
 .publico .figuras-liga-nombre { margin: 0 0 6px; font-size: 0.92rem; font-weight: 800; color: var(--ink); }
 .publico .figuras-liga .escalon.p1 { }
 .publico .figuras-liga .escalon .equipo-nombre { overflow: hidden; text-overflow: ellipsis; }
+
+/* Posiciones (baloncesto: JJ G P PF PC DIF PTS): en pantallas angostas las columnas numéricas se juntan y el nombre del equipo
+   puede pasar a dos líneas, para que las ocho columnas quepan sin desplazar la página (la tabla conserva su desplazamiento propio como respaldo). */
+@media (max-width: 639px) {
+  .publico .tabla-posiciones th:not(:first-child), .publico .tabla-posiciones td:not(:first-child) { padding-left: 3px; padding-right: 3px; }
+  .publico .tabla-posiciones th:last-child, .publico .tabla-posiciones td:last-child { padding-right: 10px; }
+  .publico .tabla-posiciones th:first-child, .publico .tabla-posiciones td:first-child { padding-left: 10px; }
+  .publico .tabla-posiciones .equipo-celda { gap: 5px; }
+  .publico .tabla-posiciones .pos { width: 14px; }
+  .publico .tabla-posiciones .escudo.sm { width: 24px; height: 24px; flex: none; }
+  .publico .tabla-posiciones .equipo-celda .nombre { white-space: normal; overflow-wrap: break-word; font-size: 0.85rem; line-height: 1.15; }
+}
