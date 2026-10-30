@@ -18,6 +18,7 @@ export class LigaDO extends LigaDOReal {
   limitesJugadoresPublico() { return control.limitesJugadores ?? super.limitesJugadoresPublico() }
   limitesLecturaPublica() { return control.limitesPublicos ?? super.limitesLecturaPublica() }
   async pausaTrasResumirEstado() { if (control.pausaEstado) await control.pausaEstado() }
+  opcionesRespaldo() { return control.opcionesRespaldo ?? {} } // topes del respaldo sustituibles en pruebas
 }
 
 // El objeto de acceso comparte el reloj de prueba con el de liga, para ordenar sus eventos de forma determinista.
