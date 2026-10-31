@@ -107,7 +107,7 @@ describe('navegación visible y compartir (REPORT_179)', () => {
     abrir('/organizador/ligas/LIGA-U10')
     const lista = await screen.findByRole('list', { name: 'Partidos' })
     const filas = within(lista).getAllByRole('listitem')
-    const temprano = filas[1]
+    const temprano = filas[0]
     expect(within(temprano).getByText('Alfa — Beta')).toBeTruthy()
     const preparar = within(temprano).getByRole('link', { name: /Preparar acceso de puntuación de Alfa contra Beta/ })
     expect(preparar.textContent).toBe('Preparar acceso de puntuación')
@@ -193,17 +193,21 @@ describe('lista de partidos de la liga', () => {
     abrir('/organizador/ligas/LIGA-U10')
     const lista = await screen.findByRole('list', { name: 'Partidos' })
     const filas = within(lista).getAllByRole('listitem').map((li) => li.textContent)
-    expect(filas).toHaveLength(4)
-    expect(filas[0]).toContain('Alfa — Beta') // el final de dos días antes va primero
-    expect(filas[0]).toContain('dom 18 oct, 12:00 p. m.')
-    expect(filas[0]).toContain('Terminado')
-    expect(filas[0]).toContain('31–28')
-    expect(filas[1]).toContain('Alfa — Beta')
-    expect(filas[1]).toContain('mar 20 oct, 9:05 a. m.')
-    expect(filas[1]).toContain('Programado')
-    expect(filas[2]).toContain('Beta — Alfa')
-    expect(filas[2]).toContain('mar 20 oct, 6:30 p. m.')
-    expect(filas[3]).toContain('Fecha por confirmar')
+    expect(filas).toHaveLength(3) // el terminado va plegado en «Finalizados (1)»
+    expect(filas[0]).toContain('Alfa — Beta')
+    expect(filas[0]).toContain('mar 20 oct, 9:05 a. m.')
+    expect(filas[0]).toContain('Programado')
+    expect(filas[1]).toContain('Beta — Alfa')
+    expect(filas[1]).toContain('mar 20 oct, 6:30 p. m.')
+    expect(filas[2]).toContain('Fecha por confirmar')
+    const finales = within(screen.getByRole('list', { name: 'Partidos finalizados', hidden: true })).getAllByRole('listitem', { hidden: true }).map((li) => li.textContent)
+    expect(finales).toHaveLength(1)
+    expect(finales[0]).toContain('Alfa — Beta')
+    expect(finales[0]).toContain('dom 18 oct, 12:00 p. m.')
+    expect(finales[0]).toContain('Finalizado')
+    expect(finales[0]).not.toContain('Terminado')
+    expect(finales[0]).toContain('31–28')
+    filas.push(...finales)
     expect(filas.join(' ')).not.toMatch(/\b(a|p)\.m\./) // siempre «a. m.» / «p. m.» con espacio
     expect(screen.getByRole('link', { name: 'Gestionar jugadores de Alfa' })).toBeTruthy() // la gestión de equipos sigue ahí
     expect(espia.every((p) => p.metodo === 'GET')).toBe(true)
