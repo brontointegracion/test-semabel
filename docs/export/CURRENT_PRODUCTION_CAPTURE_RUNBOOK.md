@@ -1,12 +1,14 @@
-# Current-production league capture: preparation and owner-run runbook (REPORT_265, corrected by REPORT_266)
+# Current-production league capture: preparation and owner-run runbook (REPORT_265, corrected by REPORT_266, updated by REPORT_268 for the merged current production)
 
 **Status: PREPARED, NOT DEPLOYED, NOT EXECUTED.** Nothing in this document has been run against Cloudflare or production. It was written without network access, credentials, gate changes or any real backup. Every command below is for the OWNER to run, in order, after the preconditions are met. Spanish identifiers (`PLATINIUM-U10`, `ACCESO_ADMIN_HABILITADO`, status codes) are kept verbatim.
+
+**Current baseline (REPORT_268).** This branch (`feat/portable-league-export`) is now at HEAD `d4ba64c`, a merge of the export commit `0faba4e` with the production commit `53a1ad1` ("Collapse finished organizer games and highlight final status"). The latest owner-confirmed production version is `3a3f0763-d66d-4f8e-ba7e-2b4cf6719f99`, built from tag `semabel-release-2026-10-31.1` = `53a1ad1`. **The frontend identity comparison against `53a1ad1` passed** (recorded from the check supplied with the REPORT_268 instruction; not re-executed while editing this document). **The merged export build (`d4ba64c`) has NOT been deployed**, and the capture has not been run. References to `ca7a2eb` below describe the original implementation base or historical test evidence only. Spanish identifiers (`PLATINIUM-U10`, `ACCESO_ADMIN_HABILITADO`, status codes) are kept verbatim.
 
 Each step is tagged: **[local]** touches only this machine; **[network: account]** talks to the Cloudflare account (needs the owner's login); **[network: GET]** or **[network: POST, no credential]** talks to `https://semabel.com` without any credential.
 
 ## 1. What this adds (exact)
 
-A read-only league capture, ported selectively from backup precursor `a5a823f` (which sits on the older base `c082574`) onto this branch (`feat/portable-league-export`, base `ca7a2eb`). Nothing was copied wholesale.
+A read-only league capture, ported selectively from backup precursor `a5a823f` (which sits on the older base `c082574`) onto this branch (`feat/portable-league-export`; implemented on base `ca7a2eb`, now merged with production `53a1ad1` at `d4ba64c`). Nothing was copied wholesale.
 
 | Change | Files |
 |---|---|
@@ -19,26 +21,27 @@ A read-only league capture, ported selectively from backup precursor `a5a823f` (
 | New offline tools | portable converter, packager, public-read cross-check (`backend/scripts/*portable*`, `empaquetar-organizador.mjs`, `verificar-lecturas-publicas.mjs`) |
 | New tests / docs | `backend/test/respaldo-liga.check.js`, `cli-respaldo-liga.node-test.mjs`, `respaldo-liga-invariantes.node-test.mjs`, `lecturas-publicas.node-test.mjs`, `docs/export/` |
 
-**Not added, by design:** no export of the access object (organizers, sessions, codes), no import, restore or test-control endpoint, no schema/constructor/migration/binding/secret/vars change, `backend/wrangler.jsonc` byte-identical to `ca7a2eb`, `VERSION_ESQUEMA` stays 9, access schema stays 1, the operator gate stays `ACCESO_ADMIN_HABILITADO=0` in every environment. `respaldo-liga-invariantes.node-test.mjs` checks this against `git` (zero deleted lines in base files, allow-listed files only, SELECT-only SQL).
+**Not added, by design:** no export of the access object (organizers, sessions, codes), no import, restore or test-control endpoint, no schema/constructor/migration/binding/secret/vars change, `backend/wrangler.jsonc` byte-identical to `ca7a2eb` (and, checked locally with `git diff` while writing REPORT_268, to `53a1ad1` and to `d4ba64c`), `VERSION_ESQUEMA` stays 9, access schema stays 1, the operator gate stays `ACCESO_ADMIN_HABILITADO=0` in every environment. `respaldo-liga-invariantes.node-test.mjs` checks this against `git` (zero deleted lines in base files, allow-listed files only, SELECT-only SQL).
 
 ## 2. Compatibility, evidence and deployment effects (read BEFORE executing)
 
 **Evidence (not a guarantee).**
-- Compared with `ca7a2eb`: same schema version (9), same Durable Object constructors, no migration, no new table, no binding/variable/secret change, and the existing routes, scoring, standings, venue-spelling and TV code are byte-identical. The only additions are the read-only export code and its two operator routes. This is what the invariants test and an offline `wrangler deploy --dry-run --env production` showed: the same seven bindings and variables, `ACCESO_ADMIN_HABILITADO ("0")`, and a Worker bundle of 276,618 bytes versus 264,938 for a clean `ca7a2eb`.
+- Compared with `ca7a2eb` (original implementation base; this evidence is historical): same schema version (9), same Durable Object constructors, no migration, no new table, no binding/variable/secret change, and the existing routes, scoring, standings, venue-spelling and TV code are byte-identical. The only additions are the read-only export code and its two operator routes. This is what the invariants test and an offline `wrangler deploy --dry-run --env production` showed: the same seven bindings and variables, `ACCESO_ADMIN_HABILITADO ("0")`, and a Worker bundle of 276,618 bytes versus 264,938 for a clean `ca7a2eb`. That dry run was made on the pre-merge tree; it was NOT redone for `d4ba64c`, so Phase A step 4 repeats it on the merged tree and the byte size may differ.
+- Production `53a1ad1` differs from `ca7a2eb` only in frontend files (`git diff --stat ca7a2eb 53a1ad1`: `src/pantallas/LigaOrganizador.jsx`, `PanelOrganizador.css`, `PartidoOrganizador.test.jsx` and a new `LigaOrganizadorFinalizados.test.jsx`; no `backend/` file). So the backend comparison above still holds against current production, and the merged tree differs from `53a1ad1` only by the export additions in section 1.
 - The new code does not write data of its own. That is evidence that a later move back to the previous code would not meet new stored data. It is not proof that rolling back is safe in any given situation.
 - **A code rollback does not restore database contents** and does not undo data operations. The startup or repair logic of the rollback target can still write. Before any rollback, inspect the actual target (section 5) and the current state.
-- The owner reported the active version as `2988a11d-787d-4076-a69b-c85c7b01e744`; the local record is tag `semabel-release-2026-10-28.2` = `ca7a2eb`. Local Git cannot prove what is deployed. This runbook ASSUMES `2988a11d` was built from `ca7a2eb`; Phase A step 2 makes the owner confirm it.
-- The new routes answer `404` while the gate is closed, like the other `/v1/admin/*` routes. The frontend is unchanged; rebuilt with the SAME variables its asset file names must equal the live ones (Phase A step 3).
+- The owner confirmed the latest production version as `3a3f0763-d66d-4f8e-ba7e-2b4cf6719f99`; the local record is tag `semabel-release-2026-10-31.1` = `53a1ad1`. Local Git cannot prove what is deployed. This runbook ASSUMES `3a3f0763` was built from `53a1ad1`; Phase A step 2 makes the owner confirm it. (The earlier version `2988a11d-787d-4076-a69b-c85c7b01e744` = tag `semabel-release-2026-10-28.2` = `ca7a2eb` is superseded and is no longer a valid `PREVIOUS`.)
+- The new routes answer `404` while the gate is closed, like the other `/v1/admin/*` routes. The frontend is unchanged; rebuilt with the SAME variables its asset file names must equal the live ones, which are those of `53a1ad1` (Phase A step 3; that comparison passed, see the baseline note at the top).
 
-**What a deployment does.** It creates a new Worker version and routes 100% of traffic to it at once. Durable Objects restart on the new code (in-memory state only); a request in flight at that moment may fail once and scoring phones retry. **Do not deploy, open or close the gate while a game is being scored.** Choose a quiet window (for example the evening of 30 Oct, before the 31 Oct games). Every phase that deploys creates its own version: record every version ID.
+**What a deployment does.** It creates a new Worker version and routes 100% of traffic to it at once. Durable Objects restart on the new code (in-memory state only); a request in flight at that moment may fail once and scoring phones retry. **Do not deploy, open or close the gate while a game is being scored.** Choose a window with **no live scoring**: no game in progress or about to start, and no scorer phone expected to submit during the deploy, the gate opening or the gate closing. The owner confirms this immediately before Phase A step 5 and again before Phase B. Every phase that deploys creates its own version: record every version ID.
 
 **Limits.** Each league is captured separately (no cross-object atomicity; the tool says so in its manifest). The recovery bookmark, if the platform returns one, is separate evidence and NOT proof that a restore works. Do not call the capture a "production backup", "protected" or "restorable".
 
 ## 3. Preconditions
 
-Test evidence from REPORT_265 is retained and is not repeated here: `exportar-portable` 60/60, `cli-respaldo-liga` 7/7, `respaldo-liga-invariantes` 6/6, `lecturas-publicas` 4/4, `config-produccion` 5/5, `respaldo-liga.check` 12/12, `esquema-migracion` 6/6, `publico-liga` 20/20, all at HEAD `ca7a2eb` plus the uncommitted work. Rerun a suite only if the code changes after it was committed.
+Test evidence from REPORT_265 is retained and is not repeated here: `exportar-portable` 60/60, `cli-respaldo-liga` 7/7, `respaldo-liga-invariantes` 6/6, `lecturas-publicas` 4/4, `config-produccion` 5/5, `respaldo-liga.check` 12/12, `esquema-migracion` 6/6, `publico-liga` 20/20, all at HEAD `ca7a2eb` plus the uncommitted work, i.e. on the pre-merge tree. They are historical evidence and were NOT rerun on `d4ba64c`; they are not newly executed results. Rerun a suite only if the code changes after the point where it was last run, or if the owner asks for evidence on the merged tree.
 
-1. **[local]** Commit and tag the exact reviewed code before deploying (the preparation left everything uncommitted). Deploying uncommitted code leaves no reproducible record of what runs in production. Then check `git status --short` is empty.
+1. **[local]** Confirm the exact reviewed code is committed before deploying: `git -C "$REPO" rev-parse --short HEAD` must print `d4ba64c` (or a reviewed descendant) and `git -C "$REPO" status --short` must be empty. Deploying uncommitted code leaves no reproducible record of what runs in production. Creating a release tag for the merged build is the owner's decision and happens before the deploy; this document does not create one.
 2. **[local]** Variables used below (none contain secrets). Never put the token on a command line; the capture tool reads it only from a 0600 file or `SEBEL_OPERADOR_TOKEN`.
    ```
    REPO=~/Documents/Claude-Projects/tmp/sebel.com-all/sebel.com-portable-export
@@ -57,17 +60,17 @@ Test evidence from REPORT_265 is retained and is not repeated here: `exportar-po
 ### Phase A. Build and deploy with the gate CLOSED
 
 1. **[local]** Confirm the production build inputs: `sha256sum "$TV_SEQ"` must print `a13b4a81a55b3bd8c3750b3816eac6cb981a8a956a67840817f788580e0df4aa` (the October 31 to November 1 ten-game sequence, 680 bytes, ten `LIGA/PARTIDO` pairs). The older October 23 file (`e2123283…`) must NOT be used. If the owner's records show production was built with a different file, STOP and ask.
-2. **[network: account]** Confirm the live version in the dashboard (Worker `semabel-production`) or with `./node_modules/.bin/wrangler deployments list --env production` run from `backend/`: the active deployment must be `2988a11d-787d-4076-a69b-c85c7b01e744`. Record it as `PREVIOUS`. If it is a different version, STOP.
+2. **[network: account]** Confirm the live version in the dashboard (Worker `semabel-production`) or with `./node_modules/.bin/wrangler deployments list --env production` run from `backend/`: the active deployment must be `3a3f0763-d66d-4f8e-ba7e-2b4cf6719f99` (tag `semabel-release-2026-10-31.1`, commit `53a1ad1`). Record it as `PREVIOUS`. If it is a different version, STOP and ask: the frontend identity comparison and the rollback target both depend on it.
 3. **[local]** Build the frontend exactly as production does (repository root):
    ```
-   cd "$REPO" && git diff --stat ca7a2eb -- src index.html vite.config.js package.json package-lock.json public    # must print nothing
+   cd "$REPO" && git diff --stat 53a1ad1 -- src index.html vite.config.js package.json package-lock.json public    # must print nothing (frontend identical to production 53a1ad1)
    [ -d node_modules ] || npm ci
    rm -rf dist
    VITE_MODO_COMPARTIDO=1 VITE_LIGAS_PUBLICAS=PLATINIUM-U10,PLATINIUM-U12 VITE_PAIS_PILOTO=PA VITE_TV_SECUENCIA="$(tr -d '\n' < "$TV_SEQ")" npm run build
    ls dist/assets | grep -E '^index-.*\.(js|css)$'
    ```
-   **[network: GET]** `curl --fail --silent --show-error --connect-timeout 10 --max-time 30 --proto '=https' https://semabel.com/ | grep -o 'assets/index-[A-Za-z0-9_-]*\.\(js\|css\)'`. The two lists of `index-*` names must be identical. If they differ, STOP (the build configuration is not the production one); do not deploy.
-4. **[local]** Offline dry run: `cd "$REPO/backend" && ./node_modules/.bin/wrangler deploy --dry-run --env production --outdir <folder outside the repository>` must list exactly the seven bindings and variables in section 2, with `ACCESO_ADMIN_HABILITADO ("0")`.
+   **[network: GET]** `curl --fail --silent --show-error --connect-timeout 10 --max-time 30 --proto '=https' https://semabel.com/ | grep -o 'assets/index-[A-Za-z0-9_-]*\.\(js\|css\)'`. The two lists of `index-*` names must be identical. This comparison was run against `53a1ad1` and passed (see the baseline note at the top); repeat it immediately before deploying, because the live site may have changed. If they differ, STOP (the build configuration is not the production one); do not deploy.
+4. **[local]** Offline dry run: `cd "$REPO/backend" && ./node_modules/.bin/wrangler deploy --dry-run --env production --outdir <folder outside the repository>` must list exactly the seven bindings and variables in section 2, with `ACCESO_ADMIN_HABILITADO ("0")`. It is run on the merged tree, so any difference from the REPORT_265 result (including the bundle size) must be explained before deploying.
 
    **If steps 1 to 4 fail, nothing was deployed and the account was not contacted by the deployment**; production is unchanged by this runbook. Fix and repeat. This is the only case in which "nothing changed" may be said.
 5. **[network: account]** Deploy (gate closed): `cd "$REPO/backend" && ./node_modules/.bin/wrangler deploy --env production --message "league capture build, gate CLOSED"`. Always `--env production`. Record the new version ID as `VERSION_A`.
@@ -240,7 +243,7 @@ Acceptance for the final deliverable:
 
 ### Uncertain deployment (any deploy command that did not clearly succeed)
 Applies to Phase A step 5 and to the deploys made by `gate-window.sh`. Do not assume production is unchanged and do not rerun blindly.
-1. **[network: account]** Find the active deployment: `cd "$REPO/backend" && ./node_modules/.bin/wrangler deployments list --env production` (and `wrangler deployments status --env production`), or the dashboard. Compare it with `PREVIOUS` (`2988a11d-…`) and with the version IDs the command printed, if any.
+1. **[network: account]** Find the active deployment: `cd "$REPO/backend" && ./node_modules/.bin/wrangler deployments list --env production` (and `wrangler deployments status --env production`), or the dashboard. Compare it with `PREVIOUS` (`3a3f0763-…`) and with the version IDs the command printed, if any.
 2. **[network: POST, no credential]** Check the gate (route above): 404 = closed, 401 = open.
 3. Decide from the evidence: still `PREVIOUS` and gate 404 means the deploy did not take effect; a new version means it did, so record it and treat it as deployed; a new or unknown version with the gate open means close the gate first (below), then investigate. If the evidence is unclear, treat the gate as open.
 
@@ -265,7 +268,8 @@ After any recovery, record the version ID and confirm both: the gate route answe
 
 ## 6. Remaining limitations
 
-- Local Git cannot prove the active deployment; the assumption `2988a11d` = `ca7a2eb` must be confirmed by the owner (Phase A step 2).
+- Local Git cannot prove the active deployment; the assumption `3a3f0763` = `53a1ad1` must be confirmed by the owner (Phase A step 2).
+- The merged export build `d4ba64c` has not been deployed, its offline dry run has not been repeated on the merged tree, and the REPORT_265 test results were not rerun on it.
 - The frontend build reproduction (asset names equal to the live ones) is checked, not guaranteed in advance; the exact production `dist` hash is not recorded locally.
 - `gate-window.sh` and `public-reads.sh` were written and reviewed but not executed against anything; they are given as the owner-run procedure. Their cleanup is best effort (see above).
 - No cross-league atomicity; between capture and the public reads a game can change.
