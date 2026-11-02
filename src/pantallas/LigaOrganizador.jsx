@@ -15,36 +15,54 @@ import { ESTADO_TEXTO } from './PartidoOrganizador'
 
 const instante = (p) => (p.programadoPara === null ? Infinity : Date.parse(p.programadoPara))
 
-// Partidos de la liga (lectura pública del servidor, solo lectura): por hora programada, los sin hora al final. Cada uno lleva a su acceso de puntuación.
+const ordenar = (lista) => [...lista].sort((a, b) => (instante(a) === instante(b) ? (a.gameId < b.gameId ? -1 : 1) : instante(a) < instante(b) ? -1 : 1))
+
+// Una tarjeta de partido. El partido terminado muestra la insignia «Finalizado» en lugar del texto de estado.
+function FilaPartido({ p, ligaId, nombres, enlaces }) {
+  const local = nombres.get(p.local.id) ?? p.local.id
+  const visita = nombres.get(p.visita.id) ?? p.visita.id
+  const final = p.estado === 'final'
+  return (
+    <li className="fila-panel">
+      <strong className="nombre-contexto">{local} — {visita}</strong>
+      <div className="sub">
+        {p.programadoPara ? `${fechaCortaPanama(p.programadoPara)}, ${horaPanama(p.programadoPara)}` : 'Fecha por confirmar'}
+        {final ? ' · ' : ` · ${ESTADO_TEXTO[p.estado]}`}
+        {final && <span className="insignia-finalizado">Finalizado</span>}
+        {textoSede(p) ? ` · ${textoSede(p)}` : ''}
+        {p.estado !== 'programado' ? ` · ${p.local.puntos}–${p.visita.puntos}` : ''}
+      </div>
+      <div className="acciones-fila">
+        <Link className="btn" to={rutaPartido(ligaId, p.gameId)} aria-label={`Preparar acceso de puntuación de ${local} contra ${visita}`}>Preparar acceso de puntuación</Link>
+        {enlaces.get(p.gameId) && <Link className="btn fantasma" to={enlaces.get(p.gameId)} aria-label={`Ver marcador público de ${local} contra ${visita}`}>Ver marcador público</Link>}
+      </div>
+    </li>
+  )
+}
+
+// Partidos de la liga (lectura pública del servidor, solo lectura): por hora programada, los sin hora al final. Programados y en curso primero;
+// los terminados van agrupados y plegados debajo. Cada uno lleva a su acceso de puntuación.
 function Partidos({ ligaId }) {
   const def = useMemo(() => recursoLiga(ligaId), [ligaId])
   const { datos, fase } = useRecurso(def)
   const nombres = new Map((datos?.equipos ?? []).map((e) => [e.id, e.nombre]))
   const enlaces = datos ? enlacesDePartidos(datos) : new Map()
-  const lista = [...(datos?.partidos ?? [])].sort((a, b) => (instante(a) === instante(b) ? (a.gameId < b.gameId ? -1 : 1) : instante(a) < instante(b) ? -1 : 1))
+  const lista = ordenar(datos?.partidos ?? [])
+  const abiertos = lista.filter((p) => p.estado !== 'final')
+  const finalizados = lista.filter((p) => p.estado === 'final')
+  const fila = (p) => <FilaPartido key={p.gameId} p={p} ligaId={ligaId} nombres={nombres} enlaces={enlaces} />
   return (
     <>
       <h2>Partidos</h2>
       {!datos && <p className="sub" role="status">{fase === 'cargando' ? 'Cargando…' : 'No pudimos cargar los partidos. Se reintenta solo.'}</p>}
       {datos && lista.length === 0 && <p className="nota-vacia">Esta liga todavía no tiene partidos.</p>}
-      {datos && lista.length > 0 && (
-        <ul className="lista-panel" aria-label="Partidos">
-          {lista.map((p) => (
-            <li key={p.gameId} className="fila-panel">
-              <strong className="nombre-contexto">{nombres.get(p.local.id) ?? p.local.id} — {nombres.get(p.visita.id) ?? p.visita.id}</strong>
-              <div className="sub">
-                {p.programadoPara ? `${fechaCortaPanama(p.programadoPara)}, ${horaPanama(p.programadoPara)}` : 'Fecha por confirmar'}
-                {` · ${ESTADO_TEXTO[p.estado]}`}
-                {textoSede(p) ? ` · ${textoSede(p)}` : ''}
-                {p.estado !== 'programado' ? ` · ${p.local.puntos}–${p.visita.puntos}` : ''}
-              </div>
-              <div className="acciones-fila">
-                <Link className="btn" to={rutaPartido(ligaId, p.gameId)} aria-label={`Preparar acceso de puntuación de ${nombres.get(p.local.id) ?? p.local.id} contra ${nombres.get(p.visita.id) ?? p.visita.id}`}>Preparar acceso de puntuación</Link>
-                {enlaces.get(p.gameId) && <Link className="btn fantasma" to={enlaces.get(p.gameId)} aria-label={`Ver marcador público de ${nombres.get(p.local.id) ?? p.local.id} contra ${nombres.get(p.visita.id) ?? p.visita.id}`}>Ver marcador público</Link>}
-              </div>
-            </li>
-          ))}
-        </ul>
+      {datos && abiertos.length > 0 && <ul className="lista-panel" aria-label="Partidos">{abiertos.map(fila)}</ul>}
+      {datos && lista.length > 0 && abiertos.length === 0 && <p className="nota-vacia">No hay partidos programados ni en curso. Todos los partidos de esta liga están finalizados.</p>}
+      {datos && finalizados.length > 0 && (
+        <details className="finalizados">
+          <summary>Finalizados ({finalizados.length})</summary>
+          <ul className="lista-panel" aria-label="Partidos finalizados">{finalizados.map(fila)}</ul>
+        </details>
       )}
     </>
   )
@@ -82,7 +100,7 @@ function Contenido({ ligaId }) {
             ))}
           </ul>
           {ok.equipos.length === 0 && <p className="nota-vacia">Esta liga todavía no tiene equipos.</p>}
-          <Partidos ligaId={ligaId} />
+          <Partidos key={ligaId} ligaId={ligaId} />
         </>
       )}
     </main>

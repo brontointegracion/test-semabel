@@ -48,3 +48,17 @@
 .invitacion-estado.fallo { color: var(--acento-ink, #8a1d1d); }
 .invitacion-campo { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; font-size: 0.8rem; color: var(--ink-soft, #555); }
 .invitacion-campo input { width: 100%; box-sizing: border-box; padding: 12px; font: inherit; font-size: 0.9rem; border: 1px solid var(--line, #ddd); border-radius: var(--r-md, 10px); background: var(--surface-2, #f6f6f6); color: var(--ink, #1a1a1a); }
+
+/* Partidos finalizados de la liga (REPORT_267): sección plegada por defecto, solo en el panel del organizador. */
+.panel .finalizados { margin: 8px 0 16px; }
+.panel .finalizados > summary {
+  display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 14px; box-sizing: border-box; cursor: pointer;
+  font-weight: 700; border: 1px solid var(--line-soft); border-radius: var(--r-md); background: var(--surface); list-style: none;
+}
+.panel .finalizados > summary::-webkit-details-marker { display: none; }
+.panel .finalizados > summary::before { content: '▸'; color: var(--acento-ink); font-size: 1.1rem; line-height: 1; }
+.panel .finalizados[open] > summary::before { content: '▾'; }
+.panel .finalizados > .lista-panel { margin-top: 10px; }
+.panel .insignia-finalizado {
+  display: inline-block; padding: 1px 8px; border-radius: 999px; background: var(--acento-ink); color: #fff; font-size: 0.78rem; font-weight: 700; line-height: 1.5;
+}
